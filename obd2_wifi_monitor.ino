@@ -27,7 +27,7 @@
  */
 
 #include <ESP8266WiFi.h>
-#include <U8x8lib.h>
+#include <U8g2lib.h>
 #include <Wire.h>
 
 // ============================================================
@@ -53,11 +53,8 @@
 // Tentativi massimi di connessione
 #define MAX_RETRIES       3
 
-// Orientamento display: 0 = normale, 1 = ruotato 180 gradi
-#define DISPLAY_FLIP      0
-
-// Font display: u8x8_font_torussansbold8_r (rotondo) o u8x8_font_chroma48medium8_r (spigoloso)
-#define DISPLAY_FONT      u8x8_font_torussansbold8_r
+// Orientamento display: 0 = landscape (128x64), 1 = portrait 90° (64x128)
+#define DISPLAY_ORIENTATION 0
 
 // PID OBD2 per i dati di monitoraggio
 #define PID_MAP           0x0B    // Pressione assoluta collettore (kPa)
@@ -83,7 +80,12 @@
 WiFiClient elmClient;
 
 // Display OLED SH1106 128x64, I2C hardware, senza pin reset
-U8X8_SH1106_128X64_NONAME_HW_I2C u8x8(U8X8_PIN_NONE);
+// Rotazione condizionale: R0=landscape(0°), R1=portrait(90°)
+#if DISPLAY_ORIENTATION == 0
+  U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
+#else
+  U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R1, U8X8_PIN_NONE);
+#endif
 
 // ============================================================
 // Stato applicazione
@@ -139,16 +141,17 @@ void setup() {
   Wire.setClock(400000);
 
   // Inizializza display OLED
-  u8x8.begin();
-  u8x8.setFlipMode(DISPLAY_FLIP);
-  u8x8.setFont(DISPLAY_FONT);
+  u8g2.begin();
+  u8g2.setFontPosTop();
 
   // Splash screen
-  u8x8.clear();
-  u8x8.drawString(1, 1, "OBD2 WIFI MON");
-  u8x8.drawString(1, 3, "A5 B8 2.7 TDI");
-  u8x8.drawString(5, 5, "CGKA");
-  u8x8.drawString(5, 7, "v1.0");
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawStr(10, 10, "OBD2 WIFI MON");
+  u8g2.drawStr(14, 26, "A5 B8 2.7 TDI");
+  u8g2.drawStr(40, 42, "CGKA");
+  u8g2.drawStr(46, 54, "v1.0");
+  u8g2.sendBuffer();
   delay(2000);
 
   memset(pidSupported, 0, sizeof(pidSupported));
@@ -332,10 +335,7 @@ bool isPIDSupported(uint8_t pid) {
  */
 void executeConnectMode() {
   // --- Fase 1: Connessione WiFi ---
-  u8x8.clear();
-  u8x8.drawString(0, 0, "CONNESSIONE");
-  u8x8.drawString(0, 2, "WiFi:");
-  u8x8.drawString(0, 3, ELM327_SSID);
+  drawConnectScreen("WiFi...", ELM327_SSID);
 
   Serial.print(F("Connessione WiFi a: "));
   Serial.println(F(ELM327_SSID));
@@ -347,17 +347,13 @@ void executeConnectMode() {
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(F("."));
-    u8x8.drawString(wifiAttempts % 16, 5, ".");
     wifiAttempts++;
     if (wifiAttempts > 30) {
       Serial.println(F("\nWiFi non trovato!"));
       showError("WiFi non", "trovato!");
       delay(3000);
-      u8x8.clear();
       wifiAttempts = 0;
-      u8x8.drawString(0, 0, "CONNESSIONE");
-      u8x8.drawString(0, 2, "WiFi:");
-      u8x8.drawString(0, 3, ELM327_SSID);
+      drawConnectScreen("WiFi...", ELM327_SSID);
       WiFi.begin(ELM327_SSID, ELM327_PASS);
     }
   }
@@ -365,10 +361,9 @@ void executeConnectMode() {
   Serial.println(F("\nWiFi connesso!"));
   Serial.print(F("IP: "));
   Serial.println(WiFi.localIP());
-  u8x8.drawString(0, 5, "WiFi OK!        ");
+  drawConnectScreen("WiFi OK!", "TCP...");
 
   // --- Fase 2: Connessione TCP all'ELM327 ---
-  u8x8.drawString(0, 7, "TCP...");
   Serial.print(F("Connessione TCP a "));
   Serial.print(F(ELM327_IP));
   Serial.print(F(":"));
@@ -380,7 +375,7 @@ void executeConnectMode() {
   for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     if (elmClient.connect(elmIP, ELM327_PORT)) {
       Serial.println(F("TCP connesso!"));
-      u8x8.drawString(0, 7, "TCP OK!         ");
+      drawConnectScreen("WiFi OK!", "TCP OK!");
       break;
     }
     Serial.print(F("TCP tentativo "));
@@ -396,8 +391,7 @@ void executeConnectMode() {
   delay(500);
 
   // --- Fase 3: Inizializzazione ELM327 ---
-  u8x8.clear();
-  u8x8.drawString(0, 0, "INIT ELM327");
+  drawConnectScreen("Init ELM327...", "");
   Serial.println(F("Inizializzazione ELM327..."));
 
   String response;
@@ -416,7 +410,7 @@ void executeConnectMode() {
   sendATCommand(ELM327_PROTOCOL, response, ELM327_TIMEOUT);
 
   Serial.println(F("ELM327 inizializzato"));
-  u8x8.drawString(0, 2, "ELM327 OK!");
+  drawConnectScreen("ELM327 OK!", "");
   delay(1000);
 
   // Reset stato per nuova sessione (utile in caso di riconnessione)
@@ -436,9 +430,7 @@ void executeConnectMode() {
  * Mostra il progresso su OLED e i risultati dettagliati su Serial.
  */
 void executeScanMode() {
-  u8x8.clear();
-  u8x8.drawString(0, 1, "SCANSIONE PID");
-  u8x8.drawString(0, 3, "Attendi...");
+  drawScanScreen("Attendi...", "");
 
   uint8_t supportRanges[] = {0x00, 0x20, 0x40, 0x60};
   uint8_t dataBytes[4];
@@ -450,9 +442,9 @@ void executeScanMode() {
   for (int i = 0; i < 4 && chainContinues; i++) {
     uint8_t rangePid = supportRanges[i];
 
-    char progBuf[17];
-    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X    ", rangePid);
-    u8x8.drawString(0, 5, progBuf);
+    char progBuf[20];
+    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", rangePid);
+    drawScanScreen("Scansione...", progBuf);
 
     Serial.print(F("Query PID 0x"));
     Serial.print(rangePid, HEX);
@@ -513,19 +505,19 @@ void executeScanMode() {
   Serial.print(F("  Fuel Level (0x2F): ")); Serial.println(fuelSupported ? "SI" : "NO");
 
   // Mostra risultato su display
-  u8x8.clear();
-  char countBuf[17];
+  char countBuf[20];
   snprintf(countBuf, sizeof(countBuf), "PID trovati: %d", totalFound);
-  u8x8.drawString(0, 0, "SCAN COMPLETA");
-  u8x8.drawString(0, 2, countBuf);
-  u8x8.drawString(0, 4, mapSupported       ? "BOOST:  SI" : "BOOST:  NO");
-  u8x8.drawString(0, 5, oilTempSupported   ? "OLIO:   SI" : "OLIO:   NO");
-  u8x8.drawString(0, 6, torquePctSupported ? "COPPIA: SI" : "COPPIA: NO");
-  u8x8.drawString(0, 7, fuelSupported      ? "FUEL:   SI" : "FUEL:   NO");
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_5x7_tr);
+  u8g2.drawStr(0, 0, "SCAN COMPLETA");
+  u8g2.drawStr(0, 10, countBuf);
+  u8g2.drawStr(0, 24, mapSupported       ? "BOOST:  SI" : "BOOST:  NO");
+  u8g2.drawStr(0, 34, torquePctSupported ? "COPPIA: SI" : "COPPIA: NO");
+  u8g2.drawStr(0, 44, oilTempSupported   ? "OLIO:   SI" : "OLIO:   NO");
+  u8g2.drawStr(0, 54, fuelSupported      ? "FUEL:   SI" : "FUEL:   NO");
+  u8g2.sendBuffer();
 
   delay(5000);
-
-  u8x8.clear();
   currentMode = MODE_MONITOR;
 }
 
@@ -619,8 +611,7 @@ void executeMonitorMode() {
   // Verifica connessione TCP attiva
   if (!elmClient.connected()) {
     Serial.println(F("Connessione TCP persa! Riconnessione..."));
-    u8x8.clear();
-    u8x8.drawString(0, 3, "Riconnessione..");
+    drawConnectScreen("Riconnessione..", "");
     elmClient.stop();
     delay(1000);
     currentMode = MODE_CONNECT;
@@ -671,69 +662,124 @@ void executeMonitorMode() {
 
 /**
  * Aggiorna il display OLED con i valori correnti.
- * Layout a due colonne (16x8 griglia U8x8):
- *   Riga 0: BOOST    OLIO      (labels)
- *   Riga 2: +0.85bar  92C      (valori)
- *   Riga 4: COPPIA  280 Nm     (coppia)
- *   Riga 6: ciclo:1234         (status)
+ * Landscape: etichetta piccola sopra, valore grande sotto (4 gruppi in 64px)
+ * Portrait: "NOME valore" su una riga con font grande (4 righe in 128px)
  */
 void updateDisplay() {
-  char buf[9]; // 8 chars + null per ogni colonna
+  u8g2.clearBuffer();
 
-  // Riga 0: Labels — colonna sinistra BOOST, colonna destra OLIO
-  u8x8.drawString(0, 0, "BOOST   ");
-  u8x8.drawString(8, 0, "OLIO    ");
+#if DISPLAY_ORIENTATION == 0
+  // --- LANDSCAPE (128x64) --- Due colonne, nome sopra valore sotto
+  // Font 7x14B: 14px alto, 7px largo. 2 gruppi di 2 righe + gap 7px
+  // Layout: 14+14+7+14+14 = 63px
+  // Colonna sinistra (x=0): BOOST, OLIO — Colonna destra (x=66): COPPIA, FUEL
+  char val[14];
 
-  // Riga 2: Valori — colonna sinistra boost, colonna destra olio
+  u8g2.setFont(u8g2_font_7x14B_tr);
+
+  // Gruppo 1 (y=0..27): BOOST | COPPIA
+  u8g2.drawStr(0, 0, "BOOST");
   if (mapSupported && mapAvailable) {
-    int boostCenti = (int)(boostBar * 100.0f);
-    char sign = (boostCenti >= 0) ? '+' : '-';
-    int absVal = abs(boostCenti);
-    snprintf(buf, sizeof(buf), "%c%d.%02dbar", sign, absVal / 100, absVal % 100);
-  } else {
-    snprintf(buf, sizeof(buf), "  N/D   ");
-  }
-  u8x8.drawString(0, 2, buf);
+    int bc = (int)(boostBar * 100.0f);
+    char s = (bc >= 0) ? '+' : '-';
+    int a = abs(bc);
+    snprintf(val, sizeof(val), "%c%d.%02d bar", s, a / 100, a % 100);
+  } else { snprintf(val, sizeof(val), "N/D"); }
+  u8g2.drawStr(0, 14, val);
+
+  u8g2.drawStr(66, 0, "COPPIA");
+  if (torquePctSupported && torqueAvailable) {
+    snprintf(val, sizeof(val), "%d Nm", torqueNm);
+  } else { snprintf(val, sizeof(val), "N/D"); }
+  u8g2.drawStr(66, 14, val);
+
+  // Gruppo 2 (y=35..62): OLIO | FUEL
+  u8g2.drawStr(0, 35, "OLIO");
+  if (oilTempSupported && oilTempAvailable) {
+    snprintf(val, sizeof(val), "%d C", oilTempC);
+  } else { snprintf(val, sizeof(val), "N/D"); }
+  u8g2.drawStr(0, 49, val);
+
+  u8g2.drawStr(66, 35, "FUEL");
+  if (fuelSupported && fuelAvailable) {
+    snprintf(val, sizeof(val), "%d L", fuelLiters);
+  } else { snprintf(val, sizeof(val), "N/D"); }
+  u8g2.drawStr(66, 49, val);
+
+#else
+  // --- PORTRAIT (64x128) --- Una colonna, "NOME valore" sulla stessa riga
+  // Font 6x13B: 13px alto, 6px largo (bold). Max 10 chars in 64px.
+  // 4 righe + 3 gap (7px): 4*13+3*7 = 73px, centrato in 128px → offset 27px
+  char line[11];
+
+  u8g2.setFont(u8g2_font_6x13B_tr);
+
+  if (mapSupported && mapAvailable) {
+    int bc = (int)(boostBar * 100.0f);
+    int a = abs(bc);
+    if (bc >= 0) {
+      snprintf(line, sizeof(line), "BOOST %d.%02d", a / 100, a % 100);
+    } else {
+      snprintf(line, sizeof(line), "BOOST-%d.%02d", a / 100, a % 100);
+    }
+  } else { snprintf(line, sizeof(line), "BOOST N/D"); }
+  u8g2.drawStr(0, 27, line);
+
+  if (torquePctSupported && torqueAvailable) {
+    snprintf(line, sizeof(line), "COPPIA %d", torqueNm);
+  } else { snprintf(line, sizeof(line), "COPPIA N/D"); }
+  u8g2.drawStr(0, 47, line);
 
   if (oilTempSupported && oilTempAvailable) {
-    snprintf(buf, sizeof(buf), " %3d C  ", oilTempC);
-  } else {
-    snprintf(buf, sizeof(buf), "  N/D   ");
-  }
-  u8x8.drawString(8, 2, buf);
+    snprintf(line, sizeof(line), "OLIO %d C", oilTempC);
+  } else { snprintf(line, sizeof(line), "OLIO N/D"); }
+  u8g2.drawStr(0, 67, line);
 
-  // Riga 4: Coppia motore (riga piena, sempre in Nm)
-  if (torquePctSupported && torqueAvailable) {
-    char line[17];
-    snprintf(line, sizeof(line), "COPPIA  %4d Nm ", torqueNm);
-    u8x8.drawString(0, 4, line);
-  } else {
-    u8x8.drawString(0, 4, "COPPIA   N/D    ");
-  }
-
-  // Riga 6: Livello carburante in litri
-  char line[17];
   if (fuelSupported && fuelAvailable) {
-    snprintf(line, sizeof(line), "FUEL    %3d L   ", fuelLiters);
-  } else {
-    snprintf(line, sizeof(line), "FUEL     N/D    ");
-  }
-  u8x8.drawString(0, 6, line);
+    snprintf(line, sizeof(line), "FUEL %d L", fuelLiters);
+  } else { snprintf(line, sizeof(line), "FUEL N/D"); }
+  u8g2.drawStr(0, 87, line);
+
+#endif
+
+  u8g2.sendBuffer();
 }
 
 // ============================================================
 // UTILITA'
 // ============================================================
 
+/** Disegna la schermata di connessione WiFi/TCP */
+void drawConnectScreen(const char* status, const char* detail) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawStr(0, 8, "CONNESSIONE");
+  u8g2.drawStr(0, 28, status);
+  u8g2.drawStr(0, 44, detail);
+  u8g2.sendBuffer();
+}
+
+/** Disegna la schermata di scansione PID con stato e dettaglio */
+void drawScanScreen(const char* status, const char* detail) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawStr(0, 8, "SCANSIONE PID");
+  u8g2.drawStr(0, 28, status);
+  u8g2.drawStr(0, 44, detail);
+  u8g2.sendBuffer();
+}
+
 /**
  * Mostra un messaggio di errore su OLED e Serial.
  * Usata per errori fatali (connessione, ECU non risponde).
  */
 void showError(const char* line1, const char* line2) {
-  u8x8.clear();
-  u8x8.drawString(3, 2, "ERRORE:");
-  u8x8.drawString(0, 4, line1);
-  u8x8.drawString(0, 6, line2);
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawStr(20, 16, "ERRORE:");
+  u8g2.drawStr(0, 34, line1);
+  u8g2.drawStr(0, 50, line2);
+  u8g2.sendBuffer();
   Serial.print(F("ERRORE: "));
   Serial.println(line1);
   Serial.println(line2);
