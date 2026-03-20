@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>OBD2 Monitor — Anteprima UI OLED SH1106</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    padding: 30px;
+  }
+  h1 { text-align: center; color: #00d4ff; margin-bottom: 8px; font-size: 1.6em; }
+  .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 0.9em; }
+
+  .orientation-section {
+    margin-bottom: 50px;
+    padding: 20px;
+    background: #16213e;
+    border-radius: 12px;
+    border: 1px solid #0f3460;
+  }
+  .orientation-title {
+    font-size: 1.3em;
+    color: #00d4ff;
+    margin-bottom: 6px;
+  }
+  .orientation-info {
+    color: #888;
+    font-size: 0.85em;
+    margin-bottom: 20px;
+  }
+  .screens-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    justify-content: flex-start;
+  }
+  .screen-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .screen-label {
+    color: #aaa;
+    font-size: 0.78em;
+    margin-bottom: 8px;
+    text-align: center;
+    max-width: 200px;
+  }
+  .screen-number {
+    display: inline-block;
+    background: #0f3460;
+    color: #00d4ff;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    text-align: center; line-height: 20px;
+    font-size: 0.7em; font-weight: bold;
+    margin-right: 4px;
+  }
+
+  /* OLED frame */
+  .oled-frame {
+    background: #111;
+    border: 2px solid #333;
+    border-radius: 6px;
+    padding: 6px;
+    box-shadow: 0 0 15px rgba(0,212,255,0.15), inset 0 0 8px rgba(0,0,0,0.8);
+  }
+
+  /* Canvas simulazione OLED — pixel bianchi su sfondo nero */
+  .oled {
+    background: #000;
+    image-rendering: pixelated;
+    display: block;
+  }
+
+  /* Landscape: 128x64 scalato x3 = 384x192 */
+  .oled-landscape {
+    width: 384px;
+    height: 192px;
+  }
+  /* Portrait: 64x128 scalato x3 = 192x384 */
+  .oled-portrait {
+    width: 192px;
+    height: 384px;
+  }
+
+  .flow-arrow {
+    display: flex;
+    align-items: center;
+    color: #0f3460;
+    font-size: 2em;
+    padding: 0 4px;
+    align-self: center;
+  }
+
+  .legend {
+    margin-top: 30px;
+    padding: 15px;
+    background: #0d1b3e;
+    border-radius: 8px;
+    font-size: 0.8em;
+    color: #aaa;
+    line-height: 1.7;
+  }
+  .legend b { color: #00d4ff; }
+</style>
+</head>
+<body>
+
+<h1>OBD2 Monitor — Anteprima UI</h1>
+<p class="subtitle">Display OLED SH1106 128x64 — ESP8266 D1 Mini — Audi A5 B8 2.7 TDI CGKA</p>
+
+<!-- ==================== LANDSCAPE ==================== -->
+<div class="orientation-section">
+  <div class="orientation-title">LANDSCAPE (128x64) — DISPLAY_ORIENTATION = 0</div>
+  <div class="orientation-info">Orientamento orizzontale, 128px larghezza x 64px altezza. Scala 3x.</div>
+
+  <div class="screens-row" id="landscape-screens"></div>
+</div>
+
+<!-- ==================== PORTRAIT ==================== -->
+<div class="orientation-section">
+  <div class="orientation-title">PORTRAIT 90° (64x128) — DISPLAY_ORIENTATION = 1</div>
+  <div class="orientation-info">Orientamento verticale, 64px larghezza x 128px altezza. Scala 3x.</div>
+
+  <div class="screens-row" id="portrait-screens"></div>
+</div>
+
+<div class="legend">
+  <b>Flusso schermate:</b> Splash → Connessione (solo WiFi) → Scansione PID → Scan Completa → Monitor Dati ↔ Errori DTC (alternanza 6s se MIL accesa)<br>
+  <b>Font usati:</b> u8g2_font_6x10_tr (6x10), u8g2_font_7x14B_tr (7x14 bold), u8g2_font_5x7_tr (5x7), u8g2_font_6x13B_tr (6x13 bold), u8g2_font_5x8_tr (5x8)<br>
+  <b>Nota:</b> I pixel bianchi su sfondo nero simulano fedelmente l'aspetto del display OLED monocromatico SH1106.
+</div>
+
+<script>
+// ================================================================
+// Simulatore minimale U8g2 — rendering pixel su canvas
+// Font proporzionali approssimati: larghezza x altezza in pixel
+// ================================================================
+
+const FONTS = {
+  '6x10':  { w: 6,  h: 10, bold: false },
+  '7x14B': { w: 7,  h: 14, bold: true  },
+  '5x7':   { w: 5,  h: 7,  bold: false },
+  '6x13B': { w: 6,  h: 13, bold: true  },
+  '5x8':   { w: 5,  h: 8,  bold: false },
+};
+
+// Bitmap font minimale (caratteri ASCII 32-127), 5x7 base
+// Ogni carattere: array di 7 righe, ogni riga e' un bitmask di 5 bit
+const CHAR_MAP = {};
+(function buildFont() {
+  // Definizione bitmap 5x7 per i caratteri piu' usati
+  const glyphs = {
+    ' ': [0b00000,0b00000,0b00000,0b00000,0b00000,0b00000,0b00000],
+    'A': [0b01110,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
+    'B': [0b11110,0b10001,0b11110,0b10001,0b10001,0b10001,0b11110],
+    'C': [0b01110,0b10001,0b10000,0b10000,0b10000,0b10001,0b01110],
+    'D': [0b11110,0b10001,0b10001,0b10001,0b10001,0b10001,0b11110],
+    'E': [0b11111,0b10000,0b11110,0b10000,0b10000,0b10000,0b11111],
+    'F': [0b11111,0b10000,0b11110,0b10000,0b10000,0b10000,0b10000],
+    'G': [0b01110,0b10001,0b10000,0b10111,0b10001,0b10001,0b01110],
+    'H': [0b10001,0b10001,0b11111,0b10001,0b10001,0b10001,0b10001],
+    'I': [0b01110,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110],
+    'J': [0b00111,0b00010,0b00010,0b00010,0b10010,0b10010,0b01100],
+    'K': [0b10001,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001],
+    'L': [0b10000,0b10000,0b10000,0b10000,0b10000,0b10000,0b11111],
+    'M': [0b10001,0b11011,0b10101,0b10101,0b10001,0b10001,0b10001],
+    'N': [0b10001,0b11001,0b10101,0b10011,0b10001,0b10001,0b10001],
+    'O': [0b01110,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110],
+    'P': [0b11110,0b10001,0b10001,0b11110,0b10000,0b10000,0b10000],
+    'Q': [0b01110,0b10001,0b10001,0b10001,0b10101,0b10010,0b01101],
+    'R': [0b11110,0b10001,0b10001,0b11110,0b10100,0b10010,0b10001],
+    'S': [0b01110,0b10001,0b10000,0b01110,0b00001,0b10001,0b01110],
+    'T': [0b11111,0b00100,0b00100,0b00100,0b00100,0b00100,0b00100],
+    'U': [0b10001,0b10001,0b10001,0b10001,0b10001,0b10001,0b01110],
+    'V': [0b10001,0b10001,0b10001,0b10001,0b01010,0b01010,0b00100],
+    'W': [0b10001,0b10001,0b10001,0b10101,0b10101,0b11011,0b10001],
+    'X': [0b10001,0b10001,0b01010,0b00100,0b01010,0b10001,0b10001],
+    'Y': [0b10001,0b10001,0b01010,0b00100,0b00100,0b00100,0b00100],
+    'Z': [0b11111,0b00001,0b00010,0b00100,0b01000,0b10000,0b11111],
+    '0': [0b01110,0b10001,0b10011,0b10101,0b11001,0b10001,0b01110],
+    '1': [0b00100,0b01100,0b00100,0b00100,0b00100,0b00100,0b01110],
+    '2': [0b01110,0b10001,0b00001,0b00110,0b01000,0b10000,0b11111],
+    '3': [0b01110,0b10001,0b00001,0b00110,0b00001,0b10001,0b01110],
+    '4': [0b00010,0b00110,0b01010,0b10010,0b11111,0b00010,0b00010],
+    '5': [0b11111,0b10000,0b11110,0b00001,0b00001,0b10001,0b01110],
+    '6': [0b01110,0b10000,0b11110,0b10001,0b10001,0b10001,0b01110],
+    '7': [0b11111,0b00001,0b00010,0b00100,0b01000,0b01000,0b01000],
+    '8': [0b01110,0b10001,0b10001,0b01110,0b10001,0b10001,0b01110],
+    '9': [0b01110,0b10001,0b10001,0b01111,0b00001,0b00010,0b01100],
+    '.': [0b00000,0b00000,0b00000,0b00000,0b00000,0b01100,0b01100],
+    ',': [0b00000,0b00000,0b00000,0b00000,0b00100,0b00100,0b01000],
+    ':': [0b00000,0b01100,0b01100,0b00000,0b01100,0b01100,0b00000],
+    '!': [0b00100,0b00100,0b00100,0b00100,0b00100,0b00000,0b00100],
+    '?': [0b01110,0b10001,0b00001,0b00110,0b00100,0b00000,0b00100],
+    '-': [0b00000,0b00000,0b00000,0b11111,0b00000,0b00000,0b00000],
+    '+': [0b00000,0b00100,0b00100,0b11111,0b00100,0b00100,0b00000],
+    '/': [0b00001,0b00010,0b00010,0b00100,0b01000,0b01000,0b10000],
+    '(': [0b00010,0b00100,0b01000,0b01000,0b01000,0b00100,0b00010],
+    ')': [0b01000,0b00100,0b00010,0b00010,0b00010,0b00100,0b01000],
+    '%': [0b11001,0b11010,0b00010,0b00100,0b01000,0b01011,0b10011],
+    'x': [0b00000,0b00000,0b10001,0b01010,0b00100,0b01010,0b10001],
+    'a': [0b00000,0b00000,0b01110,0b00001,0b01111,0b10001,0b01111],
+    'b': [0b10000,0b10000,0b11110,0b10001,0b10001,0b10001,0b11110],
+    'c': [0b00000,0b00000,0b01110,0b10000,0b10000,0b10001,0b01110],
+    'd': [0b00001,0b00001,0b01111,0b10001,0b10001,0b10001,0b01111],
+    'e': [0b00000,0b00000,0b01110,0b10001,0b11111,0b10000,0b01110],
+    'f': [0b00110,0b01000,0b11100,0b01000,0b01000,0b01000,0b01000],
+    'g': [0b00000,0b01111,0b10001,0b10001,0b01111,0b00001,0b01110],
+    'h': [0b10000,0b10000,0b10110,0b11001,0b10001,0b10001,0b10001],
+    'i': [0b00100,0b00000,0b01100,0b00100,0b00100,0b00100,0b01110],
+    'j': [0b00010,0b00000,0b00110,0b00010,0b00010,0b10010,0b01100],
+    'k': [0b10000,0b10010,0b10100,0b11000,0b10100,0b10010,0b10001],
+    'l': [0b01100,0b00100,0b00100,0b00100,0b00100,0b00100,0b01110],
+    'm': [0b00000,0b00000,0b11010,0b10101,0b10101,0b10001,0b10001],
+    'n': [0b00000,0b00000,0b10110,0b11001,0b10001,0b10001,0b10001],
+    'o': [0b00000,0b00000,0b01110,0b10001,0b10001,0b10001,0b01110],
+    'p': [0b00000,0b00000,0b11110,0b10001,0b11110,0b10000,0b10000],
+    'q': [0b00000,0b00000,0b01111,0b10001,0b01111,0b00001,0b00001],
+    'r': [0b00000,0b00000,0b10110,0b11001,0b10000,0b10000,0b10000],
+    's': [0b00000,0b00000,0b01111,0b10000,0b01110,0b00001,0b11110],
+    't': [0b01000,0b01000,0b11100,0b01000,0b01000,0b01001,0b00110],
+    'u': [0b00000,0b00000,0b10001,0b10001,0b10001,0b10011,0b01101],
+    'v': [0b00000,0b00000,0b10001,0b10001,0b10001,0b01010,0b00100],
+    'w': [0b00000,0b00000,0b10001,0b10001,0b10101,0b10101,0b01010],
+    'y': [0b00000,0b00000,0b10001,0b01010,0b00100,0b01000,0b10000],
+    'z': [0b00000,0b00000,0b11111,0b00010,0b00100,0b01000,0b11111],
+  };
+  for (const [ch, rows] of Object.entries(glyphs)) {
+    CHAR_MAP[ch] = rows;
+  }
+})();
+
+/** Restituisce il bitmap 5x7 di un carattere (fallback: rettangolo pieno) */
+function getGlyph(ch) {
+  if (CHAR_MAP[ch]) return CHAR_MAP[ch];
+  // Prova maiuscola/minuscola
+  if (CHAR_MAP[ch.toUpperCase()]) return CHAR_MAP[ch.toUpperCase()];
+  if (CHAR_MAP[ch.toLowerCase()]) return CHAR_MAP[ch.toLowerCase()];
+  // Carattere sconosciuto: quadratino
+  return [0b11111,0b10001,0b10001,0b10001,0b10001,0b10001,0b11111];
+}
+
+// ================================================================
+// Classe OLEDSimulator — disegna su un pixel buffer
+// ================================================================
+class OLEDSim {
+  constructor(w, h) {
+    this.w = w;
+    this.h = h;
+    this.pixels = new Uint8Array(w * h); // 0=nero, 1=bianco
+    this.font = FONTS['6x10'];
+  }
+
+  clear() { this.pixels.fill(0); }
+
+  setFont(name) {
+    this.font = FONTS[name] || FONTS['6x10'];
+  }
+
+  /** Disegna una stringa con fontPosTop (y = top della prima riga) */
+  drawStr(x, y, str) {
+    const f = this.font;
+    // Scala il glyph 5x7 alla dimensione del font corrente
+    const scaleX = f.w / 5;
+    const scaleY = f.h / 7;
+
+    for (let ci = 0; ci < str.length; ci++) {
+      const glyph = getGlyph(str[ci]);
+      const cx = x + ci * f.w;
+
+      for (let row = 0; row < 7; row++) {
+        const bits = glyph[row];
+        for (let col = 0; col < 5; col++) {
+          if (bits & (1 << (4 - col))) {
+            // Scala pixel
+            const px0 = Math.round(cx + col * scaleX);
+            const py0 = Math.round(y + row * scaleY);
+            const px1 = Math.round(cx + (col + 1) * scaleX);
+            const py1 = Math.round(y + (row + 1) * scaleY);
+            for (let py = py0; py < py1; py++) {
+              for (let px = px0; px < px1; px++) {
+                if (px >= 0 && px < this.w && py >= 0 && py < this.h) {
+                  this.pixels[py * this.w + px] = 1;
+                  // Bold: pixel extra a destra
+                  if (f.bold && px + 1 < this.w) {
+                    this.pixels[py * this.w + px + 1] = 1;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Renderizza su un canvas element con scala */
+  renderTo(canvas, scale) {
+    canvas.width = this.w * scale;
+    canvas.height = this.h * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const imgData = ctx.createImageData(canvas.width, canvas.height);
+    for (let y = 0; y < this.h; y++) {
+      for (let x = 0; x < this.w; x++) {
+        if (this.pixels[y * this.w + x]) {
+          // Pixel OLED bianco/azzurrino
+          for (let sy = 0; sy < scale; sy++) {
+            for (let sx = 0; sx < scale; sx++) {
+              const idx = ((y * scale + sy) * canvas.width + (x * scale + sx)) * 4;
+              imgData.data[idx]     = 200; // R
+              imgData.data[idx + 1] = 230; // G
+              imgData.data[idx + 2] = 255; // B
+              imgData.data[idx + 3] = 255; // A
+            }
+          }
+        }
+      }
+    }
+    ctx.putImageData(imgData, 0, 0);
+  }
+}
+
+// ================================================================
+// Definizione schermate
+// ================================================================
+
+function createScreenCard(label, canvas) {
+  const card = document.createElement('div');
+  card.className = 'screen-card';
+  const lbl = document.createElement('div');
+  lbl.className = 'screen-label';
+  lbl.innerHTML = label;
+  const frame = document.createElement('div');
+  frame.className = 'oled-frame';
+  frame.appendChild(canvas);
+  card.appendChild(lbl);
+  card.appendChild(frame);
+  return card;
+}
+
+const SCALE = 3;
+
+// ---- LANDSCAPE SCREENS (128x64) ----
+function renderLandscapeScreens() {
+  const container = document.getElementById('landscape-screens');
+  const W = 128, H = 64;
+
+  // 1. Splash
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(20, 10, "OBD2 MONITOR");
+    oled.drawStr(14, 26, "A5 B8 2.7 TDI");
+    oled.drawStr(40, 42, "CGKA");
+    oled.drawStr(46, 54, "v1.0");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">1</span> Splash Screen<br>(2 secondi all\'avvio)', c));
+  }
+
+  // 2. Connessione WiFi (solo versione WiFi)
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(0, 8, "CONNESSIONE");
+    oled.drawStr(0, 28, "WiFi OK!");
+    oled.drawStr(0, 44, "TCP...");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">2</span> Connessione<br>(solo versione WiFi)', c));
+  }
+
+  // 3. Scansione PID
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(0, 8, "SCANSIONE PID");
+    oled.drawStr(0, 28, "ECU connessa!");
+    oled.drawStr(0, 44, "Range: 0x20");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">3</span> Scansione PID<br>(interrogazione ECU)', c));
+  }
+
+  // 4. Scan completa
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('5x7');
+    oled.drawStr(0, 0, "SCAN COMPLETA");
+    oled.drawStr(0, 10, "PID trovati: 24");
+    oled.drawStr(0, 24, "BOOST:  SI");
+    oled.drawStr(0, 34, "COPPIA: SI");
+    oled.drawStr(0, 44, "OLIO:   SI");
+    oled.drawStr(0, 54, "FUEL:   SI");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">4</span> Scan Completa<br>(risultato scansione, 5s)', c));
+  }
+
+  // 5. Monitor dati — valori di esempio
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('7x14B');
+    oled.drawStr(0, 0, "BOOST");
+    oled.drawStr(0, 14, "+0.85 bar");
+    oled.drawStr(66, 0, "COPPIA");
+    oled.drawStr(66, 14, "245 Nm");
+    oled.drawStr(0, 35, "OLIO");
+    oled.drawStr(0, 49, "92 C");
+    oled.drawStr(66, 35, "FUEL");
+    oled.drawStr(66, 49, "38 L");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">5</span> Monitor Dati<br>(tempo reale, 3-7 Hz)', c));
+  }
+
+  // 6. Monitor dati — N/D (PID non disponibili)
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('7x14B');
+    oled.drawStr(0, 0, "BOOST");
+    oled.drawStr(0, 14, "+1.12 bar");
+    oled.drawStr(66, 0, "COPPIA");
+    oled.drawStr(66, 14, "N/D");
+    oled.drawStr(0, 35, "OLIO");
+    oled.drawStr(0, 49, "N/D");
+    oled.drawStr(66, 35, "FUEL");
+    oled.drawStr(66, 49, "42 L");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">6</span> Monitor (parziale)<br>(PID non supportati = N/D)', c));
+  }
+
+  // 7. Schermata DTC
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('7x14B');
+    oled.drawStr(0, 0, "ERRORI ATTIVI (2)");
+    oled.setFont('6x10');
+    oled.drawStr(0, 20, "P0101");
+    oled.drawStr(0, 31, "Flusso aria MAF");
+    oled.drawStr(0, 42, "P0300");
+    oled.drawStr(0, 53, "Mancata accens.");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">7</span> Errori DTC<br>(alterna con dati ogni 6s)', c));
+  }
+
+  // 8. Errore fatale
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(20, 16, "ERRORE:");
+    oled.drawStr(0, 34, "ECU non risp.");
+    oled.drawStr(0, 50, "Quadro acceso?");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-landscape';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">8</span> Errore Fatale<br>(blocco applicazione)', c));
+  }
+}
+
+// ---- PORTRAIT SCREENS (64x128) ----
+function renderPortraitScreens() {
+  const container = document.getElementById('portrait-screens');
+  const W = 64, H = 128;
+
+  // 1. Splash (riposizionato per portrait)
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    // Centrato orizzontalmente in 64px
+    oled.drawStr(2, 20, "OBD2");
+    oled.drawStr(2, 34, "MONITOR");
+    oled.drawStr(2, 52, "A5 B8");
+    oled.drawStr(2, 66, "2.7 TDI");
+    oled.drawStr(2, 84, "CGKA");
+    oled.drawStr(2, 102, "v1.0");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">1</span> Splash Screen<br>(2 secondi)', c));
+  }
+
+  // 2. Scansione PID
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(0, 8, "SCANSIONE");
+    oled.drawStr(0, 20, "PID");
+    oled.drawStr(0, 44, "ECU");
+    oled.drawStr(0, 56, "connessa!");
+    oled.drawStr(0, 78, "Range:");
+    oled.drawStr(0, 90, "0x40");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">2</span> Scansione PID', c));
+  }
+
+  // 3. Scan completa
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('5x7');
+    oled.drawStr(0, 0, "SCAN");
+    oled.drawStr(0, 9, "COMPLETA");
+    oled.drawStr(0, 22, "PID: 24");
+    oled.drawStr(0, 40, "BOOST:  SI");
+    oled.drawStr(0, 52, "COPPIA: SI");
+    oled.drawStr(0, 64, "OLIO:   SI");
+    oled.drawStr(0, 76, "FUEL:   SI");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">3</span> Scan Completa', c));
+  }
+
+  // 4. Monitor dati PORTRAIT
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x13B');
+    oled.drawStr(0, 27, "BOOST 0.85");
+    oled.drawStr(0, 47, "COPPIA 245");
+    oled.drawStr(0, 67, "OLIO 92 C");
+    oled.drawStr(0, 87, "FUEL 38 L");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">4</span> Monitor Dati<br>(tempo reale)', c));
+  }
+
+  // 5. Monitor N/D
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x13B');
+    oled.drawStr(0, 27, "BOOST 1.12");
+    oled.drawStr(0, 47, "COPPIA N/D");
+    oled.drawStr(0, 67, "OLIO N/D");
+    oled.drawStr(0, 87, "FUEL 42 L");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">5</span> Monitor (parziale)<br>(PID non disponibili)', c));
+  }
+
+  // 6. DTC Portrait
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x13B');
+    oled.drawStr(0, 2, "ERRORI (2)");
+    oled.drawStr(0, 22, "P0101");
+    oled.setFont('5x8');
+    oled.drawStr(0, 36, "Flusso MAF");
+    oled.setFont('6x13B');
+    oled.drawStr(0, 58, "P0300");
+    oled.setFont('5x8');
+    oled.drawStr(0, 72, "Mancata acc");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">6</span> Errori DTC<br>(alterna ogni 6s)', c));
+  }
+
+  // 7. Errore fatale portrait
+  {
+    const oled = new OLEDSim(W, H);
+    oled.setFont('6x10');
+    oled.drawStr(4, 30, "ERRORE:");
+    oled.drawStr(0, 52, "ECU non");
+    oled.drawStr(0, 66, "risp.");
+    oled.drawStr(0, 86, "Quadro");
+    oled.drawStr(0, 100, "acceso?");
+    const c = document.createElement('canvas');
+    c.className = 'oled oled-portrait';
+    oled.renderTo(c, SCALE);
+    container.appendChild(createScreenCard('<span class="screen-number">7</span> Errore Fatale', c));
+  }
+}
+
+// Render
+renderLandscapeScreens();
+renderPortraitScreens();
+</script>
+</body>
+</html>
