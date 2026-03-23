@@ -1,53 +1,62 @@
 /**
- * OBD2 Monitor per ESP8266 D1 Mini
+ * OBD2 WiFi Monitor per ESP8266 D1 Mini
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
  * - Pressione boost (bar)
  * - Temperatura olio motore (C)
  * - Coppia motore erogata (Nm)
  *
- * All'avvio esegue una scansione dei PID OBD2 supportati dall'ECU
- * e mostra i risultati su Serial Monitor e OLED.
+ * Comunica con un adattatore ELM327 WiFi tramite comandi AT su TCP.
+ * All'avvio esegue una scansione dei PID OBD2 supportati dall'ECU.
  *
  * Hardware:
- *   ESP8266 D1 Mini + MCP2515 CAN (SPI) + OLED SH1106 1.3" (I2C)
+ *   ESP8266 D1 Mini + OLED SH1106 1.3" (I2C)
+ *   Adattatore ELM327 WiFi (inserito nella presa OBD2 del veicolo)
  *
- * Cablaggio:
- *   MCP2515: VCC->5V, GND->GND, CS->D8, SO->D6, SI->D7, SCK->D5, INT->D0
- *   OLED:    VCC->3.3V, GND->GND, SCL->D1, SDA->D2
- *   OBD2:    CANH->Pin6, CANL->Pin14, GND->Pin4/5
+ * Cablaggio (solo display OLED):
+ *   OLED VCC -> 3.3V
+ *   OLED GND -> GND
+ *   OLED SCL -> D1 (GPIO5)
+ *   OLED SDA -> D2 (GPIO4)
  *
- * Velocità di acquisizione dati OBD 3-7Hz
+ * Velocità di acquisizione dati OBD (in WiFi) 1-3Hz
  *
  * Veicolo: Audi A5 B8 2.7 TDI (CGKA) Multitronic
  *
  * @since 2026-03-19 mattia.Alesi
  */
 
-#include <SPI.h>
-#include <mcp_can.h>
+#include <ESP8266WiFi.h>
 #include <U8g2lib.h>
 #include <Wire.h>
-#include "dtc_descriptions.h"
+/** No relative path with Arduino IDE => decided to not to define it as an ext. lib. so abs. path*/
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/dtc_descriptions.h"  
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
 // ============================================================
 
-// Cristallo MCP2515: MCP_8MHZ o MCP_16MHZ (controlla il modulo)
-#define MCP2515_CRYSTAL   MCP_8MHZ
+// Rete WiFi dell'adattatore ELM327 (varia per modello)
+#define ELM327_SSID       "WiFi_OBDII"
+#define ELM327_PASS       ""              // Vuoto se rete aperta
 
-// Pin SPI per MCP2515
-#define CAN_CS_PIN        15    // D8 (GPIO15)
+// Indirizzo IP e porta TCP dell'ELM327
+#define ELM327_IP         "192.168.0.10"
+#define ELM327_PORT       35000
 
-// Velocita' bus CAN OBD2
-#define CAN_SPEED         CAN_500KBPS
+// Timeout risposta ELM327 (ms)
+#define ELM327_TIMEOUT    2000
+// Timeout piu' lungo per il primo comando OBD (l'ELM327 cerca il protocollo)
+#define ELM327_FIRST_TIMEOUT 10000
 
-// Protocollo OBD2
-#define OBD2_REQUEST_ID   0x7DF   // Broadcast richiesta
-#define OBD2_RESPONSE_ID  0x7E8   // Risposta ECU motore
-#define OBD2_TIMEOUT_MS   100     // Timeout risposta (ms)
-#define MAX_RETRIES       3       // Tentativi connessione iniziale
+// Protocollo OBD2: "ATSP0" = auto-detect, "ATSP6" = CAN 11bit 500kbps (Audi/VW)
+#define ELM327_PROTOCOL   "ATSP0"
+
+// Tentativi massimi di connessione
+#define MAX_RETRIES       3
+
+// Orientamento display: 0 = landscape (128x64), 1 = portrait 90° (64x128)
+#define DISPLAY_ORIENTATION 0
 
 // PID OBD2 per i dati di monitoraggio
 #define PID_MAP           0x0B    // Pressione assoluta collettore (kPa)
@@ -59,9 +68,6 @@
 // Capacita' serbatoio in litri (Audi A5 B8)
 #define TANK_CAPACITY     65
 
-// Orientamento display: 0 = landscape (128x64), 1 = portrait 90° (64x128)
-#define DISPLAY_ORIENTATION 0
-
 // Pressione atmosferica standard per calcolo boost
 #define ATMOSPHERIC_KPA   101.325f
 
@@ -70,7 +76,7 @@
 #define TORQUE_REF_DEFAULT 400
 
 // DTC (Diagnostic Trouble Codes)
-#define MAX_DTC            6      // Max DTC gestibili (multi-frame CAN)
+#define MAX_DTC            6      // Max DTC gestibili (multi-line ELM327)
 #define DTC_PER_PAGE_LAND  2      // DTC per pagina in landscape
 #define DTC_PER_PAGE_PORT  3      // DTC per pagina in portrait
 #define DTC_CHECK_INTERVAL 30000  // Intervallo controllo MIL (ms)
@@ -80,7 +86,7 @@
 // Oggetti globali
 // ============================================================
 
-MCP_CAN CAN(CAN_CS_PIN);
+WiFiClient elmClient;
 
 // Display OLED SH1106 128x64, I2C hardware, senza pin reset
 // Rotazione condizionale: R0=landscape(0°), R1=portrait(90°)
@@ -94,8 +100,8 @@ MCP_CAN CAN(CAN_CS_PIN);
 // Stato applicazione
 // ============================================================
 
-enum AppMode { MODE_SCAN, MODE_MONITOR };
-AppMode currentMode = MODE_SCAN;
+enum AppMode { MODE_CONNECT, MODE_SCAN, MODE_MONITOR };
+AppMode currentMode = MODE_CONNECT;
 
 // Bitmask PID supportati dall'ECU (256 bit = 32 byte)
 uint8_t pidSupported[32];
@@ -132,7 +138,13 @@ unsigned long lastDtcCheck = 0;
 unsigned long lastScreenSwitch = 0;
 // Schermata corrente: 0 = dati, 1 = pagina DTC 1, 2 = pagina DTC 2, etc.
 uint8_t  currentScreen = 0;
-uint8_t  totalScreens  = 1; // Calcolato in base a dtcCount
+uint8_t  totalScreens  = 1;
+
+// Flag per il primo comando OBD (timeout piu' lungo per auto-detect protocollo)
+bool firstOBDQuery = true;
+
+// Contatore cicli di lettura
+unsigned long cycleCount = 0;
 
 // ============================================================
 // SETUP
@@ -140,11 +152,11 @@ uint8_t  totalScreens  = 1; // Calcolato in base a dtcCount
 
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("\n=== OBD2 Monitor ==="));
+  Serial.println(F("\n=== OBD2 WiFi Monitor ==="));
   Serial.println(F("Audi A5 B8 2.7 TDI CGKA"));
 
-  // I2C su pin ESP8266: SDA=GPIO4(D2), SCL=GPIO5(D1)
-  Wire.begin(4, 5);
+  // I2C su pin ESP01
+  Wire.begin(0, 2);
   Wire.setClock(400000);
 
   // Inizializza display OLED
@@ -154,32 +166,15 @@ void setup() {
   // Splash screen
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(20, 10, "OBD2 MONITOR");
+  u8g2.drawStr(10, 10, "OBD2 WIFI MON");
   u8g2.drawStr(14, 26, "A5 B8 2.7 TDI");
   u8g2.drawStr(40, 42, "CGKA");
   u8g2.drawStr(46, 54, "v1.0");
   u8g2.sendBuffer();
   delay(2000);
 
-  // Inizializza MCP2515
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(0, 27, "Init CAN bus...");
-  u8g2.sendBuffer();
-  Serial.println(F("Inizializzazione MCP2515..."));
-
-  if (CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL) != CAN_OK) {
-    Serial.println(F("ERRORE: MCP2515 init fallito!"));
-    showError("CAN init fail", "Controlla SPI");
-    while (true) { yield(); }
-  }
-
-  CAN.setMode(MCP_NORMAL);
-  Serial.println(F("MCP2515 OK - CAN 500kbps"));
-
-  // Prepara scansione PID
   memset(pidSupported, 0, sizeof(pidSupported));
-  currentMode = MODE_SCAN;
+  currentMode = MODE_CONNECT;
 }
 
 // ============================================================
@@ -188,6 +183,9 @@ void setup() {
 
 void loop() {
   switch (currentMode) {
+    case MODE_CONNECT:
+      executeConnectMode();
+      break;
     case MODE_SCAN:
       executeScanMode();
       break;
@@ -198,66 +196,123 @@ void loop() {
 }
 
 // ============================================================
-// COMUNICAZIONE CAN / OBD2
+// PARSING HEX
 // ============================================================
 
-/** Svuota il buffer di ricezione CAN da messaggi pendenti */
-void flushCANBuffer() {
-  unsigned long id;
-  uint8_t len;
-  uint8_t buf[8];
-  while (CAN.checkReceive() == CAN_MSGAVAIL) {
-    CAN.readMsgBuf(&id, &len, buf);
+/** Converte un singolo carattere hex ('0'-'9','A'-'F','a'-'f') in valore numerico */
+uint8_t hexCharToVal(char c) {
+  if (c >= '0' && c <= '9') return c - '0';
+  if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+  if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+  return 0;
+}
+
+/** Parsa 2 caratteri hex a partire dalla posizione pos e restituisce il byte */
+uint8_t parseHexByte(const String& s, int pos) {
+  if (pos + 1 >= (int)s.length()) return 0;
+  return (hexCharToVal(s[pos]) << 4) | hexCharToVal(s[pos + 1]);
+}
+
+// ============================================================
+// COMUNICAZIONE ELM327
+// ============================================================
+
+/**
+ * Invia un comando AT/OBD all'ELM327 e attende la risposta.
+ * Legge fino al prompt '>' dell'ELM327 o fino al timeout.
+ * Restituisce true se una risposta e' stata ricevuta.
+ */
+bool sendATCommand(const char* cmd, String& response, unsigned long timeout) {
+  if (!elmClient.connected()) return false;
+
+  // Svuota eventuale dati residui nel buffer TCP
+  while (elmClient.available()) {
+    elmClient.read();
     yield();
   }
-}
 
-/**
- * Invia una richiesta OBD2 Service 01 per il PID specificato.
- * Frame CAN: [0x02, 0x01, pid, 0, 0, 0, 0, 0] su ID 0x7DF
- */
-bool sendOBD2Request(uint8_t pid) {
-  uint8_t data[8] = {0x02, 0x01, pid, 0x00, 0x00, 0x00, 0x00, 0x00};
-  return (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) == CAN_OK);
-}
+  // Invia comando + carriage return
+  elmClient.print(cmd);
+  elmClient.print('\r');
 
-/**
- * Attende una risposta OBD2 dall'ECU motore (ID 0x7E8) per il PID atteso.
- * Restituisce true se la risposta arriva entro OBD2_TIMEOUT_MS.
- * I dati grezzi del frame CAN vengono copiati in responseData.
- */
-bool readOBD2Response(uint8_t expectedPid, uint8_t* responseData, uint8_t* responseLen) {
+  Serial.print(F("TX: "));
+  Serial.println(cmd);
+
+  // Attendi risposta fino a '>' o timeout
+  response = "";
   unsigned long start = millis();
-  unsigned long rxId;
-  uint8_t len;
-  uint8_t buf[8];
 
-  while ((millis() - start) < OBD2_TIMEOUT_MS) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-
-      // Filtra: ID ECU motore, risposta Service 01 (0x41), PID corretto
-      if (rxId == OBD2_RESPONSE_ID && buf[1] == 0x41 && buf[2] == expectedPid) {
-        memcpy(responseData, buf, 8);
-        *responseLen = len;
-        return true;
-      }
+  while ((millis() - start) < timeout) {
+    if (elmClient.available()) {
+      char c = elmClient.read();
+      if (c == '>') break;  // Prompt ELM327 = fine risposta
+      response += c;
     }
     yield();
   }
-  return false;
+
+  // Rimuovi \r e \n dalla risposta
+  response.replace("\r", "");
+  response.replace("\n", "");
+
+  Serial.print(F("RX: "));
+  Serial.println(response);
+
+  return response.length() > 0;
 }
 
 /**
- * Interroga un PID OBD2: svuota il buffer, invia la richiesta e attende la risposta.
- * Restituisce true se la risposta viene ricevuta correttamente.
+ * Interroga un PID OBD2 via ELM327.
+ * Invia il comando "01XX" e cerca nella risposta il pattern "41XX".
+ * Estrae fino a maxBytes byte di dati dalla risposta hex.
+ * Restituisce true se la risposta e' valida.
  */
-bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len) {
-  flushCANBuffer();
-  if (!sendOBD2Request(pid)) {
+bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* actualBytes) {
+  // Formatta comando OBD: "01XX"
+  char cmd[5];
+  snprintf(cmd, sizeof(cmd), "01%02X", pid);
+
+  // Timeout piu' lungo per la prima query (auto-detect protocollo)
+  unsigned long timeout = firstOBDQuery ? ELM327_FIRST_TIMEOUT : ELM327_TIMEOUT;
+
+  String response;
+  if (!sendATCommand(cmd, response, timeout)) {
     return false;
   }
-  return readOBD2Response(pid, data, len);
+
+  firstOBDQuery = false;
+
+  // Cerca il pattern di risposta "41XX" nella stringa
+  char pattern[5];
+  snprintf(pattern, sizeof(pattern), "41%02X", pid);
+  // Cerca anche con lettere maiuscole (la risposta potrebbe essere maiuscola o minuscola)
+  String upperResp = response;
+  upperResp.toUpperCase();
+  String upperPattern = String(pattern);
+  upperPattern.toUpperCase();
+
+  int pos = upperResp.indexOf(upperPattern);
+  if (pos < 0) {
+    // Risposta non contiene il pattern atteso (NO DATA, ERROR, etc.)
+    return false;
+  }
+
+  // I byte dati iniziano subito dopo "41XX" (posizione +4 dal pattern)
+  int dataStart = pos + 4;
+  *actualBytes = 0;
+
+  for (uint8_t i = 0; i < maxBytes; i++) {
+    int bytePos = dataStart + (i * 2);
+    if (bytePos + 1 >= (int)upperResp.length()) break;
+    // Verifica che i caratteri siano hex validi
+    char c1 = upperResp[bytePos];
+    char c2 = upperResp[bytePos + 1];
+    if (!isHexadecimalDigit(c1) || !isHexadecimalDigit(c2)) break;
+    dataBytes[i] = parseHexByte(upperResp, bytePos);
+    (*actualBytes)++;
+  }
+
+  return (*actualBytes) > 0;
 }
 
 // ============================================================
@@ -268,7 +323,7 @@ bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len) {
  * Memorizza i 4 byte di risposta alla query di supporto PID
  * nel bitmask globale pidSupported[].
  * basePid: 0x00, 0x20, 0x40, 0x60
- * fourBytes: i 4 byte dati della risposta (data[3..6])
+ * fourBytes: i 4 byte dati della risposta
  */
 void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
   uint8_t offset = basePid / 8;
@@ -290,80 +345,153 @@ bool isPIDSupported(uint8_t pid) {
 }
 
 // ============================================================
+// MODALITA' CONNESSIONE
+// ============================================================
+
+/**
+ * Connette l'ESP8266 alla rete WiFi dell'ELM327, stabilisce la
+ * connessione TCP e inizializza l'ELM327 con i comandi AT.
+ */
+void executeConnectMode() {
+  // --- Fase 1: Connessione WiFi ---
+  drawConnectScreen("WiFi...", ELM327_SSID);
+
+  Serial.print(F("Connessione WiFi a: "));
+  Serial.println(F(ELM327_SSID));
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ELM327_SSID, ELM327_PASS);
+
+  int wifiAttempts = 0;
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(F("."));
+    wifiAttempts++;
+    if (wifiAttempts > 30) {
+      Serial.println(F("\nWiFi non trovato!"));
+      showError("WiFi non", "trovato!");
+      delay(3000);
+      wifiAttempts = 0;
+      drawConnectScreen("WiFi...", ELM327_SSID);
+      WiFi.begin(ELM327_SSID, ELM327_PASS);
+    }
+  }
+
+  Serial.println(F("\nWiFi connesso!"));
+  Serial.print(F("IP: "));
+  Serial.println(WiFi.localIP());
+  drawConnectScreen("WiFi OK!", "TCP...");
+
+  // --- Fase 2: Connessione TCP all'ELM327 ---
+  Serial.print(F("Connessione TCP a "));
+  Serial.print(F(ELM327_IP));
+  Serial.print(F(":"));
+  Serial.println(ELM327_PORT);
+
+  IPAddress elmIP;
+  elmIP.fromString(ELM327_IP);
+
+  for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    if (elmClient.connect(elmIP, ELM327_PORT)) {
+      Serial.println(F("TCP connesso!"));
+      drawConnectScreen("WiFi OK!", "TCP OK!");
+      break;
+    }
+    Serial.print(F("TCP tentativo "));
+    Serial.print(attempt);
+    Serial.println(F(" fallito"));
+    if (attempt == MAX_RETRIES) {
+      showError("TCP fallito", ELM327_IP);
+      while (true) { yield(); }
+    }
+    delay(1000);
+  }
+
+  delay(500);
+
+  // --- Fase 3: Inizializzazione ELM327 ---
+  drawConnectScreen("Init ELM327...", "");
+  Serial.println(F("Inizializzazione ELM327..."));
+
+  String response;
+
+  // Reset ELM327 (timeout lungo, il reset puo' richiedere qualche secondo)
+  sendATCommand("ATZ", response, 3000);
+  delay(500);
+
+  // Configurazione: echo off, linefeeds off, spazi off, headers off
+  sendATCommand("ATE0", response, ELM327_TIMEOUT);
+  sendATCommand("ATL0", response, ELM327_TIMEOUT);
+  sendATCommand("ATS0", response, ELM327_TIMEOUT);
+  sendATCommand("ATH0", response, ELM327_TIMEOUT);
+
+  // Protocollo CAN (configurabile tramite ELM327_PROTOCOL)
+  sendATCommand(ELM327_PROTOCOL, response, ELM327_TIMEOUT);
+
+  Serial.println(F("ELM327 inizializzato"));
+  drawConnectScreen("ELM327 OK!", "");
+  delay(1000);
+
+  // Reset stato per nuova sessione (utile in caso di riconnessione)
+  memset(pidSupported, 0, sizeof(pidSupported));
+  torqueRefRead = false;
+  firstOBDQuery = true;
+  currentMode = MODE_SCAN;
+}
+
+// ============================================================
 // MODALITA' SCANSIONE
 // ============================================================
 
 /**
- * Esegue la scansione completa dei PID supportati dall'ECU.
- * Interroga i range 0x00, 0x20, 0x40, 0x60 seguendo la catena
- * di supporto (ogni risposta indica se il range successivo esiste).
- * Mostra il progresso su OLED e i risultati su Serial.
+ * Esegue la scansione dei PID supportati dall'ECU.
+ * Interroga i range 0x00, 0x20, 0x40, 0x60 seguendo la catena di supporto.
+ * Mostra il progresso su OLED e i risultati dettagliati su Serial.
  */
 void executeScanMode() {
-  drawScanScreen("Connessione...", "");
+  drawScanScreen("Attendi...", "");
 
-  // Tentativo di connessione con retry
-  uint8_t data[8];
-  uint8_t len;
-  bool connected = false;
+  uint8_t supportRanges[] = {0x00, 0x20, 0x40, 0x60};
+  uint8_t dataBytes[4];
+  uint8_t numBytes;
+  bool chainContinues = true;
 
-  for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    Serial.print(F("Tentativo ECU: "));
-    Serial.print(attempt);
-    Serial.print(F("/"));
-    Serial.println(MAX_RETRIES);
+  Serial.println(F("\n--- SCANSIONE PID SUPPORTATI ---"));
 
-    char attBuf[20];
-    snprintf(attBuf, sizeof(attBuf), "Tentativo %d/%d", attempt, MAX_RETRIES);
-    drawScanScreen("Connessione...", attBuf);
-
-    if (queryPID(0x00, data, &len)) {
-      connected = true;
-      storeSupportBitmask(0x00, &data[3]);
-      break;
-    }
-    delay(500);
-  }
-
-  if (!connected) {
-    Serial.println(F("ERRORE: ECU non risponde!"));
-    showError("ECU non risp.", "Quadro acceso?");
-    while (true) { yield(); }
-  }
-
-  Serial.println(F("ECU connessa!"));
-  drawScanScreen("ECU connessa!", "");
-
-  // Scansione range successivi (0x20, 0x40, 0x60)
-  uint8_t nextRanges[] = {0x20, 0x40, 0x60};
-  bool chainContinues = (data[6] & 0x01);
-
-  for (int i = 0; i < 3 && chainContinues; i++) {
-    uint8_t pid = nextRanges[i];
+  for (int i = 0; i < 4 && chainContinues; i++) {
+    uint8_t rangePid = supportRanges[i];
 
     char progBuf[20];
-    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", pid);
-    drawScanScreen("ECU connessa!", progBuf);
+    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", rangePid);
+    drawScanScreen("Scansione...", progBuf);
 
     Serial.print(F("Query PID 0x"));
-    Serial.print(pid, HEX);
+    Serial.print(rangePid, HEX);
     Serial.print(F("... "));
 
-    if (queryPID(pid, data, &len)) {
-      storeSupportBitmask(pid, &data[3]);
+    if (queryOBDPID(rangePid, dataBytes, 4, &numBytes) && numBytes == 4) {
+      storeSupportBitmask(rangePid, dataBytes);
+
       Serial.print(F("OK ["));
-      for (int j = 3; j < 7; j++) {
-        if (data[j] < 0x10) Serial.print(F("0"));
-        Serial.print(data[j], HEX);
-        if (j < 6) Serial.print(F(" "));
+      for (int j = 0; j < 4; j++) {
+        if (dataBytes[j] < 0x10) Serial.print(F("0"));
+        Serial.print(dataBytes[j], HEX);
+        if (j < 3) Serial.print(F(" "));
       }
       Serial.println(F("]"));
-      chainContinues = (data[6] & 0x01);
+
+      // L'ultimo bit indica se il range successivo e' supportato
+      chainContinues = (dataBytes[3] & 0x01);
     } else {
       Serial.println(F("Nessuna risposta"));
+      if (i == 0) {
+        // Se nemmeno il primo range risponde, l'ECU non comunica
+        showError("ECU non risp.", "Quadro acceso?");
+        while (true) { yield(); }
+      }
       break;
     }
-    delay(50);
+    delay(100);
   }
 
   // Conta e stampa tutti i PID supportati
@@ -422,10 +550,10 @@ void executeScanMode() {
  * @see PID 0x0B: 1 byte, range 0-255 kPa
  */
 bool readBoostPressure(float* boost) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_MAP, data, &len)) {
-    float mapKpa = (float)data[3];
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_MAP, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    float mapKpa = (float)dataBytes[0];
     *boost = (mapKpa - ATMOSPHERIC_KPA) / 100.0f;
     return true;
   }
@@ -437,10 +565,10 @@ bool readBoostPressure(float* boost) {
  * @see PID 0x5C: 1 byte, formula = A - 40, range -40..215 C
  */
 bool readOilTemperature(int* temp) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_OIL_TEMP, data, &len)) {
-    *temp = (int)data[3] - 40;
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_OIL_TEMP, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    *temp = (int)dataBytes[0] - 40;
     return true;
   }
   return false;
@@ -451,10 +579,10 @@ bool readOilTemperature(int* temp) {
  * @see PID 0x62: 1 byte, formula = A - 125, range -125..130 %
  */
 bool readTorquePercent(int* pct) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_TORQUE_PCT, data, &len)) {
-    *pct = (int)data[3] - 125;
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_TORQUE_PCT, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    *pct = (int)dataBytes[0] - 125;
     return true;
   }
   return false;
@@ -465,10 +593,10 @@ bool readTorquePercent(int* pct) {
  * @see PID 0x63: 2 byte, formula = A*256 + B, range 0..65535 Nm
  */
 bool readTorqueReference(int* refNm) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_TORQUE_REF, data, &len)) {
-    *refNm = ((int)data[3] * 256) + (int)data[4];
+  uint8_t dataBytes[2];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_TORQUE_REF, dataBytes, 2, &numBytes) && numBytes >= 2) {
+    *refNm = ((int)dataBytes[0] * 256) + (int)dataBytes[1];
     return true;
   }
   return false;
@@ -479,10 +607,10 @@ bool readTorqueReference(int* refNm) {
  * @see PID 0x2F: 1 byte, formula = A * 100 / 255 (%), poi * TANK_CAPACITY / 100
  */
 bool readFuelLevel(int* liters) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_FUEL_LEVEL, data, &len)) {
-    int pct = ((int)data[3] * 100) / 255;
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_FUEL_LEVEL, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    int pct = ((int)dataBytes[0] * 100) / 255;
     *liters = (pct * TANK_CAPACITY) / 100;
     return true;
   }
@@ -494,15 +622,15 @@ bool readFuelLevel(int* liters) {
 // ============================================================
 
 /**
- * Controlla lo stato MIL e il numero di DTC attivi.
- * @see PID 0x01: byte A bit 7 = MIL on/off, bit 6-0 = numero DTC
+ * Controlla lo stato MIL e il numero di DTC attivi via PID 0x01.
+ * Se MIL accesa, legge i codici DTC con Mode 03.
  */
 void checkMILStatus() {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(0x01, data, &len)) {
-    milOn = (data[3] & 0x80) != 0;
-    uint8_t count = data[3] & 0x7F;
+  uint8_t dataBytes[4];
+  uint8_t numBytes;
+  if (queryOBDPID(0x01, dataBytes, 4, &numBytes) && numBytes >= 1) {
+    milOn = (dataBytes[0] & 0x80) != 0;
+    uint8_t count = dataBytes[0] & 0x7F;
     if (milOn && count > 0) {
       readDTCCodes();
     } else {
@@ -518,70 +646,40 @@ void checkMILStatus() {
 }
 
 /**
- * Legge i codici DTC attivi via Mode 03.
- * Gestisce single frame (fino a 3 DTC) e multi-frame ISO-TP (fino a MAX_DTC).
- * Aggiornato per supportare paginazione display con piu' di 2 DTC.
+ * Legge i codici DTC attivi via Mode 03 (comando "03" sull'ELM327).
+ * Parsa la risposta hex "43XXYY..." e popola dtcCodes[].
  */
 void readDTCCodes() {
-  flushCANBuffer();
-
-  // Mode 03: richiesta DTC
-  uint8_t reqData[8] = {0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-  if (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, reqData) != CAN_OK) {
+  String response;
+  if (!sendATCommand("03", response, ELM327_TIMEOUT)) {
     return;
   }
 
-  // Buffer per raccogliere tutti i byte DTC (single o multi-frame)
-  uint8_t dtcBytes[MAX_DTC * 2];
-  uint8_t totalDtcBytes = 0;
+  // Cerca "43" nella risposta (Mode 03 response)
+  String upperResp = response;
+  upperResp.toUpperCase();
+  int pos = upperResp.indexOf("43");
+  if (pos < 0) return;
+
+  // I byte DTC iniziano dopo "43": XXYY per ogni DTC
+  int dataStart = pos + 2;
   dtcCount = 0;
 
-  unsigned long start = millis();
-  unsigned long rxId;
-  uint8_t len;
-  uint8_t buf[8];
+  for (int i = 0; i < MAX_DTC; i++) {
+    int bytePos = dataStart + (i * 4); // 4 hex chars = 2 byte per DTC
+    if (bytePos + 3 >= (int)upperResp.length()) break;
 
-  while ((millis() - start) < OBD2_TIMEOUT_MS) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-      if (rxId != OBD2_RESPONSE_ID) continue;
+    char c1 = upperResp[bytePos];
+    char c2 = upperResp[bytePos + 1];
+    char c3 = upperResp[bytePos + 2];
+    char c4 = upperResp[bytePos + 3];
+    if (!isHexadecimalDigit(c1) || !isHexadecimalDigit(c2) ||
+        !isHexadecimalDigit(c3) || !isHexadecimalDigit(c4)) break;
 
-      uint8_t pci = buf[0] & 0xF0;
+    uint8_t hi = parseHexByte(upperResp, bytePos);
+    uint8_t lo = parseHexByte(upperResp, bytePos + 2);
+    uint16_t code = ((uint16_t)hi << 8) | lo;
 
-      if (pci == 0x00) {
-        // --- Single Frame: [len, 0x43, DTC1_H, DTC1_L, ...] ---
-        if (buf[1] == 0x43) {
-          uint8_t dataLen = buf[0] & 0x0F;
-          for (int i = 2; i < 2 + dataLen - 1 && totalDtcBytes < MAX_DTC * 2; i++) {
-            dtcBytes[totalDtcBytes++] = buf[i];
-          }
-        }
-        break;
-
-      } else if (pci == 0x10) {
-        // --- First Frame (multi-frame): [0x10, totLen, 0x43, DTC1_H, DTC1_L, ...] ---
-        if (buf[2] == 0x43) {
-          for (int i = 3; i < 8 && totalDtcBytes < MAX_DTC * 2; i++) {
-            dtcBytes[totalDtcBytes++] = buf[i];
-          }
-          // Invia Flow Control per ricevere i Consecutive Frames
-          uint8_t fc[8] = {0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-          CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, fc);
-        }
-
-      } else if (pci == 0x20) {
-        // --- Consecutive Frame: [0x2N, data...] ---
-        for (int i = 1; i < 8 && totalDtcBytes < MAX_DTC * 2; i++) {
-          dtcBytes[totalDtcBytes++] = buf[i];
-        }
-      }
-    }
-    yield();
-  }
-
-  // Parsa i DTC dal buffer raccolto (2 byte per codice)
-  for (int i = 0; i + 1 < totalDtcBytes && dtcCount < MAX_DTC; i += 2) {
-    uint16_t code = ((uint16_t)dtcBytes[i] << 8) | dtcBytes[i + 1];
     if (code != 0x0000) {
       dtcCodes[dtcCount++] = code;
     }
@@ -614,10 +712,20 @@ void readDTCCodes() {
 
 /**
  * Esegue un ciclo completo di lettura OBD2 e aggiornamento display.
- * Legge in sequenza: boost, olio, coppia (+ riferimento una sola volta).
- * Ogni ciclo impiega ~150-300ms (3 PID x 50-100ms ciascuno).
+ * Verifica la connessione TCP prima di ogni ciclo.
+ * Ogni ciclo impiega ~500-1500ms (ELM327 e' piu' lento del CAN diretto).
  */
 void executeMonitorMode() {
+  // Verifica connessione TCP attiva
+  if (!elmClient.connected()) {
+    Serial.println(F("Connessione TCP persa! Riconnessione..."));
+    drawConnectScreen("Riconnessione..", "");
+    elmClient.stop();
+    delay(1000);
+    currentMode = MODE_CONNECT;
+    return;
+  }
+
   // Controllo periodico MIL/DTC (ogni DTC_CHECK_INTERVAL ms)
   if (millis() - lastDtcCheck > DTC_CHECK_INTERVAL) {
     checkMILStatus();
@@ -647,10 +755,8 @@ void executeMonitorMode() {
   }
 
   if (currentScreen > 0) {
-    // Schermata DTC (pagina currentScreen-1) — non serve leggere PID dati
     drawDTCScreen(currentScreen - 1);
   } else {
-    // Schermata dati in tempo reale
     if (mapSupported) {
       mapAvailable = readBoostPressure(&boostBar);
     }
@@ -775,7 +881,6 @@ void drawDTCScreen(uint8_t page) {
 
 #if DISPLAY_ORIENTATION == 0
   // --- LANDSCAPE (128x64) ---
-  // Titolo con numero pagina se piu' di una pagina DTC
   uint8_t perPage = DTC_PER_PAGE_LAND;
   uint8_t dtcPages = (dtcCount + perPage - 1) / perPage;
   char title[22];
@@ -865,6 +970,16 @@ int calcRightColumnX(const char* strings[], int count, int displayW) {
   return displayW - maxW;
 }
 
+/** Disegna la schermata di connessione WiFi/TCP */
+void drawConnectScreen(const char* status, const char* detail) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  u8g2.drawStr(0, 8, "CONNESSIONE");
+  u8g2.drawStr(0, 28, status);
+  u8g2.drawStr(0, 44, detail);
+  u8g2.sendBuffer();
+}
+
 /** Disegna la schermata di scansione PID con stato e dettaglio */
 void drawScanScreen(const char* status, const char* detail) {
   u8g2.clearBuffer();
@@ -877,7 +992,7 @@ void drawScanScreen(const char* status, const char* detail) {
 
 /**
  * Mostra un messaggio di errore su OLED e Serial.
- * Usata per errori fatali (CAN init, ECU non risponde).
+ * Usata per errori fatali (connessione, ECU non risponde).
  */
 void showError(const char* line1, const char* line2) {
   u8g2.clearBuffer();
