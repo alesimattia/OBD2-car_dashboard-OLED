@@ -17,7 +17,7 @@
  *   OLED:    VCC->3.3V, GND->GND, SCL->D1, SDA->D2
  *   OBD2:    CANH->Pin6, CANL->Pin14, GND->Pin4/5
  *
- * Velocità di acquisizione dati OBD 3-7Hz
+ * Velocità di acquisizione dati OBD ~8-10Hz (round-robin PID + aggiornamento parziale display)
  *
  * Veicolo: Audi A5 B8 2.7 TDI (CGKA) Multitronic
  *
@@ -136,6 +136,24 @@ uint8_t currentScreen = 0;
 uint8_t totalScreens = 1;  // Calcolato in base a dtcCount
 
 // ============================================================
+// Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
+// Indici: 0=boost, 1=coppia, 2=olio, 3=fuel
+// Boost e coppia pesati 4x rispetto a olio e fuel (cambiano piu' velocemente)
+// ============================================================
+const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3};
+const uint8_t PID_SCHEDULE_LEN = 10;
+uint8_t pidScheduleIdx = 0;
+
+// Dirty tracking: valori precedenti per aggiornamento parziale display
+float prevBoostBar = -999.0f;
+int prevBoostInt = -99999;   // (int)(boostBar * 100) per confronto senza errori float
+int prevOilTempC = -999;
+int prevTorqueNm = -999;
+int prevFuelLiters = -999;
+bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
+int cachedRightX = 86;       // Posizione X colonna destra, calcolata alla prima draw
+
+// ============================================================
 // SETUP
 // ============================================================
 
@@ -148,7 +166,8 @@ void setup() {
   Wire.begin(4, 5);
   Wire.setClock(400000);
 
-  // Inizializza display OLED
+  // Inizializza display OLED (400kHz I2C esplicito anche via u8g2)
+  u8g2.setBusClock(400000);
   u8g2.begin();
   u8g2.setFontPosTop();
 
@@ -415,6 +434,9 @@ void executeScanMode() {
   u8g2.sendBuffer();
 
   delay(5000);
+  // Reset stato display e scheduling per la nuova sessione monitor
+  labelsDrawn = false;
+  pidScheduleIdx = 0;
   currentMode = MODE_MONITOR;
 }
 
@@ -619,9 +641,29 @@ void readDTCCodes() {
 // ============================================================
 
 /**
- * Esegue un ciclo completo di lettura OBD2 e aggiornamento display.
- * Legge in sequenza: boost, olio, coppia (+ riferimento una sola volta).
- * Ogni ciclo impiega ~150-300ms (3 PID x 50-100ms ciascuno).
+ * Verifica se lo slot PID round-robin e' supportato dall'ECU.
+ * @param slot indice nello scheduling (0=boost, 1=coppia, 2=olio, 3=fuel)
+ * @return true se il PID corrispondente e' supportato
+ * @see executeMonitorMode()
+ * @since 24/03/26 Mattia Alesi
+ */
+bool isPidSlotSupported(uint8_t slot) {
+  switch (slot) {
+    case 0: return mapSupported;
+    case 1: return torquePctSupported;
+    case 2: return oilTempSupported;
+    case 3: return fuelSupported;
+    default: return false;
+  }
+}
+
+/**
+ * Esegue un ciclo di lettura OBD2 e aggiornamento display.
+ * Legge UN solo PID per ciclo in round-robin pesato per massimizzare
+ * la velocita' di refresh del display (~8-10 Hz invece di 3-7 Hz).
+ * Boost e coppia vengono letti 4x piu' spesso di olio e fuel.
+ *
+ * @modified 24/03/26 — round-robin PID invece di lettura sequenziale
  */
 void executeMonitorMode() {
   // Controllo periodico MIL/DTC (ogni DTC_CHECK_INTERVAL ms)
@@ -653,69 +695,74 @@ void executeMonitorMode() {
   }
 
   if (currentScreen > 0) {
-    // Schermata DTC (pagina currentScreen-1) — non serve leggere PID dati
+    // Schermata DTC — il buffer viene sovrascritto, forza ridisegno completo al ritorno
+    labelsDrawn = false;
     drawDTCScreen(currentScreen - 1);
   } else {
-    // Schermata dati in tempo reale
-    if (mapSupported) {
-      mapAvailable = readBoostPressure(&boostBar);
-    }
-    if (oilTempSupported) {
-      oilTempAvailable = readOilTemperature(&oilTempC);
-    }
-    if (torquePctSupported) {
-      torqueAvailable = readTorquePercent(&torquePct);
-      if (torqueAvailable) {
-        torqueNm = (torquePct * torqueRefNm) / 100;
-      }
-    }
-    if (fuelSupported) {
-      fuelAvailable = readFuelLevel(&fuelLiters);
+    // Round-robin: trova il prossimo PID supportato nella sequenza
+    uint8_t attempts = 0;
+    uint8_t pidIdx;
+    do {
+      pidIdx = pgm_read_byte(&PID_SCHEDULE[pidScheduleIdx]);
+      pidScheduleIdx = (pidScheduleIdx + 1) % PID_SCHEDULE_LEN;
+      attempts++;
+    } while (!isPidSlotSupported(pidIdx) && attempts < PID_SCHEDULE_LEN);
+
+    // Legge UN solo PID per ciclo
+    switch (pidIdx) {
+      case 0:  // Boost
+        if (mapSupported) {
+          mapAvailable = readBoostPressure(&boostBar);
+        }
+        break;
+      case 1:  // Coppia
+        if (torquePctSupported) {
+          torqueAvailable = readTorquePercent(&torquePct);
+          if (torqueAvailable) {
+            torqueNm = (torquePct * torqueRefNm) / 100;
+          }
+        }
+        break;
+      case 2:  // Olio
+        if (oilTempSupported) {
+          oilTempAvailable = readOilTemperature(&oilTempC);
+        }
+        break;
+      case 3:  // Fuel
+        if (fuelSupported) {
+          fuelAvailable = readFuelLevel(&fuelLiters);
+        }
+        break;
     }
     updateDisplay();
   }
   yield();
 }
 
+// ============================================================
+// HELPER DISPLAY: disegno singoli valori e cancellazione aree
+// ============================================================
+
 /**
- * Aggiorna il display OLED con i valori correnti.
- * Landscape: etichetta piccola sopra, valore grande sotto (4 gruppi in 64px)
- * Portrait: "NOME valore" su una riga con font grande (4 righe in 128px)
+ * Cancella un'area rettangolare nel framebuffer senza toccare il resto.
+ * Usa setDrawColor(0) + drawBox per azzerare solo i pixel specificati.
+ * @see updateDisplay()
+ * @since 24/03/26 Mattia Alesi
  */
-void updateDisplay() {
-  u8g2.clearBuffer();
+void clearValueArea(int x, int y, int w, int h) {
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(x, y, w, h);
+  u8g2.setDrawColor(1);
+}
 
-#if DISPLAY_ORIENTATION == 0
-  // --- LANDSCAPE (128x64) --- Due colonne, nome sopra valore sotto
-  // Font 7x14B: 14px alto, 7px largo. 2 gruppi di 2 righe + gap 7px
-  // Layout: 14+14+7+14+14 = 63px
-  // Colonna sinistra (x=0): BOOST, OLIO
-  // Colonna destra (calcolata dinamicamente): COPPIA, FUEL
+/**
+ * Disegna il valore boost con 2 cifre decimali.
+ * Colonna sinistra, y=14. Font deve essere gia' impostato.
+ * @see updateDisplay()
+ * @since 24/03/26 Mattia Alesi
+ */
+void drawBoostValue() {
   char val[14];
-  char rVal1[14];  // valore coppia
-  char rVal2[14];  // valore fuel
-
-  u8g2.setFont(u8g2_font_7x14B_tr);
-
-  // Prepara stringhe colonna destra prima del disegno
-  if (torquePctSupported && torqueAvailable) {
-    snprintf(rVal1, sizeof(rVal1), "%d Nm", torqueNm);
-  } else {
-    snprintf(rVal1, sizeof(rVal1), "N/D");
-  }
-
-  if (fuelSupported && fuelAvailable) {
-    snprintf(rVal2, sizeof(rVal2), "%d L", fuelLiters);
-  } else {
-    snprintf(rVal2, sizeof(rVal2), "N/D");
-  }
-
-  // Calcola posizione X colonna destra: la stringa piu' larga tocca il bordo
-  const char* rightStrs[] = { "COPPIA", rVal1, "FUEL", rVal2 };
-  int rightX = calcRightColumnX(rightStrs, 4, 128);
-
-  // Gruppo 1 (y=0..27): BOOST | COPPIA
-  u8g2.drawStr(0, 0, "BOOST");
   if (mapSupported && mapAvailable) {
     int bc = (int)(boostBar * 100.0f);
     char s = (bc >= 0) ? '+' : '-';
@@ -725,26 +772,178 @@ void updateDisplay() {
     snprintf(val, sizeof(val), "N/D");
   }
   u8g2.drawStr(0, 14, val);
+}
 
-  u8g2.drawStr(rightX, 0, "COPPIA");
-  u8g2.drawStr(rightX, 14, rVal1);
+/**
+ * Disegna il valore coppia motore in Nm.
+ * Colonna destra (cachedRightX), y=14. Font deve essere gia' impostato.
+ * @see updateDisplay()
+ * @since 24/03/26 Mattia Alesi
+ */
+void drawTorqueValue() {
+  char val[14];
+  if (torquePctSupported && torqueAvailable) {
+    snprintf(val, sizeof(val), "%d Nm", torqueNm);
+  } else {
+    snprintf(val, sizeof(val), "N/D");
+  }
+  u8g2.drawStr(cachedRightX, 14, val);
+}
 
-  // Gruppo 2 (y=35..62): OLIO | FUEL
-  u8g2.drawStr(0, 35, "OLIO");
+/**
+ * Disegna il valore temperatura olio motore.
+ * Colonna sinistra, y=49. Font deve essere gia' impostato.
+ * @see updateDisplay()
+ * @since 24/03/26 Mattia Alesi
+ */
+void drawOilValue() {
+  char val[14];
   if (oilTempSupported && oilTempAvailable) {
     snprintf(val, sizeof(val), "%d C", oilTempC);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
   u8g2.drawStr(0, 49, val);
+}
 
-  u8g2.drawStr(rightX, 35, "FUEL");
-  u8g2.drawStr(rightX, 49, rVal2);
+/**
+ * Disegna il valore livello carburante in litri.
+ * Colonna destra (cachedRightX), y=49. Font deve essere gia' impostato.
+ * @see updateDisplay()
+ * @since 24/03/26 Mattia Alesi
+ */
+void drawFuelValue() {
+  char val[14];
+  if (fuelSupported && fuelAvailable) {
+    snprintf(val, sizeof(val), "%d L", fuelLiters);
+  } else {
+    snprintf(val, sizeof(val), "N/D");
+  }
+  u8g2.drawStr(cachedRightX, 49, val);
+}
+
+/**
+ * Aggiorna il display OLED con i valori correnti.
+ * In landscape usa aggiornamento parziale: ridisegna solo le tile modificate
+ * invece dell'intero framebuffer, riducendo il trasferimento I2C da ~1024 a ~256-384 byte.
+ * Le etichette statiche (BOOST, COPPIA, OLIO, FUEL) vengono disegnate una sola volta.
+ * In portrait usa sendBuffer completo (guadagno parziale minimo su 64px).
+ *
+ * Tile layout landscape (font 7x14B, 14px alto):
+ *   Etichette riga 1 (y=0):  pixel 0-13  -> tile rows 0-1
+ *   Valori riga 1 (y=14):    pixel 14-27 -> tile rows 1-3
+ *   Etichette riga 2 (y=35): pixel 35-48 -> tile rows 4-6
+ *   Valori riga 2 (y=49):    pixel 49-62 -> tile rows 6-7
+ *
+ * @modified 24/03/26 — aggiornamento parziale con dirty tracking e updateDisplayArea()
+ */
+void updateDisplay() {
+#if DISPLAY_ORIENTATION == 0
+  // --- LANDSCAPE (128x64) con aggiornamento parziale ---
+  u8g2.setFont(u8g2_font_7x14B_tr);
+
+  // Prepara stringhe colonna destra per calcolo rightX dinamico
+  char rVal1[14];
+  char rVal2[14];
+  if (torquePctSupported && torqueAvailable) {
+    snprintf(rVal1, sizeof(rVal1), "%d Nm", torqueNm);
+  } else {
+    snprintf(rVal1, sizeof(rVal1), "N/D");
+  }
+  if (fuelSupported && fuelAvailable) {
+    snprintf(rVal2, sizeof(rVal2), "%d L", fuelLiters);
+  } else {
+    snprintf(rVal2, sizeof(rVal2), "N/D");
+  }
+
+  const char* rightStrs[] = { "COPPIA", rVal1, "FUEL", rVal2 };
+  int newRightX = calcRightColumnX(rightStrs, 4, 128);
+
+  // Se rightX e' cambiato (raro: solo con valori molto larghi), forza ridisegno completo
+  if (newRightX != cachedRightX) {
+    labelsDrawn = false;
+    cachedRightX = newRightX;
+  }
+
+  if (!labelsDrawn) {
+    // --- RIDISEGNO COMPLETO: etichette + valori + sendBuffer ---
+    u8g2.clearBuffer();
+
+    // Etichette statiche
+    u8g2.drawStr(0, 0, "BOOST");
+    u8g2.drawStr(cachedRightX, 0, "COPPIA");
+    u8g2.drawStr(0, 35, "OLIO");
+    u8g2.drawStr(cachedRightX, 35, "FUEL");
+
+    // Valori iniziali
+    drawBoostValue();
+    drawTorqueValue();
+    drawOilValue();
+    drawFuelValue();
+
+    u8g2.sendBuffer();
+    labelsDrawn = true;
+
+    // Salva valori correnti per dirty tracking (sentinel -99999 = non disponibile)
+    prevBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
+    prevTorqueNm = torqueAvailable ? torqueNm : -99999;
+    prevOilTempC = oilTempAvailable ? oilTempC : -99999;
+    prevFuelLiters = fuelAvailable ? fuelLiters : -99999;
+    return;
+  }
+
+  // --- AGGIORNAMENTO PARZIALE: solo valori cambiati ---
+  // Sentinel -99999 codifica "PID non disponibile" per confronto corretto
+  bool row1dirty = false;
+  bool row2dirty = false;
+  int curBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
+  int curTorqueNm = torqueAvailable ? torqueNm : -99999;
+  int curOilTempC = oilTempAvailable ? oilTempC : -99999;
+  int curFuelLiters = fuelAvailable ? fuelLiters : -99999;
+
+  // Boost (colonna sinistra, riga 1)
+  if (curBoostInt != prevBoostInt) {
+    clearValueArea(0, 14, cachedRightX, 14);
+    drawBoostValue();
+    prevBoostInt = curBoostInt;
+    row1dirty = true;
+  }
+
+  // Coppia (colonna destra, riga 1)
+  if (curTorqueNm != prevTorqueNm) {
+    clearValueArea(cachedRightX, 14, 128 - cachedRightX, 14);
+    drawTorqueValue();
+    prevTorqueNm = curTorqueNm;
+    row1dirty = true;
+  }
+
+  // Olio (colonna sinistra, riga 2)
+  if (curOilTempC != prevOilTempC) {
+    clearValueArea(0, 49, cachedRightX, 14);
+    drawOilValue();
+    prevOilTempC = curOilTempC;
+    row2dirty = true;
+  }
+
+  // Fuel (colonna destra, riga 2)
+  if (curFuelLiters != prevFuelLiters) {
+    clearValueArea(cachedRightX, 49, 128 - cachedRightX, 14);
+    drawFuelValue();
+    prevFuelLiters = curFuelLiters;
+    row2dirty = true;
+  }
+
+  // Invia solo le tile rows modificate (8 pixel per tile row)
+  if (row1dirty) {
+    u8g2.updateDisplayArea(0, 1, 16, 3);  // Tile rows 1-3 (pixel 8-31)
+  }
+  if (row2dirty) {
+    u8g2.updateDisplayArea(0, 6, 16, 2);  // Tile rows 6-7 (pixel 48-63)
+  }
 
 #else
-  // --- PORTRAIT (64x128) --- Una colonna, "NOME valore" sulla stessa riga
-  // Font 6x13B: 13px alto, 6px largo (bold). Max 10 chars in 64px.
-  // 4 righe + 3 gap (7px): 4*13+3*7 = 73px, centrato in 128px → offset 27px
+  // --- PORTRAIT (64x128) --- sendBuffer completo (mapping tile R1 troppo complesso)
+  u8g2.clearBuffer();
   char line[11];
 
   u8g2.setFont(u8g2_font_6x13B_tr);
@@ -783,9 +982,8 @@ void updateDisplay() {
   }
   u8g2.drawStr(0, 87, line);
 
-#endif
-
   u8g2.sendBuffer();
+#endif
 }
 
 /**
