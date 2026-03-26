@@ -373,7 +373,7 @@ bool isPIDSupported(uint8_t pid) {
  */
 void executeConnectMode() {
   // --- Fase 1: Connessione WiFi ---
-  drawConnectScreen("WiFi...", ELM327_SSID);
+  drawConnectScreen("SSID: ", ELM327_SSID);
 
   Serial.print(F("Connessione WiFi a: "));
   Serial.println(F(ELM327_SSID));
@@ -387,8 +387,8 @@ void executeConnectMode() {
     Serial.print(F("."));
     wifiAttempts++;
     if (wifiAttempts > 30) {
-      Serial.println(F("\nWiFi non trovato!"));
-      showError("WiFi non", "trovato!");
+      Serial.println(F("\nRete non trovata!"));
+      showError(("Rete "+String(ELM327_SSID)).c_str(), " non trovata");
       delay(3000);
       wifiAttempts = 0;
       drawConnectScreen("WiFi...", ELM327_SSID);
