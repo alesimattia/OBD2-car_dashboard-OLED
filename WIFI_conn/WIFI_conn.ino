@@ -3,8 +3,9 @@
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
  * - Pressione boost (bar)
- * - Temperatura olio motore (C)
- * - Coppia motore erogata (Nm)
+ * - Coppia motore stimata (Nm) — da carico motore (PID 0x04) * 400 Nm
+ * - Temperatura liquido raffreddamento (C)
+ * - Apertura valvola EGR (%)
  *
  * Comunica con un adattatore ELM327 WiFi tramite comandi AT su TCP.
  * All'avvio esegue una scansione dei PID OBD2 supportati dall'ECU.
@@ -60,19 +61,15 @@
 
 // PID OBD2 per i dati di monitoraggio
 #define PID_MAP           0x0B    // Pressione assoluta collettore (kPa)
-#define PID_OIL_TEMP      0x5C    // Temperatura olio motore
-#define PID_TORQUE_PCT    0x62    // Coppia motore attuale (%)
-#define PID_TORQUE_REF    0x63    // Coppia di riferimento (Nm)
-#define PID_FUEL_LEVEL    0x2F    // Livello carburante (%)
-
-// Capacita' serbatoio in litri (Audi A5 B8)
-#define TANK_CAPACITY     65
+#define PID_ENGINE_LOAD   0x04    // Carico motore calcolato (%)
+#define PID_COOLANT_TEMP  0x05    // Temperatura liquido raffreddamento (°C)
+#define PID_EGR           0x2C    // Apertura valvola EGR comandata (%)
 
 // Pressione atmosferica standard per calcolo boost
 #define ATMOSPHERIC_KPA   101.325f
 
-// Coppia di riferimento del motore CGKA 2.7 TDI (Nm)
-// Usata se PID 0x63 non e' disponibile via OBD2 standard
+// Coppia massima dichiarata del motore CGKA 2.7 TDI (Nm)
+// Usata per stimare la coppia dal carico motore: loadPct * 400 / 100
 #define TORQUE_REF_DEFAULT 400
 
 // DTC (Diagnostic Trouble Codes)
@@ -108,27 +105,22 @@ uint8_t pidSupported[32];
 
 // Flag: PID specifici supportati (determinati dalla scansione)
 bool mapSupported       = false;
-bool oilTempSupported   = false;
-bool torquePctSupported = false;
-bool torqueRefSupported = false;
-bool fuelSupported      = false;
+bool loadSupported      = false;    // PID 0x04
+bool coolantSupported   = false;    // PID 0x05
+bool egrSupported       = false;    // PID 0x2C
 
 // Valori correnti delle letture
 float boostBar    = 0.0f;
-int   oilTempC    = 0;
-int   torquePct   = 0;
-int   torqueRefNm = TORQUE_REF_DEFAULT;
-int   torqueNm    = 0;
-int   fuelLiters  = 0;
+int   loadPct     = 0;              // Carico motore (%)
+int   torqueNm    = 0;              // Coppia stimata (loadPct * 400 / 100)
+int   coolantC    = 0;              // Temperatura liquido (°C)
+int   egrPct      = 0;              // Apertura EGR (%)
 
 // Flag disponibilita' runtime (false se PID va in timeout)
 bool mapAvailable     = false;
-bool oilTempAvailable = false;
-bool torqueAvailable  = false;
-bool fuelAvailable    = false;
-
-// Coppia di riferimento: letta una sola volta all'inizio del monitor
-bool torqueRefRead = false;
+bool loadAvailable    = false;
+bool coolantAvailable = false;
+bool egrAvailable     = false;
 
 // DTC — codici errore e stato MIL
 uint8_t  dtcCount = 0;
@@ -148,8 +140,8 @@ unsigned long cycleCount = 0;
 
 // ============================================================
 // Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
-// Indici: 0=boost, 1=coppia, 2=olio, 3=fuel
-// Boost e coppia pesati 4x rispetto a olio e fuel (cambiano piu' velocemente)
+// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr
+// Boost e coppia pesati 4x rispetto a temp e egr (cambiano piu' velocemente)
 // ============================================================
 const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3};
 const uint8_t PID_SCHEDULE_LEN = 10;
@@ -158,9 +150,9 @@ uint8_t pidScheduleIdx = 0;
 // Dirty tracking: valori precedenti per aggiornamento parziale display
 float prevBoostBar = -999.0f;
 int prevBoostInt = -99999;   // (int)(boostBar * 100) per confronto senza errori float
-int prevOilTempC = -999;
 int prevTorqueNm = -999;
-int prevFuelLiters = -999;
+int prevCoolantC = -999;
+int prevEgrPct = -999;
 bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
 int cachedRightX = 86;       // Posizione X colonna destra, calcolata alla prima draw
 
@@ -453,7 +445,6 @@ void executeConnectMode() {
 
   // Reset stato per nuova sessione (utile in caso di riconnessione)
   memset(pidSupported, 0, sizeof(pidSupported));
-  torqueRefRead = false;
   firstOBDQuery = true;
   labelsDrawn = false;
   pidScheduleIdx = 0;
@@ -472,26 +463,26 @@ void executeConnectMode() {
 void executeScanMode() {
   drawScanScreen("Attendi...", "");
 
-  uint8_t supportRanges[] = {0x00, 0x20, 0x40, 0x60};
   uint8_t dataBytes[4];
   uint8_t numBytes;
   bool chainContinues = true;
 
   Serial.println(F("\n--- SCANSIONE PID SUPPORTATI ---"));
 
-  for (int i = 0; i < 4 && chainContinues; i++) {
-    uint8_t rangePid = supportRanges[i];
-
+  // Scansiona dinamicamente tutti i range Mode 01: 0x00, 0x20, 0x40, ...
+  // fino a quando il bit di continuazione non si azzera oppure si arriva a 0xE0.
+  for (uint16_t rangePid = 0x00; rangePid <= 0xE0 && chainContinues; rangePid += 0x20) {
     char progBuf[20];
-    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", rangePid);
+    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", (uint8_t)rangePid);
     drawScanScreen("Scansione...", progBuf);
 
     Serial.print(F("Query PID 0x"));
-    Serial.print(rangePid, HEX);
+    if (rangePid < 0x10) Serial.print(F("0"));
+    Serial.print((uint8_t)rangePid, HEX);
     Serial.print(F("... "));
 
-    if (queryOBDPID(rangePid, dataBytes, 4, &numBytes) && numBytes == 4) {
-      storeSupportBitmask(rangePid, dataBytes);
+    if (queryOBDPID((uint8_t)rangePid, dataBytes, 4, &numBytes) && numBytes == 4) {
+      storeSupportBitmask((uint8_t)rangePid, dataBytes);
 
       Serial.print(F("OK ["));
       for (int j = 0; j < 4; j++) {
@@ -502,10 +493,10 @@ void executeScanMode() {
       Serial.println(F("]"));
 
       // L'ultimo bit indica se il range successivo e' supportato
-      chainContinues = (dataBytes[3] & 0x01);
+      chainContinues = (dataBytes[3] & 0x01) != 0;
     } else {
       Serial.println(F("Nessuna risposta"));
-      if (i == 0) {
+      if (rangePid == 0x00) {
         // Se nemmeno il primo range risponde, l'ECU non comunica
         showError("ECU non risp.", "Quadro acceso?");
         while (true) { yield(); }
@@ -515,10 +506,10 @@ void executeScanMode() {
     delay(100);
   }
 
-  // Conta e stampa tutti i PID supportati
+  // Conta e stampa tutti i PID supportati trovati in tutta la bitmap Mode 01
   int totalFound = 0;
   Serial.println(F("\nPID supportati:"));
-  for (int p = 1; p <= 0x80; p++) {
+  for (int p = 1; p <= 0xFF; p++) {
     if (isPIDSupported(p)) {
       Serial.print(F("  0x"));
       if (p < 0x10) Serial.print(F("0"));
@@ -531,18 +522,16 @@ void executeScanMode() {
 
   // Imposta flag per i PID di monitoraggio
   mapSupported       = isPIDSupported(PID_MAP);
-  oilTempSupported   = isPIDSupported(PID_OIL_TEMP);
-  torquePctSupported = isPIDSupported(PID_TORQUE_PCT);
-  torqueRefSupported = isPIDSupported(PID_TORQUE_REF);
-  fuelSupported      = isPIDSupported(PID_FUEL_LEVEL);
+  loadSupported      = isPIDSupported(PID_ENGINE_LOAD);
+  coolantSupported   = isPIDSupported(PID_COOLANT_TEMP);
+  egrSupported       = isPIDSupported(PID_EGR);
 
   // Log disponibilita'
   Serial.println(F("\nDisponibilita' PID monitor:"));
   Serial.print(F("  MAP (0x0B):        ")); Serial.println(mapSupported ? "SI" : "NO");
-  Serial.print(F("  Oil Temp (0x5C):   ")); Serial.println(oilTempSupported ? "SI" : "NO");
-  Serial.print(F("  Torque % (0x62):   ")); Serial.println(torquePctSupported ? "SI" : "NO");
-  Serial.print(F("  Torque Ref (0x63): ")); Serial.println(torqueRefSupported ? "SI" : "NO");
-  Serial.print(F("  Fuel Level (0x2F): ")); Serial.println(fuelSupported ? "SI" : "NO");
+  Serial.print(F("  Load (0x04):       ")); Serial.println(loadSupported ? "SI" : "NO");
+  Serial.print(F("  Coolant (0x05):    ")); Serial.println(coolantSupported ? "SI" : "NO");
+  Serial.print(F("  EGR (0x2C):        ")); Serial.println(egrSupported ? "SI" : "NO");
 
   // Mostra risultato su display
   char countBuf[20];
@@ -551,10 +540,10 @@ void executeScanMode() {
   u8g2.setFont(u8g2_font_5x7_tr);
   u8g2.drawStr(0, 0, "SCAN COMPLETA");
   u8g2.drawStr(0, 10, countBuf);
-  u8g2.drawStr(0, 24, mapSupported       ? "BOOST:  SI" : "BOOST:  NO");
-  u8g2.drawStr(0, 34, torquePctSupported ? "COPPIA: SI" : "COPPIA: NO");
-  u8g2.drawStr(0, 44, oilTempSupported   ? "OLIO:   SI" : "OLIO:   NO");
-  u8g2.drawStr(0, 54, fuelSupported      ? "FUEL:   SI" : "FUEL:   NO");
+  u8g2.drawStr(0, 24, mapSupported     ? "BOOST:  SI" : "BOOST:  NO");
+  u8g2.drawStr(0, 34, loadSupported    ? "COPPIA: SI" : "COPPIA: NO");
+  u8g2.drawStr(0, 44, coolantSupported ? "TEMP:  SI" : "TEMP:  NO");
+  u8g2.drawStr(0, 54, egrSupported     ? "EGR:    SI" : "EGR:    NO");
   u8g2.sendBuffer();
 
   delay(5000);
@@ -585,13 +574,29 @@ bool readBoostPressure(float* boost) {
 }
 
 /**
- * Legge la temperatura olio motore.
- * @see PID 0x5C: 1 byte, formula = A - 40, range -40..215 C
+ * Legge il carico motore calcolato.
+ * @see PID 0x04: 1 byte, formula = A * 100 / 255, range 0..100 %
+ * @since 27/03/26 Mattia Alesi
  */
-bool readOilTemperature(int* temp) {
+bool readEngineLoad(int* load) {
   uint8_t dataBytes[1];
   uint8_t numBytes;
-  if (queryOBDPID(PID_OIL_TEMP, dataBytes, 1, &numBytes) && numBytes >= 1) {
+  if (queryOBDPID(PID_ENGINE_LOAD, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    *load = ((int)dataBytes[0] * 100) / 255;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Legge la temperatura del liquido di raffreddamento.
+ * @see PID 0x05: 1 byte, formula = A - 40, range -40..215 C
+ * @since 27/03/26 Mattia Alesi
+ */
+bool readCoolantTemp(int* temp) {
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_COOLANT_TEMP, dataBytes, 1, &numBytes) && numBytes >= 1) {
     *temp = (int)dataBytes[0] - 40;
     return true;
   }
@@ -599,43 +604,15 @@ bool readOilTemperature(int* temp) {
 }
 
 /**
- * Legge la coppia motore attuale in percentuale.
- * @see PID 0x62: 1 byte, formula = A - 125, range -125..130 %
+ * Legge l'apertura comandata della valvola EGR.
+ * @see PID 0x2C: 1 byte, formula = A * 100 / 255, range 0..100 %
+ * @since 27/03/26 Mattia Alesi
  */
-bool readTorquePercent(int* pct) {
+bool readEGR(int* egr) {
   uint8_t dataBytes[1];
   uint8_t numBytes;
-  if (queryOBDPID(PID_TORQUE_PCT, dataBytes, 1, &numBytes) && numBytes >= 1) {
-    *pct = (int)dataBytes[0] - 125;
-    return true;
-  }
-  return false;
-}
-
-/**
- * Legge la coppia motore di riferimento (valore costante del motore).
- * @see PID 0x63: 2 byte, formula = A*256 + B, range 0..65535 Nm
- */
-bool readTorqueReference(int* refNm) {
-  uint8_t dataBytes[2];
-  uint8_t numBytes;
-  if (queryOBDPID(PID_TORQUE_REF, dataBytes, 2, &numBytes) && numBytes >= 2) {
-    *refNm = ((int)dataBytes[0] * 256) + (int)dataBytes[1];
-    return true;
-  }
-  return false;
-}
-
-/**
- * Legge il livello carburante e lo converte in litri.
- * @see PID 0x2F: 1 byte, formula = A * 100 / 255 (%), poi * TANK_CAPACITY / 100
- */
-bool readFuelLevel(int* liters) {
-  uint8_t dataBytes[1];
-  uint8_t numBytes;
-  if (queryOBDPID(PID_FUEL_LEVEL, dataBytes, 1, &numBytes) && numBytes >= 1) {
-    int pct = ((int)dataBytes[0] * 100) / 255;
-    *liters = (pct * TANK_CAPACITY) / 100;
+  if (queryOBDPID(PID_EGR, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    *egr = ((int)dataBytes[0] * 100) / 255;
     return true;
   }
   return false;
@@ -744,9 +721,9 @@ void readDTCCodes() {
 bool isPidSlotSupported(uint8_t slot) {
   switch (slot) {
     case 0: return mapSupported;
-    case 1: return torquePctSupported;
-    case 2: return oilTempSupported;
-    case 3: return fuelSupported;
+    case 1: return loadSupported;
+    case 2: return coolantSupported;
+    case 3: return egrSupported;
     default: return false;
   }
 }
@@ -775,18 +752,6 @@ void executeMonitorMode() {
   if (millis() - lastDtcCheck > DTC_CHECK_INTERVAL) {
     checkMILStatus();
     lastDtcCheck = millis();
-  }
-
-  // Coppia di riferimento: lettura singola (valore costante del motore)
-  if (torqueRefSupported && !torqueRefRead) {
-    int refFromEcu = 0;
-    if (readTorqueReference(&refFromEcu) && refFromEcu > 0) {
-      torqueRefNm = refFromEcu;
-      torqueRefRead = true;
-      Serial.print(F("Coppia riferimento ECU: "));
-      Serial.print(torqueRefNm);
-      Serial.println(F(" Nm"));
-    }
   }
 
   // Logica alternanza schermate: dati → DTC pag.1 → DTC pag.2 → dati (ogni 5s)
@@ -820,22 +785,22 @@ void executeMonitorMode() {
           mapAvailable = readBoostPressure(&boostBar);
         }
         break;
-      case 1:  // Coppia
-        if (torquePctSupported) {
-          torqueAvailable = readTorquePercent(&torquePct);
-          if (torqueAvailable) {
-            torqueNm = (torquePct * torqueRefNm) / 100;
+      case 1:  // Coppia (stimata da carico motore)
+        if (loadSupported) {
+          loadAvailable = readEngineLoad(&loadPct);
+          if (loadAvailable) {
+            torqueNm = (loadPct * TORQUE_REF_DEFAULT) / 100;
           }
         }
         break;
-      case 2:  // Olio
-        if (oilTempSupported) {
-          oilTempAvailable = readOilTemperature(&oilTempC);
+      case 2:  // Temperatura liquido
+        if (coolantSupported) {
+          coolantAvailable = readCoolantTemp(&coolantC);
         }
         break;
-      case 3:  // Fuel
-        if (fuelSupported) {
-          fuelAvailable = readFuelLevel(&fuelLiters);
+      case 3:  // EGR
+        if (egrSupported) {
+          egrAvailable = readEGR(&egrPct);
         }
         break;
     }
@@ -880,14 +845,14 @@ void drawBoostValue() {
 }
 
 /**
- * Disegna il valore coppia motore in Nm.
+ * Disegna il valore coppia motore stimata in Nm (da carico motore * 400 Nm).
  * Colonna destra (cachedRightX), y=14. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @since 24/03/26 Mattia Alesi
+ * @modified 27/03/26 — coppia stimata da PID 0x04 (load) invece di PID 0x62
  */
 void drawTorqueValue() {
   char val[14];
-  if (torquePctSupported && torqueAvailable) {
+  if (loadSupported && loadAvailable) {
     snprintf(val, sizeof(val), "%d Nm", torqueNm);
   } else {
     snprintf(val, sizeof(val), "N/D");
@@ -896,15 +861,15 @@ void drawTorqueValue() {
 }
 
 /**
- * Disegna il valore temperatura olio motore.
+ * Disegna il valore temperatura liquido raffreddamento.
  * Colonna sinistra, y=49. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @since 24/03/26 Mattia Alesi
+ * @since 27/03/26 Mattia Alesi
  */
-void drawOilValue() {
+void drawCoolantValue() {
   char val[14];
-  if (oilTempSupported && oilTempAvailable) {
-    snprintf(val, sizeof(val), "%d C", oilTempC);
+  if (coolantSupported && coolantAvailable) {
+    snprintf(val, sizeof(val), "%d C", coolantC);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -912,15 +877,15 @@ void drawOilValue() {
 }
 
 /**
- * Disegna il valore livello carburante in litri.
+ * Disegna il valore apertura valvola EGR in percentuale.
  * Colonna destra (cachedRightX), y=49. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @since 24/03/26 Mattia Alesi
+ * @since 27/03/26 Mattia Alesi
  */
-void drawFuelValue() {
+void drawEgrValue() {
   char val[14];
-  if (fuelSupported && fuelAvailable) {
-    snprintf(val, sizeof(val), "%d L", fuelLiters);
+  if (egrSupported && egrAvailable) {
+    snprintf(val, sizeof(val), "%d %%", egrPct);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -931,7 +896,7 @@ void drawFuelValue() {
  * Aggiorna il display OLED con i valori correnti.
  * In landscape usa aggiornamento parziale: ridisegna solo le tile modificate
  * invece dell'intero framebuffer, riducendo il trasferimento I2C da ~1024 a ~256-384 byte.
- * Le etichette statiche (BOOST, COPPIA, OLIO, FUEL) vengono disegnate una sola volta.
+ * Le etichette statiche (BOOST, COPPIA, TEMP, EGR) vengono disegnate una sola volta.
  * In portrait usa sendBuffer completo (guadagno parziale minimo su 64px).
  *
  * Tile layout landscape (font 7x14B, 14px alto):
@@ -950,18 +915,18 @@ void updateDisplay() {
   // Prepara stringhe colonna destra per calcolo rightX dinamico
   char rVal1[14];
   char rVal2[14];
-  if (torquePctSupported && torqueAvailable) {
+  if (loadSupported && loadAvailable) {
     snprintf(rVal1, sizeof(rVal1), "%d Nm", torqueNm);
   } else {
     snprintf(rVal1, sizeof(rVal1), "N/D");
   }
-  if (fuelSupported && fuelAvailable) {
-    snprintf(rVal2, sizeof(rVal2), "%d L", fuelLiters);
+  if (egrSupported && egrAvailable) {
+    snprintf(rVal2, sizeof(rVal2), "%d %%", egrPct);
   } else {
     snprintf(rVal2, sizeof(rVal2), "N/D");
   }
 
-  const char* rightStrs[] = { "COPPIA", rVal1, "FUEL", rVal2 };
+  const char* rightStrs[] = { "COPPIA", rVal1, "EGR", rVal2 };
   int newRightX = calcRightColumnX(rightStrs, 4, 128);
 
   // Se rightX e' cambiato (raro: solo con valori molto larghi), forza ridisegno completo
@@ -977,23 +942,23 @@ void updateDisplay() {
     // Etichette statiche
     u8g2.drawStr(0, 0, "BOOST");
     u8g2.drawStr(cachedRightX, 0, "COPPIA");
-    u8g2.drawStr(0, 35, "OLIO");
-    u8g2.drawStr(cachedRightX, 35, "FUEL");
+    u8g2.drawStr(0, 35, "TEMP");
+    u8g2.drawStr(cachedRightX, 35, "EGR");
 
     // Valori iniziali
     drawBoostValue();
     drawTorqueValue();
-    drawOilValue();
-    drawFuelValue();
+    drawCoolantValue();
+    drawEgrValue();
 
     u8g2.sendBuffer();
     labelsDrawn = true;
 
     // Salva valori correnti per dirty tracking (sentinel -99999 = non disponibile)
     prevBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
-    prevTorqueNm = torqueAvailable ? torqueNm : -99999;
-    prevOilTempC = oilTempAvailable ? oilTempC : -99999;
-    prevFuelLiters = fuelAvailable ? fuelLiters : -99999;
+    prevTorqueNm = loadAvailable ? torqueNm : -99999;
+    prevCoolantC = coolantAvailable ? coolantC : -99999;
+    prevEgrPct = egrAvailable ? egrPct : -99999;
     return;
   }
 
@@ -1002,9 +967,9 @@ void updateDisplay() {
   bool row1dirty = false;
   bool row2dirty = false;
   int curBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
-  int curTorqueNm = torqueAvailable ? torqueNm : -99999;
-  int curOilTempC = oilTempAvailable ? oilTempC : -99999;
-  int curFuelLiters = fuelAvailable ? fuelLiters : -99999;
+  int curTorqueNm = loadAvailable ? torqueNm : -99999;
+  int curCoolantC = coolantAvailable ? coolantC : -99999;
+  int curEgrPct = egrAvailable ? egrPct : -99999;
 
   // Boost (colonna sinistra, riga 1)
   if (curBoostInt != prevBoostInt) {
@@ -1014,7 +979,7 @@ void updateDisplay() {
     row1dirty = true;
   }
 
-  // Coppia (colonna destra, riga 1)
+  // Coppia stimata (colonna destra, riga 1)
   if (curTorqueNm != prevTorqueNm) {
     clearValueArea(cachedRightX, 14, 128 - cachedRightX, 14);
     drawTorqueValue();
@@ -1022,19 +987,19 @@ void updateDisplay() {
     row1dirty = true;
   }
 
-  // Olio (colonna sinistra, riga 2)
-  if (curOilTempC != prevOilTempC) {
+  // Temperatura liquido (colonna sinistra, riga 2)
+  if (curCoolantC != prevCoolantC) {
     clearValueArea(0, 49, cachedRightX, 14);
-    drawOilValue();
-    prevOilTempC = curOilTempC;
+    drawCoolantValue();
+    prevCoolantC = curCoolantC;
     row2dirty = true;
   }
 
-  // Fuel (colonna destra, riga 2)
-  if (curFuelLiters != prevFuelLiters) {
+  // EGR (colonna destra, riga 2)
+  if (curEgrPct != prevEgrPct) {
     clearValueArea(cachedRightX, 49, 128 - cachedRightX, 14);
-    drawFuelValue();
-    prevFuelLiters = curFuelLiters;
+    drawEgrValue();
+    prevEgrPct = curEgrPct;
     row2dirty = true;
   }
 
@@ -1066,24 +1031,24 @@ void updateDisplay() {
   }
   u8g2.drawStr(0, 27, line);
 
-  if (torquePctSupported && torqueAvailable) {
+  if (loadSupported && loadAvailable) {
     snprintf(line, sizeof(line), "COPPIA %d", torqueNm);
   } else {
     snprintf(line, sizeof(line), "COPPIA N/D");
   }
   u8g2.drawStr(0, 47, line);
 
-  if (oilTempSupported && oilTempAvailable) {
-    snprintf(line, sizeof(line), "OLIO %d C", oilTempC);
+  if (coolantSupported && coolantAvailable) {
+    snprintf(line, sizeof(line), "TEMP %d C", coolantC);
   } else {
-    snprintf(line, sizeof(line), "OLIO N/D");
+    snprintf(line, sizeof(line), "TEMP N/D");
   }
   u8g2.drawStr(0, 67, line);
 
-  if (fuelSupported && fuelAvailable) {
-    snprintf(line, sizeof(line), "FUEL %d L", fuelLiters);
+  if (egrSupported && egrAvailable) {
+    snprintf(line, sizeof(line), "EGR %d %%", egrPct);
   } else {
-    snprintf(line, sizeof(line), "FUEL N/D");
+    snprintf(line, sizeof(line), "EGR N/D");
   }
   u8g2.drawStr(0, 87, line);
 
