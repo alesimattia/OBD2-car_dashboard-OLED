@@ -51,7 +51,7 @@
 #define ELM327_FIRST_TIMEOUT 10000
 
 // Protocollo OBD2: "ATSP0" = auto-detect, "ATSP6" = CAN 11bit 500kbps (Audi/VW)
-#define ELM327_PROTOCOL   "ATSP0"
+#define ELM327_PROTOCOL   "ATSP6"
 
 // Tentativi massimi di connessione
 #define MAX_RETRIES       3
