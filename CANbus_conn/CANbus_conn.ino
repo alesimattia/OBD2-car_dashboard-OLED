@@ -27,6 +27,9 @@
 
 #include <SPI.h>
 #include <mcp_can.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266HTTPUpdateServer.h>
 #include <U8g2lib.h>
 #include <Wire.h>
 #include "dtc_descriptions.h"
@@ -57,6 +60,12 @@
 #define PID_EGR 0x2C           // Apertura valvola EGR comandata (%)
 #define PID_EGR_ERROR 0x2D    // Errore EGR (%)
 
+// OTA — Aggiornamento firmware via browser (http://192.168.4.1/update)
+#define OTA_SSID    "OBD2_UPDATE"   // SSID del SoftAP per OTA
+#define OTA_PASS    "obd2flash"     // Password WPA2 (min 8 chars)
+#define OTA_PORT    80              // Porta web server
+#define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
+
 // Orientamento display: 0 = landscape (128x64), 1 = portrait 90° (64x128)
 #define DISPLAY_ORIENTATION 0
 
@@ -79,6 +88,8 @@
 // ============================================================
 
 MCP_CAN CAN(CAN_CS_PIN);
+ESP8266WebServer httpServer(OTA_PORT);
+ESP8266HTTPUpdateServer httpUpdater;
 
 // Display OLED SH1106 128x64, I2C hardware, senza pin reset
 // Rotazione condizionale: R0=landscape(0°), R1=portrait(90°)
@@ -145,6 +156,9 @@ int prevTorqueNm = -999;
 int prevCoolantC = -999;
 int prevEgrPct = -999;
 bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
+
+// OTA: true finche' la finestra di aggiornamento e' attiva
+bool otaActive = true;
 int cachedRightX = 86;       // Posizione X colonna destra, calcolata alla prima draw
 
 // ============================================================
@@ -160,25 +174,48 @@ void setup() {
   Wire.begin(4, 5);
   Wire.setClock(400000);
 
+  // SoftAP per aggiornamento OTA via browser
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(OTA_SSID, OTA_PASS);
+  httpUpdater.setup(&httpServer, "/update");
+  httpServer.begin();
+  Serial.println(F("OTA pronto: http://192.168.4.1/update"));
+
   // Inizializza display OLED (400kHz I2C esplicito anche via u8g2)
   u8g2.setBusClock(400000);
   u8g2.begin();
   u8g2.setFontPosTop();
 
-  // Splash screen
+  // Splash screen — centrato verticalmente
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(20, 10, "OBD2 MONITOR");
-  u8g2.drawStr(14, 26, "A5 B8 2.7 TDI");
-  u8g2.drawStr(40, 42, "CGKA");
-  u8g2.drawStr(46, 54, "v1.0");
+#if DISPLAY_ORIENTATION == 0
+  // Landscape (128x64): 2 righe centrate + OTA in basso
+  u8g2.drawStr(28, 11, "OBD2 MONITOR");
+  u8g2.drawStr(7, 27, "A5 B8 2.7 TDI CGKA");
+  u8g2.drawStr(16, 54, "OTA: 192.168.4.1");
+#else
+  // Portrait (64x128): 5 righe centrate + OTA in basso, IP spezzato
+  u8g2.drawStr(20, 10, "OBD2");
+  u8g2.drawStr(11, 24, "MONITOR");
+  u8g2.drawStr(17, 38, "A5 B8");
+  u8g2.drawStr(11, 52, "2.7 TDI");
+  u8g2.drawStr(20, 66, "CGKA");
+  u8g2.drawStr(20, 90, "OTA:");
+  u8g2.drawStr(8, 104,  "192.168.");
+  u8g2.drawStr(20, 118, ".4.1");
+#endif
   u8g2.sendBuffer();
   delay(2000);
 
-  // Inizializza MCP2515
+  // Inizializza MCP2515 — centrato verticalmente
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(0, 27, "Init CAN bus...");
+#if DISPLAY_ORIENTATION == 0
+  u8g2.drawStr(0, 27, "Init CAN bus...");   // (64-10)/2 = 27
+#else
+  u8g2.drawStr(0, 59, "Init CAN bus...");   // (128-10)/2 = 59
+#endif
   u8g2.sendBuffer();
   Serial.println(F("Inizializzazione MCP2515..."));
 
@@ -201,6 +238,17 @@ void setup() {
 // ============================================================
 
 void loop() {
+  // OTA: attivo solo nei primi 3 minuti dal boot, poi spegne SoftAP e WiFi
+  if (otaActive) {
+    httpServer.handleClient();
+    if (millis() > OTA_WINDOW_MS) {
+      httpServer.stop();
+      WiFi.softAPdisconnect(true);
+      WiFi.mode(WIFI_OFF);
+      otaActive = false;
+      Serial.println(F("OTA: finestra chiusa, WiFi spento"));
+    }
+  }
   switch (currentMode) {
     case MODE_SCAN:
       executeScanMode();
@@ -415,8 +463,8 @@ void executeScanMode() {
   snprintf(countBuf, sizeof(countBuf), "PID trovati: %d", totalFound);
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_5x7_tr);
-  u8g2.drawStr(0, 0, "SCAN COMPLETA");
-  u8g2.drawStr(0, 10, countBuf);
+  drawStrCentered(0, "SCAN COMPLETA");
+  drawStrCentered(10, countBuf);
   u8g2.drawStr(0, 24, mapSupported     ? "BOOST:  SI" : "BOOST:  NO");
   u8g2.drawStr(0, 34, loadSupported    ? "COPPIA: SI" : "COPPIA: NO");
   u8g2.drawStr(0, 44, coolantSupported ? "TEMP:   SI" : "TEMP:   NO");
@@ -749,7 +797,7 @@ void drawBoostValue() {
     int bc = (int)(boostBar * 100.0f);
     char s = (bc >= 0) ? '+' : '-';
     int a = abs(bc);
-    snprintf(val, sizeof(val), "%c%d.%02d bar", s, a / 100, a % 100);
+    snprintf(val, sizeof(val), "%c%d.%02d Bar", s, a / 100, a % 100);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -758,9 +806,9 @@ void drawBoostValue() {
 
 /**
  * Disegna il valore coppia motore stimata in Nm (da carico motore * 400 Nm).
- * Colonna destra (cachedRightX), y=14. Font deve essere gia' impostato.
+ * Colonna sinistra, y=49. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @modified 27/03/26 — coppia stimata da PID 0x04 (load) invece di PID 0x62
+ * @modified 31/03/26 — spostato da alto-DX a basso-SX
  */
 void drawTorqueValue() {
   char val[14];
@@ -769,14 +817,14 @@ void drawTorqueValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(cachedRightX, 14, val);
+  u8g2.drawStr(0, 49, val);
 }
 
 /**
  * Disegna il valore temperatura liquido raffreddamento.
- * Colonna sinistra, y=49. Font deve essere gia' impostato.
+ * Colonna destra (cachedRightX), y=14. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @since 27/03/26 Mattia Alesi
+ * @modified 31/03/26 — spostato da basso-SX a alto-DX
  */
 void drawCoolantValue() {
   char val[14];
@@ -785,7 +833,7 @@ void drawCoolantValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(0, 49, val);
+  u8g2.drawStr(cachedRightX, 14, val);
 }
 
 /**
@@ -808,7 +856,7 @@ void drawEgrValue() {
  * Aggiorna il display OLED con i valori correnti.
  * In landscape usa aggiornamento parziale: ridisegna solo le tile modificate
  * invece dell'intero framebuffer, riducendo il trasferimento I2C da ~1024 a ~256-384 byte.
- * Le etichette statiche (BOOST, COPPIA, TEMP, EGR) vengono disegnate una sola volta.
+ * Le etichette statiche (BOOST, TEMP, COPPIA, EGR) vengono disegnate una sola volta.
  * In portrait usa sendBuffer completo (guadagno parziale minimo su 64px).
  *
  * Tile layout landscape (font 7x14B, 14px alto):
@@ -825,10 +873,11 @@ void updateDisplay() {
   u8g2.setFont(u8g2_font_7x14B_tr);
 
   // Prepara stringhe colonna destra per calcolo rightX dinamico
+  // Colonna destra: TEMP (riga 1) + EGR (riga 2)
   char rVal1[14];
   char rVal2[14];
-  if (loadSupported && loadAvailable) {
-    snprintf(rVal1, sizeof(rVal1), "%d Nm", torqueNm);
+  if (coolantSupported && coolantAvailable) {
+    snprintf(rVal1, sizeof(rVal1), "%d C", coolantC);
   } else {
     snprintf(rVal1, sizeof(rVal1), "N/D");
   }
@@ -838,7 +887,7 @@ void updateDisplay() {
     snprintf(rVal2, sizeof(rVal2), "N/D");
   }
 
-  const char* rightStrs[] = { "COPPIA", rVal1, "EGR", rVal2 };
+  const char* rightStrs[] = { "TEMP", rVal1, "EGR", rVal2 };
   int newRightX = calcRightColumnX(rightStrs, 4, 128);
 
   // Se rightX e' cambiato (raro: solo con valori molto larghi), forza ridisegno completo
@@ -853,8 +902,8 @@ void updateDisplay() {
 
     // Etichette statiche
     u8g2.drawStr(0, 0, "BOOST");
-    u8g2.drawStr(cachedRightX, 0, "COPPIA");
-    u8g2.drawStr(0, 35, "TEMP");
+    u8g2.drawStr(cachedRightX, 0, "TEMP");
+    u8g2.drawStr(0, 35, "COPPIA");
     u8g2.drawStr(cachedRightX, 35, "EGR");
 
     // Valori iniziali
@@ -891,19 +940,19 @@ void updateDisplay() {
     row1dirty = true;
   }
 
-  // Coppia stimata (colonna destra, riga 1)
-  if (curTorqueNm != prevTorqueNm) {
+  // Temperatura liquido (colonna destra, riga 1)
+  if (curCoolantC != prevCoolantC) {
     clearValueArea(cachedRightX, 14, 128 - cachedRightX, 14);
-    drawTorqueValue();
-    prevTorqueNm = curTorqueNm;
+    drawCoolantValue();
+    prevCoolantC = curCoolantC;
     row1dirty = true;
   }
 
-  // Temperatura liquido (colonna sinistra, riga 2)
-  if (curCoolantC != prevCoolantC) {
+  // Coppia stimata (colonna sinistra, riga 2)
+  if (curTorqueNm != prevTorqueNm) {
     clearValueArea(0, 49, cachedRightX, 14);
-    drawCoolantValue();
-    prevCoolantC = curCoolantC;
+    drawTorqueValue();
+    prevTorqueNm = curTorqueNm;
     row2dirty = true;
   }
 
@@ -1067,13 +1116,34 @@ int calcRightColumnX(const char* strings[], int count, int displayW) {
   return displayW - maxW;
 }
 
-/** Disegna la schermata di scansione PID con stato e dettaglio */
+/**
+ * Disegna una stringa centrata orizzontalmente nel display.
+ * Se la stringa e' piu' larga del display, viene allineata a sinistra (x=0).
+ * Il font deve essere gia' impostato prima della chiamata.
+ * @since 31/03/26 Mattia Alesi
+ */
+void drawStrCentered(int y, const char* str) {
+#if DISPLAY_ORIENTATION == 0
+  int x = (128 - (int)u8g2.getStrWidth(str)) / 2;
+#else
+  int x = (64 - (int)u8g2.getStrWidth(str)) / 2;
+#endif
+  u8g2.drawStr(x > 0 ? x : 0, y, str);
+}
+
+/** Disegna la schermata di scansione PID con stato e dettaglio — centrata H+V */
 void drawScanScreen(const char* status, const char* detail) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(0, 8, "SCANSIONE PID");
-  u8g2.drawStr(0, 28, status);
-  u8g2.drawStr(0, 44, detail);
+#if DISPLAY_ORIENTATION == 0
+  drawStrCentered(11, "SCANSIONE PID");
+  drawStrCentered(27, status);
+  drawStrCentered(43, detail);
+#else
+  drawStrCentered(43, "SCANSIONE PID");
+  drawStrCentered(59, status);
+  drawStrCentered(75, detail);
+#endif
   u8g2.sendBuffer();
 }
 
@@ -1084,9 +1154,15 @@ void drawScanScreen(const char* status, const char* detail) {
 void showError(const char* line1, const char* line2) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  u8g2.drawStr(20, 16, "ERRORE:");
-  u8g2.drawStr(0, 34, line1);
-  u8g2.drawStr(0, 50, line2);
+#if DISPLAY_ORIENTATION == 0
+  drawStrCentered(11, "ERRORE:");
+  drawStrCentered(27, line1);
+  drawStrCentered(43, line2);
+#else
+  drawStrCentered(43, "ERRORE:");
+  drawStrCentered(59, line1);
+  drawStrCentered(75, line2);
+#endif
   u8g2.sendBuffer();
   Serial.print(F("ERRORE: "));
   Serial.println(line1);
