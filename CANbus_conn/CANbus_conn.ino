@@ -114,7 +114,8 @@ uint8_t pidSupported[32];
 bool mapSupported     = false;
 bool loadSupported    = false;    // PID 0x04
 bool coolantSupported = false;    // PID 0x05
-bool egrSupported     = false;    // PID 0x2C
+bool egrSupported       = false;    // PID 0x2C
+bool egrErrorSupported  = false;    // PID 0x2D
 
 // Valori correnti delle letture
 float boostBar  = 0.0f;
@@ -129,6 +130,7 @@ bool mapAvailable     = false;
 bool loadAvailable    = false;
 bool coolantAvailable = false;
 bool egrAvailable     = false;
+bool egrErrAvailable  = false;
 
 // DTC — codici errore e stato MIL
 uint8_t dtcCount = 0;
@@ -142,11 +144,12 @@ uint8_t totalScreens = 1;  // Calcolato in base a dtcCount
 
 // ============================================================
 // Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
-// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr
-// Boost e coppia pesati 4x rispetto a temp e egr (cambiano piu' velocemente)
+// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr, 4=egrError
+// Boost e coppia pesati ~4x rispetto a temp, egr e egrError
+// EGR e EGR_ERROR separati in slot distinti per cicli uniformi
 // ============================================================
-const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3};
-const uint8_t PID_SCHEDULE_LEN = 10;
+const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3, 0, 4};
+const uint8_t PID_SCHEDULE_LEN = 12;
 uint8_t pidScheduleIdx = 0;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
@@ -424,7 +427,7 @@ void executeScanMode() {
       Serial.println(F("Nessuna risposta"));
       break;
     }
-    delay(50);
+    delay(10);  // 10ms sufficiente tra query CAN (era 50ms)
   }
 
   // Conta e stampa tutti i PID supportati trovati in tutta la bitmap Mode 01
@@ -445,7 +448,8 @@ void executeScanMode() {
   mapSupported     = isPIDSupported(PID_MAP);
   loadSupported    = isPIDSupported(PID_ENGINE_LOAD);
   coolantSupported = isPIDSupported(PID_COOLANT_TEMP);
-  egrSupported     = isPIDSupported(PID_EGR);
+  egrSupported       = isPIDSupported(PID_EGR);
+  egrErrorSupported  = isPIDSupported(PID_EGR_ERROR);
 
   // Log disponibilita'
   Serial.println(F("\nDisponibilita' PID monitor:"));
@@ -457,6 +461,8 @@ void executeScanMode() {
   Serial.println(coolantSupported ? "SI" : "NO");
   Serial.print(F("  EGR (0x2C):        "));
   Serial.println(egrSupported ? "SI" : "NO");
+  Serial.print(F("  EGR Err (0x2D):    "));
+  Serial.println(egrErrorSupported ? "SI" : "NO");
 
   // Mostra risultato su display
   char countBuf[20];
@@ -471,7 +477,7 @@ void executeScanMode() {
   u8g2.drawStr(0, 54, egrSupported     ? "EGR:    SI" : "EGR:    NO");
   u8g2.sendBuffer();
 
-  delay(5000);
+  delay(2000);  // Mostra risultati scan (era 5000ms)
   // Reset stato display e scheduling per la nuova sessione monitor
   labelsDrawn = false;
   pidScheduleIdx = 0;
@@ -683,10 +689,11 @@ void readDTCCodes() {
 
 /**
  * Verifica se lo slot PID round-robin e' supportato dall'ECU.
- * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr)
+ * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr, 4=egrError)
  * @return true se il PID corrispondente e' supportato
  * @see executeMonitorMode()
  * @since 24/03/26 Mattia Alesi
+ * @modified 31/03/26 — aggiunto slot 4 per EGR_ERROR separato
  */
 bool isPidSlotSupported(uint8_t slot) {
   switch (slot) {
@@ -694,6 +701,7 @@ bool isPidSlotSupported(uint8_t slot) {
     case 1: return loadSupported;
     case 2: return coolantSupported;
     case 3: return egrSupported;
+    case 4: return egrErrorSupported;
     default: return false;
   }
 }
@@ -757,10 +765,14 @@ void executeMonitorMode() {
           coolantAvailable = readCoolantTemp(&coolantC);
         }
         break;
-      case 3:  // EGR + errore EGR (letti insieme, stesso slot)
+      case 3:  // EGR
         if (egrSupported) {
           egrAvailable = readEGR(&egrPct);
-          readEGRError(&egrErrPct);
+        }
+        break;
+      case 4:  // Errore EGR (slot separato per cicli uniformi)
+        if (egrErrorSupported) {
+          egrErrAvailable = readEGRError(&egrErrPct);
         }
         break;
     }

@@ -50,7 +50,7 @@
 // Timeout risposta ELM327 (ms)
 #define ELM327_TIMEOUT    2000
 // Timeout piu' lungo per il primo comando OBD (l'ELM327 cerca il protocollo)
-#define ELM327_FIRST_TIMEOUT 10000
+#define ELM327_FIRST_TIMEOUT 5000
 
 // Protocollo OBD2: "ATSP0" = auto-detect, "ATSP6" = CAN 11bit 500kbps (Audi/VW)
 #define ELM327_PROTOCOL   "ATSP6"
@@ -119,6 +119,7 @@ bool mapSupported       = false;
 bool loadSupported      = false;    // PID 0x04
 bool coolantSupported   = false;    // PID 0x05
 bool egrSupported       = false;    // PID 0x2C
+bool egrErrorSupported  = false;    // PID 0x2D
 
 // Valori correnti delle letture
 float boostBar    = 0.0f;
@@ -133,6 +134,7 @@ bool mapAvailable     = false;
 bool loadAvailable    = false;
 bool coolantAvailable = false;
 bool egrAvailable     = false;
+bool egrErrAvailable  = false;
 
 // DTC — codici errore e stato MIL
 uint8_t  dtcCount = 0;
@@ -155,11 +157,12 @@ unsigned long cycleCount = 0;
 
 // ============================================================
 // Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
-// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr
-// Boost e coppia pesati 4x rispetto a temp e egr (cambiano piu' velocemente)
+// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr, 4=egrError
+// Boost e coppia pesati ~4x rispetto a temp, egr e egrError
+// EGR e EGR_ERROR separati in slot distinti per cicli uniformi
 // ============================================================
-const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3};
-const uint8_t PID_SCHEDULE_LEN = 10;
+const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3, 0, 4};
+const uint8_t PID_SCHEDULE_LEN = 12;
 uint8_t pidScheduleIdx = 0;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
@@ -292,22 +295,24 @@ bool sendATCommand(const char* cmd, String& response, unsigned long timeout) {
   Serial.print(F("TX: "));
   Serial.println(cmd);
 
-  // Attendi risposta fino a '>' o timeout
-  response = "";
+  // Attendi risposta fino a '>' o timeout — usa buffer char[] per evitare
+  // riallocazioni heap della concatenazione String += (O(n²) su ESP8266)
+  char respBuf[256];
+  int respLen = 0;
   unsigned long start = millis();
 
   while ((millis() - start) < timeout) {
     if (elmClient.available()) {
       char c = elmClient.read();
       if (c == '>') break;  // Prompt ELM327 = fine risposta
-      response += c;
+      if (c != '\r' && c != '\n' && respLen < 255) {
+        respBuf[respLen++] = c;
+      }
     }
     yield();
   }
-
-  // Rimuovi \r e \n dalla risposta
-  response.replace("\r", "");
-  response.replace("\n", "");
+  respBuf[respLen] = '\0';
+  response = String(respBuf);  // singola allocazione
 
   Serial.print(F("RX: "));
   Serial.println(response);
@@ -336,16 +341,20 @@ bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* act
 
   firstOBDQuery = false;
 
-  // Cerca il pattern di risposta "41XX" nella stringa
+  // Cerca il pattern "41XX" case-insensitive senza creare copie String
+  // (evita 2 allocazioni heap per toUpperCase ad ogni query)
   char pattern[5];
   snprintf(pattern, sizeof(pattern), "41%02X", pid);
-  // Cerca anche con lettere maiuscole (la risposta potrebbe essere maiuscola o minuscola)
-  String upperResp = response;
-  upperResp.toUpperCase();
-  String upperPattern = String(pattern);
-  upperPattern.toUpperCase();
 
-  int pos = upperResp.indexOf(upperPattern);
+  int pos = -1;
+  int rLen = (int)response.length();
+  for (int i = 0; i <= rLen - 4; i++) {
+    if (toupper(response[i])   == pattern[0] && toupper(response[i+1]) == pattern[1] &&
+        toupper(response[i+2]) == pattern[2] && toupper(response[i+3]) == pattern[3]) {
+      pos = i;
+      break;
+    }
+  }
   if (pos < 0) {
     // Risposta non contiene il pattern atteso (NO DATA, ERROR, etc.)
     return false;
@@ -357,12 +366,11 @@ bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* act
 
   for (uint8_t i = 0; i < maxBytes; i++) {
     int bytePos = dataStart + (i * 2);
-    if (bytePos + 1 >= (int)upperResp.length()) break;
-    // Verifica che i caratteri siano hex validi
-    char c1 = upperResp[bytePos];
-    char c2 = upperResp[bytePos + 1];
+    if (bytePos + 1 >= rLen) break;
+    char c1 = response[bytePos];
+    char c2 = response[bytePos + 1];
     if (!isHexadecimalDigit(c1) || !isHexadecimalDigit(c2)) break;
-    dataBytes[i] = parseHexByte(upperResp, bytePos);
+    dataBytes[i] = parseHexByte(response, bytePos);
     (*actualBytes)++;
   }
 
@@ -550,7 +558,7 @@ void executeScanMode() {
       }
       break;
     }
-    delay(100);
+    delay(10);  // 10ms sufficiente tra query ELM327 (era 100ms)
   }
 
   // Conta e stampa tutti i PID supportati trovati in tutta la bitmap Mode 01
@@ -572,6 +580,7 @@ void executeScanMode() {
   loadSupported      = isPIDSupported(PID_ENGINE_LOAD);
   coolantSupported   = isPIDSupported(PID_COOLANT_TEMP);
   egrSupported       = isPIDSupported(PID_EGR);
+  egrErrorSupported  = isPIDSupported(PID_EGR_ERROR);
 
   // Log disponibilita'
   Serial.println(F("\nDisponibilita' PID monitor:"));
@@ -579,6 +588,7 @@ void executeScanMode() {
   Serial.print(F("  Load (0x04):       ")); Serial.println(loadSupported ? "SI" : "NO");
   Serial.print(F("  Coolant (0x05):    ")); Serial.println(coolantSupported ? "SI" : "NO");
   Serial.print(F("  EGR (0x2C):        ")); Serial.println(egrSupported ? "SI" : "NO");
+  Serial.print(F("  EGR Err (0x2D):    ")); Serial.println(egrErrorSupported ? "SI" : "NO");
 
   // Mostra risultato su display
   char countBuf[20];
@@ -593,7 +603,7 @@ void executeScanMode() {
   u8g2.drawStr(0, 54, egrSupported     ? "EGR:    SI" : "EGR:    NO");
   u8g2.sendBuffer();
 
-  delay(5000);
+  delay(2000);  // Mostra risultati scan (era 5000ms)
   // Reset stato display e scheduling per la nuova sessione monitor
   labelsDrawn = false;
   pidScheduleIdx = 0;
@@ -746,6 +756,7 @@ void readDTCCodes() {
     if (code != 0x0000) {
       dtcCodes[dtcCount++] = code;
     }
+    yield();  // evita watchdog reset ESP8266
   }
 
   // Calcola il numero totale di schermate (1 dati + N pagine DTC)
@@ -775,10 +786,11 @@ void readDTCCodes() {
 
 /**
  * Verifica se lo slot PID round-robin e' supportato dall'ECU.
- * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr)
+ * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr, 4=egrError)
  * @return true se il PID corrispondente e' supportato
  * @see executeMonitorMode()
  * @since 24/03/26 Mattia Alesi
+ * @modified 31/03/26 — aggiunto slot 4 per EGR_ERROR separato
  */
 bool isPidSlotSupported(uint8_t slot) {
   switch (slot) {
@@ -786,6 +798,7 @@ bool isPidSlotSupported(uint8_t slot) {
     case 1: return loadSupported;
     case 2: return coolantSupported;
     case 3: return egrSupported;
+    case 4: return egrErrorSupported;
     default: return false;
   }
 }
@@ -860,10 +873,14 @@ void executeMonitorMode() {
           coolantAvailable = readCoolantTemp(&coolantC);
         }
         break;
-      case 3:  // EGR + errore EGR (letti insieme, stesso slot)
+      case 3:  // EGR
         if (egrSupported) {
           egrAvailable = readEGR(&egrPct);
-          readEGRError(&egrErrPct);
+        }
+        break;
+      case 4:  // Errore EGR (slot separato per cicli uniformi)
+        if (egrErrorSupported) {
+          egrErrAvailable = readEGRError(&egrErrPct);
         }
         break;
     }
