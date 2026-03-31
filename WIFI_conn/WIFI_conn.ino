@@ -11,14 +11,14 @@
  * All'avvio esegue una scansione dei PID OBD2 supportati dall'ECU.
  *
  * Hardware:
- *   ESP8266 D1 Mini + OLED SH1106 1.3" (I2C)
+ *   ESP-01 (ESP8266) + OLED SH1106 1.3" (I2C)
  *   Adattatore ELM327 WiFi (inserito nella presa OBD2 del veicolo)
  *
  * Cablaggio (solo display OLED):
  *   OLED VCC -> 3.3V
  *   OLED GND -> GND
- *   OLED SCL -> D1 (GPIO5)
- *   OLED SDA -> D2 (GPIO4)
+ *   OLED SDA -> GPIO0
+ *   OLED SCL -> GPIO2
  *
  * Velocità di acquisizione dati OBD (in WiFi) ~2Hz (round-robin PID + aggiornamento parziale display)
  *
@@ -64,6 +64,7 @@
 #define PID_ENGINE_LOAD   0x04    // Carico motore calcolato (%)
 #define PID_COOLANT_TEMP  0x05    // Temperatura liquido raffreddamento (°C)
 #define PID_EGR           0x2C    // Apertura valvola EGR comandata (%)
+#define PID_EGR_ERROR     0x2D    // Errore EGR (%)
 
 // Pressione atmosferica standard per calcolo boost
 #define ATMOSPHERIC_KPA   101.325f
@@ -115,6 +116,7 @@ int   loadPct     = 0;              // Carico motore (%)
 int   torqueNm    = 0;              // Coppia stimata (loadPct * 400 / 100)
 int   coolantC    = 0;              // Temperatura liquido (°C)
 int   egrPct      = 0;              // Apertura EGR (%)
+int   egrErrPct   = 0;              // Errore EGR (%)
 
 // Flag disponibilita' runtime (false se PID va in timeout)
 bool mapAvailable     = false;
@@ -618,6 +620,21 @@ bool readEGR(int* egr) {
   return false;
 }
 
+/**
+ * Legge l'errore EGR (differenza tra comandato e reale).
+ * @see PID 0x2D: 1 byte, formula = (A - 128) * 100 / 128, range -100..+99 %
+ * @since 31/03/26 Mattia Alesi
+ */
+bool readEGRError(int* err) {
+  uint8_t dataBytes[1];
+  uint8_t numBytes;
+  if (queryOBDPID(PID_EGR_ERROR, dataBytes, 1, &numBytes) && numBytes >= 1) {
+    *err = ((int)dataBytes[0] - 128) * 100 / 128;
+    return true;
+  }
+  return false;
+}
+
 // ============================================================
 // LETTURA DTC (CODICI ERRORE)
 // ============================================================
@@ -713,7 +730,7 @@ void readDTCCodes() {
 
 /**
  * Verifica se lo slot PID round-robin e' supportato dall'ECU.
- * @param slot indice nello scheduling (0=boost, 1=coppia, 2=olio, 3=fuel)
+ * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr)
  * @return true se il PID corrispondente e' supportato
  * @see executeMonitorMode()
  * @since 24/03/26 Mattia Alesi
@@ -732,7 +749,7 @@ bool isPidSlotSupported(uint8_t slot) {
  * Esegue un ciclo di lettura OBD2 e aggiornamento display.
  * Legge UN solo PID per ciclo in round-robin pesato per massimizzare
  * la velocita' di refresh del display (~2 Hz invece di 1-3 Hz).
- * Boost e coppia vengono letti 4x piu' spesso di olio e fuel.
+ * Boost e coppia vengono letti 4x piu' spesso di temp e EGR.
  *
  * @modified 24/03/26 — round-robin PID invece di lettura sequenziale
  */
@@ -798,9 +815,10 @@ void executeMonitorMode() {
           coolantAvailable = readCoolantTemp(&coolantC);
         }
         break;
-      case 3:  // EGR
+      case 3:  // EGR + errore EGR (letti insieme, stesso slot)
         if (egrSupported) {
           egrAvailable = readEGR(&egrPct);
+          readEGRError(&egrErrPct);
         }
         break;
     }
@@ -877,15 +895,15 @@ void drawCoolantValue() {
 }
 
 /**
- * Disegna il valore apertura valvola EGR in percentuale.
- * Colonna destra (cachedRightX), y=49. Font deve essere gia' impostato.
+ * Disegna il valore apertura valvola EGR con errore tra parentesi.
+ * Formato: "44%(%d)" es. "44%(30)" — colonna destra (cachedRightX), y=49.
  * @see updateDisplay()
- * @since 27/03/26 Mattia Alesi
+ * @modified 31/03/26 — aggiunto errore EGR (PID 0x2D) tra parentesi
  */
 void drawEgrValue() {
   char val[14];
   if (egrSupported && egrAvailable) {
-    snprintf(val, sizeof(val), "%d %%", egrPct);
+    snprintf(val, sizeof(val), "%d%%(%d)", egrPct, egrErrPct);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -921,7 +939,7 @@ void updateDisplay() {
     snprintf(rVal1, sizeof(rVal1), "N/D");
   }
   if (egrSupported && egrAvailable) {
-    snprintf(rVal2, sizeof(rVal2), "%d %%", egrPct);
+    snprintf(rVal2, sizeof(rVal2), "%d%%(%d)", egrPct, egrErrPct);
   } else {
     snprintf(rVal2, sizeof(rVal2), "N/D");
   }
@@ -1046,7 +1064,7 @@ void updateDisplay() {
   u8g2.drawStr(0, 67, line);
 
   if (egrSupported && egrAvailable) {
-    snprintf(line, sizeof(line), "EGR %d %%", egrPct);
+    snprintf(line, sizeof(line), "EGR %d(%d)", egrPct, egrErrPct);
   } else {
     snprintf(line, sizeof(line), "EGR N/D");
   }
@@ -1116,7 +1134,7 @@ void drawDTCScreen(uint8_t page) {
 
     const char* desc = getDTCDescription(dtcCodes[startIdx + i]);
     if (desc != NULL) {
-      char descBuf[12];
+      char descBuf[22];
       strncpy_P(descBuf, desc, sizeof(descBuf) - 1);
       descBuf[sizeof(descBuf) - 1] = '\0';
       u8g2.setFont(u8g2_font_5x8_tr);
