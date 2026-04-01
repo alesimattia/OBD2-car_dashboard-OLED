@@ -244,10 +244,12 @@ void setup() {
 // ============================================================
 
 void loop() {
-  // OTA: attivo solo nei primi 3 minuti dal boot, poi spegne SoftAP e WiFi
+  // OTA: attivo nei primi OTA_WINDOW_MS dal boot.
+  // Se un client e' collegato al SoftAP, resta attivo finche' non si disconnette
+  // (anche oltre la finestra temporale) per non interrompere un upload in corso.
   if (otaActive) {
     httpServer.handleClient();
-    if (millis() > OTA_WINDOW_MS) {
+    if (millis() > OTA_WINDOW_MS && WiFi.softAPgetStationNum() == 0) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_OFF);

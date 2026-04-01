@@ -231,10 +231,12 @@ void setup() {
 // ============================================================
 
 void loop() {
-  // OTA: attivo solo nei primi 3 minuti dal boot, poi spegne SoftAP
+  // OTA: attivo nei primi OTA_WINDOW_MS dal boot.
+  // Se un client e' collegato al SoftAP, resta attivo finche' non si disconnette
+  // (anche oltre la finestra temporale) per non interrompere un upload in corso.
   if (otaActive) {
     httpServer.handleClient();
-    if (millis() > OTA_WINDOW_MS) {
+    if (millis() > OTA_WINDOW_MS && WiFi.softAPgetStationNum() == 0) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
@@ -433,6 +435,7 @@ void executeConnectMode() {
 
   int wifiAttempts = 0;
   while (WiFi.status() != WL_CONNECTED) {
+    if (otaActive) httpServer.handleClient();
     delay(500);
     Serial.print(F("."));
     wifiAttempts++;
@@ -471,8 +474,9 @@ void executeConnectMode() {
     Serial.println(F(" fallito"));
     if (attempt == MAX_RETRIES) {
       showError("TCP fallito", ELM327_IP);
-      while (true) { yield(); }
+      while (true) { if (otaActive) httpServer.handleClient(); yield(); }
     }
+    if (otaActive) httpServer.handleClient();
     delay(1000);
   }
 
