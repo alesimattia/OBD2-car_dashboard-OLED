@@ -33,6 +33,7 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include "dtc_descriptions.h"
+#include "TorqueEstimator.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -66,23 +67,21 @@
 #define OTA_PORT    80              // Porta web server
 #define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
 
-// Orientamento display: 0 = landscape (128x64), 1 = portrait 90° (64x128)
-#define DISPLAY_ORIENTATION 0
-
 // Debug: 1 = attiva diagnostica avanzata su Serial, 0 = disattiva
 #define DEBUG 0
 
 // Pressione atmosferica standard per calcolo boost
 #define ATMOSPHERIC_KPA 101.325f
 
-// Coppia massima dichiarata del motore CGKA 2.7 TDI (Nm)
-// Usata per stimare la coppia dal carico motore: loadPct * 400 / 100
-#define TORQUE_REF_DEFAULT 400
+// Layout display landscape 128x64 (font 7x14B, 7px wide)
+// Colonna destra: allineata al bordo destro. "44%(30)" = 7 chars × 7px = 49px → 128-49 = 79
+#define RIGHT_COL_X      79
+
+// Stima coppia: usa il modello TorqueEstimator (Audi27TDI140kW namespace)
 
 // DTC (Diagnostic Trouble Codes)
 #define MAX_DTC 6                 // Max DTC gestibili (multi-frame CAN)
-#define DTC_PER_PAGE_LAND 2       // DTC per pagina in landscape
-#define DTC_PER_PAGE_PORT 3       // DTC per pagina in portrait
+#define DTC_PER_PAGE      2       // DTC per pagina display
 #define DTC_CHECK_INTERVAL 30000  // Intervallo controllo MIL (ms)
 #define SCREEN_SWITCH_MS 5000     // Alternanza schermate dati/errori (ms)
 
@@ -94,13 +93,8 @@ MCP_CAN CAN(CAN_CS_PIN);
 ESP8266WebServer httpServer(OTA_PORT);
 ESP8266HTTPUpdateServer httpUpdater;
 
-// Display OLED SH1106 128x64, I2C hardware, senza pin reset
-// Rotazione condizionale: R0=landscape(0°), R1=portrait(90°)
-#if DISPLAY_ORIENTATION == 0
+// Display OLED SH1106 128x64, I2C hardware, landscape
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
-#else
-U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R1, U8X8_PIN_NONE);
-#endif
 
 // ============================================================
 // Stato applicazione
@@ -123,7 +117,7 @@ bool egrErrorSupported  = false;    // PID 0x2D
 // Valori correnti delle letture
 float boostBar  = 0.0f;
 int   loadPct   = 0;              // Carico motore (%)
-int   torqueNm  = 0;              // Coppia stimata (loadPct * 400 / 100)
+int   torqueNm  = 0;              // Coppia stimata (TorqueEstimator)
 int   coolantC  = 0;              // Temperatura liquido (°C)
 int   egrPct    = 0;              // Apertura EGR (%)
 int   egrErrPct = 0;              // Errore EGR (%)
@@ -165,7 +159,12 @@ bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
 
 // OTA: true finche' la finestra di aggiornamento e' attiva
 bool otaActive = true;
-int cachedRightX = 86;       // Posizione X colonna destra, calcolata alla prima draw
+unsigned long otaDeadline = OTA_WINDOW_MS;
+bool otaClientWasConnected = false;
+
+// Dashboard web live (endpoint /monitor e /data)
+#define OBD_CONN_CAN
+#include "web_dashboard.h"
 
 // ============================================================
 // SETUP
@@ -184,6 +183,7 @@ void setup() {
   WiFi.mode(WIFI_AP);
   WiFi.softAP(OTA_SSID, OTA_PASS);
   httpUpdater.setup(&httpServer, "/update");
+  setupWebDashboard(httpServer);
   httpServer.begin();
   Serial.println(F("OTA pronto: http://192.168.4.1/update"));
 
@@ -195,33 +195,16 @@ void setup() {
   // Splash screen — centrato verticalmente
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-#if DISPLAY_ORIENTATION == 0
-  // Landscape (128x64): 2 righe centrate + OTA in basso
   u8g2.drawStr(28, 11, "OBD2 MONITOR");
   u8g2.drawStr(7, 27, "A5 B8 2.7 TDI CGKA");
   u8g2.drawStr(16, 54, "OTA: 192.168.4.1");
-#else
-  // Portrait (64x128): 5 righe centrate + OTA in basso, IP spezzato
-  u8g2.drawStr(20, 10, "OBD2");
-  u8g2.drawStr(11, 24, "MONITOR");
-  u8g2.drawStr(17, 38, "A5 B8");
-  u8g2.drawStr(11, 52, "2.7 TDI");
-  u8g2.drawStr(20, 66, "CGKA");
-  u8g2.drawStr(20, 90, "OTA:");
-  u8g2.drawStr(8, 104,  "192.168.");
-  u8g2.drawStr(20, 118, ".4.1");
-#endif
   u8g2.sendBuffer();
   delay(2000);
 
-  // Inizializza MCP2515 — centrato verticalmente
+  // Inizializza MCP2515
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-#if DISPLAY_ORIENTATION == 0
-  u8g2.drawStr(0, 27, "Init CAN bus...");   // (64-10)/2 = 27
-#else
-  u8g2.drawStr(0, 59, "Init CAN bus...");   // (128-10)/2 = 59
-#endif
+  u8g2.drawStr(0, 27, "Init CAN bus...");
   u8g2.sendBuffer();
   Serial.println(F("Inizializzazione MCP2515..."));
 
@@ -244,12 +227,20 @@ void setup() {
 // ============================================================
 
 void loop() {
-  // OTA: attivo nei primi OTA_WINDOW_MS dal boot.
-  // Se un client e' collegato al SoftAP, resta attivo finche' non si disconnette
-  // (anche oltre la finestra temporale) per non interrompere un upload in corso.
+  // OTA: attivo finche' otaDeadline non scade E nessun client e' connesso.
+  // Se un client si connette, il timeout si sospende.
+  // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.
   if (otaActive) {
     httpServer.handleClient();
-    if (millis() > OTA_WINDOW_MS && WiFi.softAPgetStationNum() == 0) {
+    bool clientNow = (WiFi.softAPgetStationNum() > 0);
+    if (clientNow) {
+      otaClientWasConnected = true;
+    } else if (otaClientWasConnected) {
+      otaDeadline = millis() + OTA_WINDOW_MS;
+      otaClientWasConnected = false;
+      Serial.println(F("OTA: client disconnesso, timeout ripartito"));
+    }
+    if (!clientNow && millis() > otaDeadline) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_OFF);
@@ -669,11 +660,7 @@ void readDTCCodes() {
 
   // Calcola il numero totale di schermate (1 dati + N pagine DTC)
   if (dtcCount > 0) {
-#if DISPLAY_ORIENTATION == 0
-    uint8_t perPage = DTC_PER_PAGE_LAND;
-#else
-    uint8_t perPage = DTC_PER_PAGE_PORT;
-#endif
+    uint8_t perPage = DTC_PER_PAGE;
     totalScreens = 1 + (dtcCount + perPage - 1) / perPage;
   } else {
     totalScreens = 1;
@@ -757,14 +744,22 @@ void executeMonitorMode() {
           mapAvailable = readBoostPressure(&boostBar);
         }
         break;
-      case 1:  // Coppia (stimata da carico motore)
-        if (loadSupported) {
-          loadAvailable = readEngineLoad(&loadPct);
-          if (loadAvailable) {
-            torqueNm = (loadPct * TORQUE_REF_DEFAULT) / 100;
-          }
-        }
+      case 1: { // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
+        uint8_t td[8]; uint8_t tl;
+        float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;
+        float tRail = NAN, tVolts = NAN, tBaro = NAN;
+        if (queryPID(0x04,td,&tl)) { tLoad=((float)td[3]*100.0f)/255.0f; loadPct=(int)tLoad; loadAvailable=true; }
+        if (queryPID(0x0C,td,&tl)) { tRpm=(float)(((td[3]<<8)|td[4])/4); }
+        if (queryPID(0x10,td,&tl)) { tMaf=((float)((td[3]<<8)|td[4]))/100.0f; }
+        if (queryPID(0x0B,td,&tl)) { tMap=(float)td[3]; }
+        if (queryPID(0x0F,td,&tl)) { tIat=(float)td[3]-40.0f; }
+        if (queryPID(0x23,td,&tl)) { tRail=(float)(((td[3]<<8)|td[4])*10); }
+        if (queryPID(0x42,td,&tl)) { tVolts=((float)((td[3]<<8)|td[4]))/1000.0f; }
+        if (queryPID(0x33,td,&tl)) { tBaro=(float)td[3]; }
+        torqueNm = (int)Audi27TDI140kW::estimateEngineTorqueNm(
+          tLoad, tRpm, tMaf, tMap, tIat, tRail, tVolts, tBaro);
         break;
+      }
       case 2:  // Temperatura liquido
         if (coolantSupported) {
           coolantAvailable = readCoolantTemp(&coolantC);
@@ -807,7 +802,7 @@ void clearValueArea(int x, int y, int w, int h) {
 
 /**
  * Disegna il valore boost con 2 cifre decimali.
- * Colonna sinistra, y=14. Font deve essere gia' impostato.
+ * Colonna sinistra, y=15. Font deve essere gia' impostato.
  * @see updateDisplay()
  * @since 24/03/26 Mattia Alesi
  */
@@ -821,12 +816,12 @@ void drawBoostValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(0, 14, val);
+  u8g2.drawStr(0, 15, val);
 }
 
 /**
  * Disegna il valore coppia motore stimata in Nm (da carico motore * 400 Nm).
- * Colonna sinistra, y=49. Font deve essere gia' impostato.
+ * Colonna sinistra, y=54. Font deve essere gia' impostato.
  * @see updateDisplay()
  * @modified 31/03/26 — spostato da alto-DX a basso-SX
  */
@@ -837,12 +832,12 @@ void drawTorqueValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(0, 49, val);
+  u8g2.drawStr(0, 50, val);
 }
 
 /**
  * Disegna il valore temperatura liquido raffreddamento.
- * Colonna destra (cachedRightX), y=14. Font deve essere gia' impostato.
+ * Colonna destra (RIGHT_COL_X), y=15. Font deve essere gia' impostato.
  * @see updateDisplay()
  * @modified 31/03/26 — spostato da basso-SX a alto-DX
  */
@@ -853,12 +848,12 @@ void drawCoolantValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(cachedRightX, 14, val);
+  u8g2.drawStr(RIGHT_COL_X, 15, val);
 }
 
 /**
  * Disegna il valore apertura valvola EGR con errore tra parentesi.
- * Formato: "44%(30)" — colonna destra (cachedRightX), y=49.
+ * Formato: "44%(30)" — colonna destra (RIGHT_COL_X), y=54.
  * @see updateDisplay()
  * @modified 31/03/26 — aggiunto errore EGR (PID 0x2D) tra parentesi
  */
@@ -869,7 +864,7 @@ void drawEgrValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(cachedRightX, 49, val);
+  u8g2.drawStr(RIGHT_COL_X, 50, val);
 }
 
 /**
@@ -877,44 +872,18 @@ void drawEgrValue() {
  * In landscape usa aggiornamento parziale: ridisegna solo le tile modificate
  * invece dell'intero framebuffer, riducendo il trasferimento I2C da ~1024 a ~256-384 byte.
  * Le etichette statiche (BOOST, TEMP, COPPIA, EGR) vengono disegnate una sola volta.
- * In portrait usa sendBuffer completo (guadagno parziale minimo su 64px).
  *
- * Tile layout landscape (font 7x14B, 14px alto):
+ * Tile layout landscape (font t0_14b, 14px alto):
  *   Etichette riga 1 (y=0):  pixel 0-13  -> tile rows 0-1
- *   Valori riga 1 (y=14):    pixel 14-27 -> tile rows 1-3
- *   Etichette riga 2 (y=35): pixel 35-48 -> tile rows 4-6
- *   Valori riga 2 (y=49):    pixel 49-62 -> tile rows 6-7
+ *   Valori riga 1 (y=15):    pixel 15-28 -> tile rows 1-3
+ *   Etichette riga 2 (y=37): pixel 37-50 -> tile rows 4-6
+ *   Valori riga 2 (y=52):    pixel 52-63 -> tile rows 6-7
  *
  * @modified 24/03/26 — aggiornamento parziale con dirty tracking e updateDisplayArea()
  */
 void updateDisplay() {
-#if DISPLAY_ORIENTATION == 0
   // --- LANDSCAPE (128x64) con aggiornamento parziale ---
   u8g2.setFont(u8g2_font_7x14B_tr);
-
-  // Prepara stringhe colonna destra per calcolo rightX dinamico
-  // Colonna destra: TEMP (riga 1) + EGR (riga 2)
-  char rVal1[14];
-  char rVal2[14];
-  if (coolantSupported && coolantAvailable) {
-    snprintf(rVal1, sizeof(rVal1), "%d C", coolantC);
-  } else {
-    snprintf(rVal1, sizeof(rVal1), "N/D");
-  }
-  if (egrSupported && egrAvailable) {
-    snprintf(rVal2, sizeof(rVal2), "%d%%(%d)", egrPct, egrErrPct);
-  } else {
-    snprintf(rVal2, sizeof(rVal2), "N/D");
-  }
-
-  const char* rightStrs[] = { "TEMP", rVal1, "EGR", rVal2 };
-  int newRightX = calcRightColumnX(rightStrs, 4, 128);
-
-  // Se rightX e' cambiato (raro: solo con valori molto larghi), forza ridisegno completo
-  if (newRightX != cachedRightX) {
-    labelsDrawn = false;
-    cachedRightX = newRightX;
-  }
 
   if (!labelsDrawn) {
     // --- RIDISEGNO COMPLETO: etichette + valori + sendBuffer ---
@@ -922,9 +891,9 @@ void updateDisplay() {
 
     // Etichette statiche
     u8g2.drawStr(0, 0, "BOOST");
-    u8g2.drawStr(cachedRightX, 0, "TEMP");
+    u8g2.drawStr(RIGHT_COL_X, 0, "TEMP");
     u8g2.drawStr(0, 35, "COPPIA");
-    u8g2.drawStr(cachedRightX, 35, "EGR");
+    u8g2.drawStr(RIGHT_COL_X, 35, "EGR");
 
     // Valori iniziali
     drawBoostValue();
@@ -954,7 +923,7 @@ void updateDisplay() {
 
   // Boost (colonna sinistra, riga 1)
   if (curBoostInt != prevBoostInt) {
-    clearValueArea(0, 14, cachedRightX, 14);
+    clearValueArea(0, 15, RIGHT_COL_X, 14);
     drawBoostValue();
     prevBoostInt = curBoostInt;
     row1dirty = true;
@@ -962,7 +931,7 @@ void updateDisplay() {
 
   // Temperatura liquido (colonna destra, riga 1)
   if (curCoolantC != prevCoolantC) {
-    clearValueArea(cachedRightX, 14, 128 - cachedRightX, 14);
+    clearValueArea(RIGHT_COL_X, 15, 128 - RIGHT_COL_X, 14);
     drawCoolantValue();
     prevCoolantC = curCoolantC;
     row1dirty = true;
@@ -970,7 +939,7 @@ void updateDisplay() {
 
   // Coppia stimata (colonna sinistra, riga 2)
   if (curTorqueNm != prevTorqueNm) {
-    clearValueArea(0, 49, cachedRightX, 14);
+    clearValueArea(0, 50, RIGHT_COL_X, 14);
     drawTorqueValue();
     prevTorqueNm = curTorqueNm;
     row2dirty = true;
@@ -978,7 +947,7 @@ void updateDisplay() {
 
   // EGR (colonna destra, riga 2)
   if (curEgrPct != prevEgrPct) {
-    clearValueArea(cachedRightX, 49, 128 - cachedRightX, 14);
+    clearValueArea(RIGHT_COL_X, 50, 128 - RIGHT_COL_X, 14);
     drawEgrValue();
     prevEgrPct = curEgrPct;
     row2dirty = true;
@@ -991,50 +960,6 @@ void updateDisplay() {
   if (row2dirty) {
     u8g2.updateDisplayArea(0, 6, 16, 2);  // Tile rows 6-7 (pixel 48-63)
   }
-
-#else
-  // --- PORTRAIT (64x128) --- sendBuffer completo (mapping tile R1 troppo complesso)
-  u8g2.clearBuffer();
-  char line[11];
-
-  u8g2.setFont(u8g2_font_6x13B_tr);
-
-  if (mapSupported && mapAvailable) {
-    int bc = (int)(boostBar * 100.0f);
-    int a = abs(bc);
-    if (bc >= 0) {
-      snprintf(line, sizeof(line), "BOOST %d.%02d", a / 100, a % 100);
-    } else {
-      snprintf(line, sizeof(line), "BOOST-%d.%02d", a / 100, a % 100);
-    }
-  } else {
-    snprintf(line, sizeof(line), "BOOST N/D");
-  }
-  u8g2.drawStr(0, 27, line);
-
-  if (loadSupported && loadAvailable) {
-    snprintf(line, sizeof(line), "COPPIA %d", torqueNm);
-  } else {
-    snprintf(line, sizeof(line), "COPPIA N/D");
-  }
-  u8g2.drawStr(0, 47, line);
-
-  if (coolantSupported && coolantAvailable) {
-    snprintf(line, sizeof(line), "TEMP %d C", coolantC);
-  } else {
-    snprintf(line, sizeof(line), "TEMP N/D");
-  }
-  u8g2.drawStr(0, 67, line);
-
-  if (egrSupported && egrAvailable) {
-    snprintf(line, sizeof(line), "EGR %d(%d)", egrPct, egrErrPct);
-  } else {
-    snprintf(line, sizeof(line), "EGR N/D");
-  }
-  u8g2.drawStr(0, 87, line);
-
-  u8g2.sendBuffer();
-#endif
 }
 
 /**
@@ -1044,10 +969,7 @@ void updateDisplay() {
 void drawDTCScreen(uint8_t page) {
   u8g2.clearBuffer();
 
-#if DISPLAY_ORIENTATION == 0
-  // --- LANDSCAPE (128x64) ---
-  // Titolo con numero pagina se piu' di una pagina DTC
-  uint8_t perPage = DTC_PER_PAGE_LAND;
+  uint8_t perPage = DTC_PER_PAGE;
   uint8_t dtcPages = (dtcCount + perPage - 1) / perPage;
   char title[22];
   if (dtcPages > 1) {
@@ -1074,39 +996,6 @@ void drawDTCScreen(uint8_t page) {
       u8g2.drawStr(0, yBase + 11, descBuf);
     }
   }
-
-#else
-  // --- PORTRAIT (64x128) ---
-  uint8_t perPage = DTC_PER_PAGE_PORT;
-  uint8_t dtcPages = (dtcCount + perPage - 1) / perPage;
-  char title[16];
-  if (dtcPages > 1) {
-    snprintf(title, sizeof(title), "ERR(%d) %d/%d", dtcCount, page + 1, dtcPages);
-  } else {
-    snprintf(title, sizeof(title), "ERRORI (%d)", dtcCount);
-  }
-  u8g2.setFont(u8g2_font_6x13B_tr);
-  u8g2.drawStr(0, 2, title);
-
-  uint8_t startIdx = page * perPage;
-  for (int i = 0; i < perPage && (startIdx + i) < dtcCount; i++) {
-    int yBase = 22 + i * 36;
-    char codeStr[6];
-    decodeDTC(dtcCodes[startIdx + i], codeStr);
-    u8g2.setFont(u8g2_font_6x13B_tr);
-    u8g2.drawStr(0, yBase, codeStr);
-
-    const char* desc = getDTCDescription(dtcCodes[startIdx + i]);
-    if (desc != NULL) {
-      char descBuf[22];
-      strncpy_P(descBuf, desc, sizeof(descBuf) - 1);
-      descBuf[sizeof(descBuf) - 1] = '\0';
-      u8g2.setFont(u8g2_font_5x8_tr);
-      u8g2.drawStr(0, yBase + 14, descBuf);
-    }
-  }
-
-#endif
 
   u8g2.sendBuffer();
 }
@@ -1240,12 +1129,12 @@ void printAdvancedDiagnostics() {
     Serial.println(F(" kPa  [livello mare: 101 kPa]"));
   } else { Serial.println(F("  13. Pressione baro: N/D")); }
 
-  // 14. Tensione ECU (0x42) [0-65.5 V]
+  // 14. Batteria (0x42) [0-65.5 V]
   if (queryPID(0x42, data, &len)) {
     volts = ((float)((data[3] << 8) | data[4])) / 1000.0f; hVolts = true;
-    Serial.print(F("  14. Tensione ECU: ")); Serial.print(volts, 1);
+    Serial.print(F("  14. Batteria: ")); Serial.print(volts, 1);
     Serial.println(F(" V  [motore acceso: 13.5-14.5 V]"));
-  } else { Serial.println(F("  14. Tensione ECU: N/D")); }
+  } else { Serial.println(F("  14. Batteria: N/D")); }
 
   // 15. Temp. esterna (0x46) [-40..215 C]
   if (queryPID(0x46, data, &len)) {
@@ -1306,13 +1195,6 @@ void printAdvancedDiagnostics() {
     Serial.print(F("  22. Avviamenti da reset: ")); Serial.println(data[3]);
   } else { Serial.println(F("  22. Avviamenti da reset: N/D")); }
 
-  // 23. Km da reset DTC (0x31)
-  if (queryPID(0x31, data, &len)) {
-    int kmReset = (data[3] << 8) | data[4];
-    Serial.print(F("  23. Km da reset DTC: ")); Serial.print(kmReset);
-    Serial.println(F(" km"));
-  } else { Serial.println(F("  23. Km da reset DTC: N/D")); }
-
   // ---- VALORI CALCOLATI ----
   Serial.println(F("  --- CALCOLATI ---"));
 
@@ -1323,9 +1205,13 @@ void printAdvancedDiagnostics() {
     Serial.println(F(" bar  [aspira: <0, turbo: 0.3-1.5]"));
   } else { Serial.println(F("  24. Boost: N/D")); }
 
-  // 25-27. Coppia, Potenza kW, Potenza CV, 47. BSFC
+  // 25-27. Coppia (TorqueEstimator), Potenza kW, Potenza CV, 47. Consumo specifico
   if (hLoad) {
-    int torqueNmL = (int)(loadPctL * 400.0f / 100.0f);
+    float tRailKpa = hRail ? (float)railBar * 100.0f : NAN;
+    float tVoltsV = hVolts ? volts : NAN;
+    float tBaroKpa = hBaro ? baroKpa : NAN;
+    int torqueNmL = (int)Audi27TDI140kW::estimateEngineTorqueNm(
+      loadPctL, (float)rpm, mafGs, mapKpa, iatC, tRailKpa, tVoltsV, tBaroKpa, false);
     Serial.print(F("  25. Coppia stimata: ")); Serial.print(torqueNmL);
     Serial.println(F(" Nm  [idle: 60-100, max: 400]"));
 
@@ -1340,29 +1226,29 @@ void printAdvancedDiagnostics() {
       if (hMaf && hLambda && powKw > 1.0f) {
         float fGs = mafGs / (14.5f * (lambdaV > 0.5f ? lambdaV : 1.0f));
         float bsfc = (fGs * 3600.0f) / powKw;
-        Serial.print(F("  47. BSFC: ")); Serial.print((int)bsfc);
+        Serial.print(F("  47. Cons. specifico:")); Serial.print((int)bsfc);
         Serial.println(F(" g/kWh  [ottimo: 200-250, normale: 250-350]"));
-      } else { Serial.println(F("  47. BSFC: N/D (potenza insufficiente)")); }
+      } else { Serial.println(F("  47. Cons. specifico:N/D (potenza insufficiente)")); }
     } else {
       Serial.println(F("  26. Potenza kW: N/D"));
       Serial.println(F("  27. Potenza CV: N/D"));
-      Serial.println(F("  47. BSFC: N/D"));
+      Serial.println(F("  47. Cons. specifico:N/D"));
     }
   } else {
     Serial.println(F("  25. Coppia: N/D"));
     Serial.println(F("  26. Potenza kW: N/D"));
     Serial.println(F("  27. Potenza CV: N/D"));
-    Serial.println(F("  47. BSFC: N/D"));
+    Serial.println(F("  47. Cons. specifico:N/D"));
   }
 
-  // 28. AFR effettivo
+  // 28. Air/Fuel Ratio
   if (hLambda) {
     float afr = lambdaV * 14.5f;
-    Serial.print(F("  28. AFR effettivo: ")); Serial.print(afr, 1);
+    Serial.print(F("  28. Air/Fuel Ratio: ")); Serial.print(afr, 1);
     Serial.println(F("  [diesel: 18-50, stechiometrico: 14.5]"));
-  } else { Serial.println(F("  28. AFR: N/D")); }
+  } else { Serial.println(F("  28. Air/Fuel Ratio: N/D")); }
 
-  // 29. Consumo L/h
+  // 30. Consumo L/100km
   float fuelLh = 0;
   bool haveFuel = false;
   if (hMaf) {
@@ -1370,11 +1256,7 @@ void printAdvancedDiagnostics() {
     float fuelGs = mafGs / (14.5f * lam);
     fuelLh = (fuelGs * 3600.0f) / 835.0f;
     haveFuel = true;
-    Serial.print(F("  29. Consumo: ")); Serial.print(fuelLh, 1);
-    Serial.println(F(" L/h  [idle: 0.8-1.5, crociera: 4-8, max: 15-25]"));
-  } else { Serial.println(F("  29. Consumo L/h: N/D")); }
-
-  // 30. Consumo L/100km
+  }
   if (haveFuel && hSpeed && speedKmh > 3) {
     float l100 = (fuelLh / (float)speedKmh) * 100.0f;
     Serial.print(F("  30. Consumo: ")); Serial.print(l100, 1);
@@ -1414,13 +1296,6 @@ void printAdvancedDiagnostics() {
     Serial.println(F("  [1.0=aspirato, 1.5=0.5bar, 2.0=1bar]"));
   } else { Serial.println(F("  34. Rapporto compr. turbo: N/D")); }
 
-  // 35. Delta temp motore-ambiente
-  if (hCool && hAmb) {
-    int delta = (int)(coolC - ambC);
-    Serial.print(F("  35. Delta temp mot-amb: ")); Serial.print(delta);
-    Serial.println(F(" C  [regime: 60-80 C sopra ambiente]"));
-  } else { Serial.println(F("  35. Delta temp mot-amb: N/D")); }
-
   // 36. Efficienza volumetrica
   if (hMaf && hRpm && hMap && hIat && rpm > 0) {
     float rho = (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f));
@@ -1445,11 +1320,11 @@ void printAdvancedDiagnostics() {
     Serial.println(F(" %  [normale: -5..+5%]"));
   } else { Serial.println(F("  39. Delta farfalla-pedale: N/D")); }
 
-  // 40. Stato DFCO
+  // 40. Taglio iniezione (la centralina taglia il gasolio durante il rilascio acceleratore)
   if (hLoad) {
     bool dfco = (loadPctL < 1.0f);
-    Serial.print(F("  40. DFCO: ")); Serial.println(dfco ? "ATTIVO (iniezione tagliata)" : "OFF");
-  } else { Serial.println(F("  40. DFCO: N/D")); }
+    Serial.print(F("  40. Taglio iniezione: ")); Serial.println(dfco ? "ATTIVO (consumo 0)" : "OFF");
+  } else { Serial.println(F("  40. Taglio iniezione: N/D")); }
 
   // 42. Rapporto CVT
   if (hRpm && hSpeed && speedKmh > 5 && rpm > 0) {
@@ -1481,30 +1356,6 @@ void printAdvancedDiagnostics() {
     }
   } else { Serial.println(F("  44. Variaz. boost: N/D (primo ciclo)")); }
 
-  // 45. Sottoraffredamento motore
-  if (hCool && hRuntime) {
-    bool undertemp = (coolC < 75.0f && runtimeS > 600);
-    Serial.print(F("  45. Sottoraffredamento: "));
-    Serial.println(undertemp ? "SI (termostato?)" : "NO");
-  } else { Serial.println(F("  45. Sottoraffredamento: N/D")); }
-
-  // 46. Stato batteria/alternatore
-  if (hVolts && hLoad) {
-    bool motoreAcceso = (loadPctL > 5.0f);
-    if (motoreAcceso) {
-      const char* stato = "OK";
-      if (volts < 12.5f) stato = "ALLARME BASSA";
-      else if (volts < 13.5f) stato = "Bassa";
-      else if (volts > 15.0f) stato = "ALLARME ALTA";
-      else if (volts > 14.5f) stato = "Alta";
-      Serial.print(F("  46. Stato batteria: ")); Serial.print(volts, 1);
-      Serial.print(F(" V -> ")); Serial.println(stato);
-    } else {
-      Serial.print(F("  46. Batteria (quadro): ")); Serial.print(volts, 1);
-      Serial.println(F(" V  [a motore spento: 12.2-12.8 V]"));
-    }
-  } else { Serial.println(F("  46. Stato batteria: N/D")); }
-
   prevSpeedKmh = hSpeed ? speedKmh : 0;
   prevMs = nowMs;
 
@@ -1517,54 +1368,23 @@ void printAdvancedDiagnostics() {
 // ============================================================
 
 /**
- * Calcola la posizione X per allineare un gruppo di stringhe al bordo destro del display.
- * Misura la larghezza di ogni stringa con il font corrente e restituisce
- * la X tale che la stringa piu' larga tocchi il bordo destro.
- *
- * @param strings   array di puntatori a stringa
- * @param count     numero di stringhe nell'array
- * @param displayW  larghezza display in pixel (128 per landscape)
- * @return posizione X da usare per drawStr()
- * @see updateDisplay()
- * @since 2026-03-20 mattia.Alesi
- */
-int calcRightColumnX(const char* strings[], int count, int displayW) {
-  int maxW = 0;
-  for (int i = 0; i < count; i++) {
-    int w = u8g2.getStrWidth(strings[i]);
-    if (w > maxW) maxW = w;
-  }
-  return displayW - maxW;
-}
-
-/**
  * Disegna una stringa centrata orizzontalmente nel display.
  * Se la stringa e' piu' larga del display, viene allineata a sinistra (x=0).
  * Il font deve essere gia' impostato prima della chiamata.
  * @since 31/03/26 Mattia Alesi
  */
 void drawStrCentered(int y, const char* str) {
-#if DISPLAY_ORIENTATION == 0
   int x = (128 - (int)u8g2.getStrWidth(str)) / 2;
-#else
-  int x = (64 - (int)u8g2.getStrWidth(str)) / 2;
-#endif
   u8g2.drawStr(x > 0 ? x : 0, y, str);
 }
 
-/** Disegna la schermata di scansione PID con stato e dettaglio — centrata H+V */
+/** Disegna la schermata di scansione PID con stato e dettaglio */
 void drawScanScreen(const char* status, const char* detail) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-#if DISPLAY_ORIENTATION == 0
   drawStrCentered(11, "SCANSIONE PID");
   drawStrCentered(27, status);
   drawStrCentered(43, detail);
-#else
-  drawStrCentered(43, "SCANSIONE PID");
-  drawStrCentered(59, status);
-  drawStrCentered(75, detail);
-#endif
   u8g2.sendBuffer();
 }
 
@@ -1575,15 +1395,9 @@ void drawScanScreen(const char* status, const char* detail) {
 void showError(const char* line1, const char* line2) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-#if DISPLAY_ORIENTATION == 0
   drawStrCentered(11, "ERRORE:");
   drawStrCentered(27, line1);
   drawStrCentered(43, line2);
-#else
-  drawStrCentered(43, "ERRORE:");
-  drawStrCentered(59, line1);
-  drawStrCentered(75, line2);
-#endif
   u8g2.sendBuffer();
   Serial.print(F("ERRORE: "));
   Serial.println(line1);

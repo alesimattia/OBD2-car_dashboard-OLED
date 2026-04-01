@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBD2 Monitor — Dashboard Live</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #111;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', -apple-system, Arial, sans-serif;
+    padding: 12px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    color: #00d4ff;
+    font-size: 1.2em;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 0.75em;
+    margin-bottom: 12px;
+  }
+  .section {
+    background: #1a1a2e;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #222;
+  }
+  .section-title {
+    color: #00d4ff;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid #222;
+    padding-bottom: 4px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 12px;
+  }
+  .item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 2px 0;
+  }
+  .label {
+    color: #888;
+    font-size: 0.75em;
+  }
+  .value {
+    color: #fff;
+    font-size: 0.9em;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .value.highlight {
+    color: #00d4ff;
+    font-size: 1.1em;
+  }
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .main-card {
+    background: #0f1a30;
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+    border: 1px solid #1a3060;
+  }
+  .main-card .label {
+    font-size: 0.7em;
+    color: #5588bb;
+    margin-bottom: 2px;
+  }
+  .main-card .value {
+    font-size: 1.4em;
+    color: #00d4ff;
+  }
+  .main-card .unit {
+    font-size: 0.65em;
+    color: #5588bb;
+    margin-left: 2px;
+  }
+  /* DTC box */
+  .dtc-box {
+    background: #2a1010;
+    border: 2px solid #cc3333;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+  .dtc-box .section-title {
+    color: #ff5555;
+    border-bottom-color: #551111;
+  }
+  .dtc-item {
+    padding: 4px 0;
+    border-bottom: 1px solid #331111;
+  }
+  .dtc-item:last-child { border-bottom: none; }
+  .dtc-code {
+    color: #ff8888;
+    font-weight: 700;
+    font-size: 0.95em;
+  }
+  .dtc-desc {
+    color: #cc8888;
+    font-size: 0.75em;
+  }
+  .mil-on {
+    display: inline-block;
+    background: #cc3333;
+    color: #fff;
+    font-size: 0.7em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+  }
+  .hidden { display: none; }
+  .status-bar {
+    text-align: center;
+    font-size: 0.65em;
+    color: #444;
+    margin-top: 8px;
+  }
+  .ok { color: #4a4; }
+  .warn { color: #ca4; }
+  .alarm { color: #f44; }
+  .main-card .value.alarm { color: #f44; }
+  .main-card .value.warn { color: #ca4; }
+</style>
+</head>
+<body>
+
+<h1>OBD2 Dashboard</h1>
+<p class="subtitle">Audi A5 B8 2.7 TDI CGKA</p>
+
+<!-- Dati principali -->
+<div class="section">
+  <div class="section-title">Dati principali</div>
+  <div class="main-grid">
+    <div class="main-card">
+      <div class="label">BOOST</div>
+      <div class="value" id="v_boost">+0.85</div>
+      <div class="unit">bar</div>
+    </div>
+    <div class="main-card">
+      <div class="label">TEMP</div>
+      <div class="value" id="v_coolant">92</div>
+      <div class="unit">&deg;C</div>
+    </div>
+    <div class="main-card">
+      <div class="label">COPPIA</div>
+      <div class="value" id="v_torque">160</div>
+      <div class="unit">Nm</div>
+    </div>
+    <div class="main-card">
+      <div class="label">EGR</div>
+      <div class="value" id="v_egr">44%(30)</div>
+      <div class="unit"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Motore -->
+<div class="section">
+  <div class="section-title">Motore</div>
+  <div class="grid">
+    <div class="item"><span class="label">Carico</span><span class="value" id="v_load">22.5 %</span></div>
+    <div class="item"><span class="label">RPM</span><span class="value" id="v_rpm">2100</span></div>
+    <div class="item"><span class="label">MAF</span><span class="value" id="v_maf">25.3 g/s</span></div>
+    <div class="item"><span class="label">Press. rail</span><span class="value" id="v_rail">850 bar</span></div>
+    <div class="item"><span class="label">Lambda</span><span class="value" id="v_lambda">1.800</span></div>
+    <div class="item"><span class="label">Air/Fuel Ratio</span><span class="value" id="v_afr">26.1</span></div>
+    <div class="item"><span class="label">Temp. liq.</span><span class="value" id="v_coolant2">92 &deg;C</span></div>
+    <div class="item"><span class="label">IAT</span><span class="value" id="v_iat">35 &deg;C</span></div>
+  </div>
+</div>
+
+<!-- Veicolo -->
+<div class="section">
+  <div class="section-title">Veicolo</div>
+  <div class="grid">
+    <div class="item"><span class="label">Velocit&agrave;</span><span class="value" id="v_speed">80 km/h</span></div>
+    <div class="item"><span class="label">Farfalla</span><span class="value" id="v_throttle">30 %</span></div>
+    <div class="item"><span class="label">Rapporto CVT</span><span class="value" id="v_gear">1.25</span></div>
+    <div class="item"><span class="label">Acceleraz.</span><span class="value" id="v_accel">0.50 m/s&sup2;</span></div>
+  </div>
+  <div class="item"><span class="label">Pedale D</span><span class="value" id="v_pedalD">32 %</span></div>
+  <div class="item"><span class="label">Pedale E</span><span class="value" id="v_pedalE">31 %</span></div>
+</div>
+
+<!-- Consumi -->
+<div class="section">
+  <div class="section-title">Consumi</div>
+  <div class="grid">
+    <div class="item"><span class="label">Consumo</span><span class="value" id="v_fuelL100">5.3 L/100</span></div>
+    <div class="item"><span class="label">Cons. specifico</span><span class="value" id="v_bsfc">245 g/kWh</span></div>
+    <div class="item"><span class="label">Potenza</span><span class="value" id="v_power">35.2 kW / 47.9 CV</span></div>
+  </div>
+</div>
+
+<!-- Turbo -->
+<div class="section">
+  <div class="section-title">Turbo</div>
+  <div class="grid">
+    <div class="item"><span class="label">Boost</span><span class="value" id="v_boost2">+0.85 bar</span></div>
+    <div class="item"><span class="label">Rapporto compr.</span><span class="value" id="v_pr">1.78</span></div>
+    <div class="item"><span class="label">Eff. intercooler</span><span class="value" id="v_ic">72 %</span></div>
+    <div class="item"><span class="label">Variaz. boost</span><span class="value" id="v_boostRate">0.30 bar/s</span></div>
+  </div>
+</div>
+
+<!-- Diagnostica -->
+<div class="section">
+  <div class="section-title">Diagnostica</div>
+  <div class="grid">
+    <div class="item"><span class="label">Batteria</span><span class="value" id="v_volts">14.2 V</span></div>
+    <div class="item"><span class="label">Drift pedale</span><span class="value" id="v_drift">1 %</span></div>
+    <div class="item"><span class="label">Taglio iniezione</span><span class="value" id="v_dfco">OFF</span></div>
+    <div class="item"><span class="label">Eff. volum.</span><span class="value" id="v_volEff">85 %</span></div>
+    <div class="item"><span class="label">&Delta; farfalla</span><span class="value" id="v_dthrott">-2 %</span></div>
+  </div>
+</div>
+
+<!-- Ambiente -->
+<div class="section">
+  <div class="section-title">Ambiente</div>
+  <div class="grid">
+    <div class="item"><span class="label">Temp. esterna</span><span class="value" id="v_ambient">18 &deg;C</span></div>
+    <div class="item"><span class="label">Press. baro</span><span class="value" id="v_baro">101 kPa</span></div>
+    <div class="item"><span class="label">Altitudine</span><span class="value" id="v_alt">185 m</span></div>
+    <div class="item"><span class="label">Densit&agrave; aria</span><span class="value" id="v_airDens">1.150 kg/m&sup3;</span></div>
+  </div>
+</div>
+
+<!-- Contatori -->
+<div class="section">
+  <div class="section-title">Contatori</div>
+  <div class="grid">
+    <div class="item"><span class="label">Tempo motore</span><span class="value" id="v_runtime">0:20:34</span></div>
+    <div class="item"><span class="label">Km con MIL</span><span class="value" id="v_kmMil">0 km</span></div>
+    <div class="item"><span class="label">Avviamenti</span><span class="value" id="v_starts">15</span></div>
+  </div>
+</div>
+
+<!-- DTC box (visibile solo se ci sono errori) -->
+<div class="dtc-box" id="dtcBox">
+  <div class="section-title">Errori DTC <span class="mil-on" id="milBadge">MIL ON</span></div>
+  <div id="dtcList">
+    <div class="dtc-item"><span class="dtc-code">P0401</span> <span class="dtc-desc">Flusso EGR scarso</span></div>
+    <div class="dtc-item"><span class="dtc-code">P0234</span> <span class="dtc-desc">Sovrapressione turbo</span></div>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">Aggiornamento ogni 500ms &mdash; Simulazione</div>
+
+<script>
+/**
+ * Simulatore dati per monitor_preview.html
+ * Genera valori casuali realistici per visualizzare il layout della dashboard.
+ */
+function cls(base, val, redCond, yellowCond) {
+  return base + (redCond ? ' alarm' : (yellowCond ? ' warn' : ''));
+}
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+let prevSpeed = 80;
+let prevBoost = 0.85;
+let simTime = 1234;
+
+function simulateData() {
+  const load = randomBetween(15, 85);
+  const rpm = Math.round(randomBetween(800, 4200));
+  const speed = Math.round(randomBetween(0, 180));
+  const coolant = Math.round(randomBetween(40, 100));
+  const iat = Math.round(randomBetween(15, 55));
+  const maf = randomBetween(3, 70);
+  const rail = Math.round(randomBetween(250, 1600));
+  const lambda = randomBetween(1.0, 3.5);
+  const o2v = randomBetween(0.1, 0.8);
+  const egr = Math.round(randomBetween(0, 50));
+  const egrErr = Math.round(randomBetween(-8, 8));
+  const baro = Math.round(randomBetween(95, 103));
+  const volts = randomBetween(13.2, 14.8);
+  const ambient = Math.round(randomBetween(-5, 35));
+  const pedalD = Math.round(randomBetween(0, 80));
+  const pedalE = pedalD + Math.round(randomBetween(-2, 2));
+  const throttle = Math.round(randomBetween(0, 80));
+  const map = Math.round(randomBetween(90, 250));
+  const boost = (map - baro) / 100;
+  const torque = Math.round(load * 400 / 100);
+  const powerKw = torque * rpm / 9549;
+  const powerCv = powerKw * 1.36;
+  const afr = lambda * 14.5;
+  const fuelGs = maf / (14.5 * lambda);
+  const fuelLh = (fuelGs * 3600) / 835;
+  const fuelL100 = speed > 3 ? (fuelLh / speed) * 100 : 0;
+  const alt = Math.round(44330 * (1 - Math.pow(baro / 101.325, 0.1903)));
+  const airDens = (map * 1000) / (287.058 * (iat + 273.15));
+  const pr = map / baro;
+  const gearRatio = speed > 5 ? rpm / (speed * 7.9) : 0;
+  const drift = Math.abs(pedalD - pedalE);
+  const dfco = load < 1;
+  const accel = (speed - prevSpeed) / 0.5;
+  const boostRate = (boost - prevBoost) / 0.5;
+  const bsfc = powerKw > 1 ? (fuelGs * 3600) / powerKw : 0;
+  prevSpeed = speed;
+  prevBoost = boost;
+  simTime++;
+
+  const h = Math.floor(simTime / 3600);
+  const m = Math.floor((simTime % 3600) / 60);
+  const s = simTime % 60;
+  const runtime = h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+
+  // Aggiorna DOM
+  const sign = boost >= 0 ? '+' : '';
+  document.getElementById('v_boost').textContent = sign + boost.toFixed(2);
+  document.getElementById('v_boost').className = cls('value highlight', boost, boost > 1.5, false);
+  document.getElementById('v_coolant').textContent = coolant;
+  document.getElementById('v_coolant').className = cls('value highlight', coolant, coolant > 110, coolant > 100);
+  document.getElementById('v_torque').textContent = torque;
+  document.getElementById('v_egr').textContent = egr + '%(' + egrErr + ')';
+  document.getElementById('v_egr').className = cls('value highlight', egrErr, Math.abs(egrErr) > 10, false);
+
+  document.getElementById('v_load').textContent = load.toFixed(1) + ' %';
+  document.getElementById('v_rpm').textContent = rpm;
+  document.getElementById('v_maf').textContent = maf.toFixed(1) + ' g/s';
+  document.getElementById('v_rail').textContent = rail + ' bar';
+  document.getElementById('v_rail').className = cls('value', rail, rail < 200 || rail > 1850, false);
+  document.getElementById('v_lambda').textContent = lambda.toFixed(3);
+  document.getElementById('v_lambda').className = cls('value', lambda, lambda < 0.8, false);
+  document.getElementById('v_afr').textContent = afr.toFixed(1);
+  document.getElementById('v_coolant2').textContent = coolant + ' \u00B0C';
+  document.getElementById('v_coolant2').className = cls('value', coolant, coolant > 110, coolant > 100);
+  document.getElementById('v_iat').textContent = iat + ' \u00B0C';
+
+  document.getElementById('v_speed').textContent = speed + ' km/h';
+  document.getElementById('v_pedalD').textContent = pedalD + ' %';
+  document.getElementById('v_pedalE').textContent = pedalE + ' %';
+  document.getElementById('v_throttle').textContent = throttle + ' %';
+  document.getElementById('v_gear').textContent = gearRatio > 0 ? gearRatio.toFixed(2) : 'N/D';
+  document.getElementById('v_accel').textContent = accel.toFixed(2) + ' m/s\u00B2';
+
+  document.getElementById('v_fuelL100').textContent = fuelL100 > 0 ? fuelL100.toFixed(1) + ' L/100' : 'N/D';
+  document.getElementById('v_bsfc').textContent = bsfc > 0 ? Math.round(bsfc) + ' g/kWh' : 'N/D';
+  document.getElementById('v_bsfc').className = cls('value', bsfc, bsfc > 400 && bsfc > 0, false);
+  document.getElementById('v_power').textContent = powerKw.toFixed(1) + ' kW / ' + powerCv.toFixed(1) + ' CV';
+
+  document.getElementById('v_boost2').textContent = sign + boost.toFixed(2) + ' bar';
+  document.getElementById('v_pr').textContent = pr.toFixed(2);
+  const icEff = Math.round(randomBetween(55, 85));
+  document.getElementById('v_ic').textContent = boost > 0 ? icEff + ' %' : 'N/D';
+  document.getElementById('v_ic').className = cls('value', icEff, boost > 0 && icEff < 40, false);
+  document.getElementById('v_boostRate').textContent = boostRate.toFixed(2) + ' bar/s';
+
+  document.getElementById('v_volts').textContent = volts.toFixed(1) + ' V';
+  document.getElementById('v_volts').className = cls('value', volts, volts < 12.5 || volts > 15.0, volts < 13.0 || volts > 14.5);
+  document.getElementById('v_drift').textContent = drift + ' %';
+  document.getElementById('v_drift').className = cls('value', drift, drift > 5, drift >= 3);
+  document.getElementById('v_dfco').textContent = dfco ? 'ATTIVO' : 'OFF';
+  const volEff = Math.round(randomBetween(70, 95));
+  document.getElementById('v_volEff').textContent = volEff + ' %';
+  document.getElementById('v_volEff').className = cls('value', volEff, volEff < 60, false);
+  document.getElementById('v_dthrott').textContent = (throttle - pedalD) + ' %';
+
+  document.getElementById('v_ambient').textContent = ambient + ' \u00B0C';
+  document.getElementById('v_baro').textContent = baro + ' kPa';
+  document.getElementById('v_alt').textContent = alt + ' m';
+  document.getElementById('v_airDens').textContent = airDens.toFixed(3) + ' kg/m\u00B3';
+
+  document.getElementById('v_runtime').textContent = runtime;
+  document.getElementById('v_kmMil').textContent = '0 km';
+  document.getElementById('v_starts').textContent = '15';
+
+  // DTC box: mostra/nascondi simulando presenza errori
+  const showDtc = (simTime % 20) < 10;  // alterna ogni 10 cicli
+  document.getElementById('dtcBox').className = showDtc ? 'dtc-box' : 'dtc-box hidden';
+}
+
+setInterval(simulateData, 500);
+simulateData();
+</script>
+</body>
+</html>

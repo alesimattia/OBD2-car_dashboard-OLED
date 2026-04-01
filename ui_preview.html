@@ -24,43 +24,6 @@
     font-size: 0.9em;
   }
 
-  /* ---- Tab bar ---- */
-  .tab-bar {
-    display: flex;
-    justify-content: center;
-    gap: 0;
-    margin-bottom: 28px;
-  }
-  .tab-btn {
-    padding: 10px 32px;
-    font-size: 1em;
-    font-weight: 600;
-    border: 2px solid #0f3460;
-    background: #16213e;
-    color: #7a8ba0;
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s;
-    outline: none;
-    font-family: inherit;
-  }
-  .tab-btn:first-child { border-radius: 8px 0 0 8px; }
-  .tab-btn:last-child  { border-radius: 0 8px 8px 0; }
-  .tab-btn.active {
-    background: #0f3460;
-    color: #00d4ff;
-    border-color: #00d4ff;
-  }
-  .tab-btn:hover:not(.active) {
-    background: #1a2a50;
-    color: #b0c0d0;
-  }
-  .tab-info {
-    text-align: center;
-    color: #556;
-    font-size: 0.82em;
-    margin-top: -18px;
-    margin-bottom: 22px;
-  }
 
   /* ---- Grid ---- */
   .screens-grid {
@@ -69,9 +32,6 @@
     gap: 28px;
     max-width: 1200px;
     margin: 0 auto;
-  }
-  .screens-grid.portrait-grid {
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   }
   .screen-card {
     background: #16213e;
@@ -125,30 +85,21 @@
 <h1>OBD2 WiFi Monitor &mdash; Schermate Display</h1>
 <p class="subtitle">Simulazione display OLED SH1106 &mdash; Scala 4&times;</p>
 
-<div class="tab-bar">
-  <button class="tab-btn active" id="tabLand" onclick="switchTab('landscape')">Landscape 128&times;64</button>
-  <button class="tab-btn" id="tabPort" onclick="switchTab('portrait')">Portrait 64&times;128</button>
-</div>
-<p class="tab-info" id="tabInfo">128&times;64 pixel &mdash; Orientamento orizzontale (DISPLAY_ORIENTATION 0)</p>
-
 <div class="screens-grid" id="grid"></div>
 
 <script>
 /**
  * Simulatore display OLED monocromatico.
  * Riproduce fedelmente le coordinate e i font u8g2 usati nel firmware
- * per entrambe le orientazioni: landscape (128x64) e portrait (64x128).
+ * per l'orientazione landscape (128x64).
  *
  * Font simulati (bitmap 1-bit):
  *   u8g2_font_5x7_tr   -> 5x7 px
- *   u8g2_font_5x8_tr   -> 5x8 px (portrait DTC desc)
  *   u8g2_font_6x10_tr  -> 6x10 px
- *   u8g2_font_6x13B_tr -> 6x13 px bold (portrait monitor/DTC)
- *   u8g2_font_7x14B_tr -> 7x14 px bold (landscape monitor)
+ *   u8g2_font_7x14B_tr -> 7x14 px bold (monitor)
  */
 
 const SCALE = 4;
-let currentOrientation = 'landscape';
 
 /* ============================================================ */
 /* OLED Canvas Factory                                          */
@@ -202,9 +153,7 @@ function createOLED(parentEl, dispW, dispH) {
 
   return {
     draw5x7:   (x, y, s) => drawStr(FONT_5x7, 5, 7, x, y, s),
-    draw5x8:   (x, y, s) => drawStr(FONT_5x8, 5, 8, x, y, s),
     draw6x10:  (x, y, s) => drawStr(FONT_6x10, 6, 10, x, y, s),
-    draw6x13B: (x, y, s) => drawStr(FONT_6x13B, 6, 13, x, y, s),
     draw7x14B: (x, y, s) => drawStr(FONT_7x14B, 7, 14, x, y, s),
     setPixel, flush,
   };
@@ -455,40 +404,9 @@ function buildFont7x14B() {
   return f;
 }
 
-/* ============================================================ */
-/* Font derivati: 5x8 (da 5x7 + 1 riga) e 6x13B (da 6x10 bold)*/
-/* ============================================================ */
-
-function buildFont5x8() {
-  const base = buildFont5x7();
-  const f = {};
-  for (const [code, rows] of Object.entries(base)) {
-    f[code] = [...rows, 0];
-  }
-  return f;
-}
-
-function buildFont6x13B() {
-  const base = buildFont6x10();
-  const f = {};
-  for (const [code, rows] of Object.entries(base)) {
-    const bold = [];
-    bold.push(0);
-    bold.push(0);
-    for (const r of rows) {
-      bold.push(r | (r >> 1));
-    }
-    bold.push(0);
-    f[code] = bold;
-  }
-  return f;
-}
-
 /* ---- Costruzione font globali ---- */
 const FONT_5x7   = buildFont5x7();
-const FONT_5x8   = buildFont5x8();
 const FONT_6x10  = buildFont6x10();
-const FONT_6x13B = buildFont6x13B();
 const FONT_7x14B = buildFont7x14B();
 
 /* ============================================================ */
@@ -505,16 +423,6 @@ const screens = [
       o.draw6x10(7, 27, "A5 B8 2.7 TDI CGKA");
       o.draw6x10(16, 54, "OTA: 192.168.4.1");
     },
-    drawPort(o) {
-      o.draw6x10(20, 10, "OBD2");
-      o.draw6x10(8, 24,  "WIFI MON");
-      o.draw6x10(17, 38, "A5 B8");
-      o.draw6x10(11, 52, "2.7 TDI");
-      o.draw6x10(20, 66, "CGKA");
-      o.draw6x10(20, 90, "OTA:");
-      o.draw6x10(8, 104,  "192.168.");
-      o.draw6x10(20, 118, ".4.1");
-    },
   },
   {
     title: '2. Connessione WiFi',
@@ -524,11 +432,6 @@ const screens = [
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(16, 27, "SSID: WiFi_OBDII");
       o.draw6x10(25, 43, "PSW: (aperta)");
-    },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(0, 59, "SSID: WiFi_OBDII");
-      o.draw6x10(0, 75, "PSW: (aperta)");
     },
   },
   {
@@ -540,11 +443,6 @@ const screens = [
       o.draw6x10(40, 27, "WiFi OK!");
       o.draw6x10(46, 43, "TCP...");
     },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(8, 59, "WiFi OK!");
-      o.draw6x10(14, 75, "TCP...");
-    },
   },
   {
     title: '4. WiFi + TCP OK',
@@ -555,11 +453,6 @@ const screens = [
       o.draw6x10(40, 27, "WiFi OK!");
       o.draw6x10(43, 43, "TCP OK!");
     },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(8, 59, "WiFi OK!");
-      o.draw6x10(11, 75, "TCP OK!");
-    },
   },
   {
     title: '5. Init ELM327',
@@ -568,11 +461,6 @@ const screens = [
     drawLand(o) {
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(22, 27, "Init ELM327...");
-    },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(20, 59, "Init");
-      o.draw6x10(5, 75, "ELM327...");
     },
   },
   {
@@ -583,10 +471,6 @@ const screens = [
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(34, 27, "ELM327 OK!");
     },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(2, 59, "ELM327 OK!");
-    },
   },
   {
     title: '7. Scansione PID',
@@ -596,11 +480,6 @@ const screens = [
       o.draw6x10(25, 11, "SCANSIONE PID");
       o.draw6x10(28, 27, "Scansione...");
       o.draw6x10(31, 43, "Range: 0x20");
-    },
-    drawPort(o) {
-      o.draw6x10(0, 43, "SCANSIONE PID");
-      o.draw6x10(0, 59, "Scansione...");
-      o.draw6x10(0, 75, "Range: 0x20");
     },
   },
   {
@@ -615,38 +494,21 @@ const screens = [
       o.draw5x7(0, 44, "TEMP:   SI");
       o.draw5x7(0, 54, "EGR:    SI");
     },
-    drawPort(o) {
-      o.draw5x7(0, 0, "SCAN COMPLETA");
-      o.draw5x7(0, 12, "PID trovati: 28");
-      o.draw5x7(0, 30, "BOOST:  SI");
-      o.draw5x7(0, 42, "COPPIA: SI");
-      o.draw5x7(0, 54, "TEMP:   SI");
-      o.draw5x7(0, 66, "EGR:    SI");
-    },
   },
   {
     title: '9. Monitor dati (principale)',
     tag: 'monitor', tagLabel: 'MONITOR',
     desc: 'Schermata principale con i 4 valori monitorati. Aggiornamento parziale ~2Hz.',
     drawLand(o) {
-      const rightStrs = ["COPPIA", "160 Nm", "EGR", "44%(30)"];
-      let maxW = 0;
-      for (const s of rightStrs) { const w = s.length * 7; if (w > maxW) maxW = w; }
-      const rx = 128 - maxW;
+      const rx = 79;
       o.draw7x14B(0, 0, "BOOST");
-      o.draw7x14B(rx, 0, "COPPIA");
-      o.draw7x14B(0, 14, "+0.85 bar");
-      o.draw7x14B(rx, 14, "160 Nm");
-      o.draw7x14B(0, 35, "TEMP");
+      o.draw7x14B(rx, 0, "TEMP");
+      o.draw7x14B(0, 15, "+0.85 bar");
+      o.draw7x14B(rx, 15, "92 C");
+      o.draw7x14B(0, 35, "COPPIA");
       o.draw7x14B(rx, 35, "EGR");
-      o.draw7x14B(0, 49, "92 C");
-      o.draw7x14B(rx, 49, "44%(30)");
-    },
-    drawPort(o) {
-      o.draw6x13B(0, 27, "BOOST +0.85");
-      o.draw6x13B(0, 47, "COPPIA 160");
-      o.draw6x13B(0, 67, "TEMP 92 C");
-      o.draw6x13B(0, 87, "EGR 44(30)");
+      o.draw7x14B(0, 50, "160 Nm");
+      o.draw7x14B(rx, 50, "44%(30)");
     },
   },
   {
@@ -654,24 +516,15 @@ const screens = [
     tag: 'monitor', tagLabel: 'MONITOR',
     desc: 'Boost negativo (aspirazione naturale) e un sensore non disponibile.',
     drawLand(o) {
-      const rightStrs = ["COPPIA", "80 Nm", "EGR", "N/D"];
-      let maxW = 0;
-      for (const s of rightStrs) { const w = s.length * 7; if (w > maxW) maxW = w; }
-      const rx = 128 - maxW;
+      const rx = 79;
       o.draw7x14B(0, 0, "BOOST");
-      o.draw7x14B(rx, 0, "COPPIA");
-      o.draw7x14B(0, 14, "-0.42 bar");
-      o.draw7x14B(rx, 14, "80 Nm");
-      o.draw7x14B(0, 35, "TEMP");
+      o.draw7x14B(rx, 0, "TEMP");
+      o.draw7x14B(0, 15, "-0.42 bar");
+      o.draw7x14B(rx, 15, "45 C");
+      o.draw7x14B(0, 35, "COPPIA");
       o.draw7x14B(rx, 35, "EGR");
-      o.draw7x14B(0, 49, "45 C");
-      o.draw7x14B(rx, 49, "N/D");
-    },
-    drawPort(o) {
-      o.draw6x13B(0, 27, "BOOST-0.42");
-      o.draw6x13B(0, 47, "COPPIA 80");
-      o.draw6x13B(0, 67, "TEMP 45 C");
-      o.draw6x13B(0, 87, "EGR N/D");
+      o.draw7x14B(0, 50, "80 Nm");
+      o.draw7x14B(rx, 50, "N/D");
     },
   },
   {
@@ -685,28 +538,16 @@ const screens = [
       o.draw6x10(0, 42, "P0234");
       o.draw6x10(0, 53, "Sovrapressione turbo");
     },
-    drawPort(o) {
-      o.draw6x13B(0, 2, "ERRORI (3)");
-      o.draw6x13B(0, 22, "P0401");
-      o.draw5x8(0, 36, "Flusso EGR scarso");
-      o.draw6x13B(0, 58, "P0234");
-      o.draw5x8(0, 72, "Sovrapressione turbo");
-      o.draw6x13B(0, 94, "P2002");
-      o.draw5x8(0, 108, "Efficienza DPF bassa");
-    },
   },
   {
     title: '12. Errori DTC (pagina 2)',
     tag: 'dtc', tagLabel: 'DTC',
-    descLand: 'Seconda pagina DTC in landscape. Alterna automaticamente ogni 5 secondi.',
-    descPort: 'In portrait tutti e 3 i DTC entrano in una pagina (vedi schermata 11).',
-    desc: '',
+    desc: 'Seconda pagina DTC. Alterna automaticamente ogni 5 secondi.',
     drawLand(o) {
       o.draw7x14B(0, 0, "ERRORI (3) pag.2/2");
       o.draw6x10(0, 20, "P2002");
       o.draw6x10(0, 31, "Efficienza DPF bassa");
     },
-    drawPort: null,
   },
   {
     title: '13. Errore: rete non trovata',
@@ -716,12 +557,6 @@ const screens = [
       o.draw6x10(43, 11, "ERRORE:");
       o.draw6x10(19, 27, "Rete WiFi_OBDII");
       o.draw6x10(28, 43, " non trovata");
-    },
-    drawPort(o) {
-      o.draw6x10(11, 35, "ERRORE:");
-      o.draw6x10(20, 51, "Rete");
-      o.draw6x10(2, 67, "WiFi_OBDII");
-      o.draw6x10(0, 83, "non trovata");
     },
   },
   {
@@ -733,11 +568,6 @@ const screens = [
       o.draw6x10(31, 27, "TCP fallito");
       o.draw6x10(28, 43, "192.168.0.10");
     },
-    drawPort(o) {
-      o.draw6x10(11, 43, "ERRORE:");
-      o.draw6x10(0, 59, "TCP fallito");
-      o.draw6x10(0, 75, "192.168.0.10");
-    },
   },
   {
     title: '15. Errore: ECU non risponde',
@@ -748,11 +578,6 @@ const screens = [
       o.draw6x10(25, 27, "ECU non risp.");
       o.draw6x10(22, 43, "Quadro acceso?");
     },
-    drawPort(o) {
-      o.draw6x10(11, 43, "ERRORE:");
-      o.draw6x10(0, 59, "ECU non risp.");
-      o.draw6x10(0, 75, "Quadro acceso?");
-    },
   },
   {
     title: '16. Riconnessione',
@@ -762,76 +587,39 @@ const screens = [
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(16, 27, "Riconnessione..");
     },
-    drawPort(o) {
-      o.draw6x10(0, 43, "CONNESSIONE");
-      o.draw6x10(0, 59, "Riconnessione");
-      o.draw6x10(26, 75, "..");
-    },
   },
 ];
 
 /* ============================================================ */
-/* Rendering e Tab switching                                     */
+/* Rendering                                                     */
 /* ============================================================ */
 
-function renderAll(orientation) {
+function renderAll() {
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
-
-  const isLand = (orientation === 'landscape');
-  const dispW = isLand ? 128 : 64;
-  const dispH = isLand ? 64 : 128;
-
-  grid.className = isLand ? 'screens-grid' : 'screens-grid portrait-grid';
+  grid.className = 'screens-grid';
 
   for (const scr of screens) {
-    const drawFn = isLand ? scr.drawLand : scr.drawPort;
-
-    // Salta schermate non applicabili a questa orientazione
-    if (!drawFn) continue;
-
     const card = document.createElement('div');
     card.className = 'screen-card';
 
     const tagClass = 'tag-' + scr.tag;
-    const desc = isLand
-      ? (scr.descLand || scr.desc)
-      : (scr.descPort || scr.desc);
 
     card.innerHTML =
       '<div class="screen-title">' + scr.title +
       ' <span class="mode-tag ' + tagClass + '">' + scr.tagLabel + '</span></div>' +
-      '<div class="screen-desc">' + desc + '</div>';
+      '<div class="screen-desc">' + scr.desc + '</div>';
 
-    const o = createOLED(card, dispW, dispH);
-    drawFn(o);
+    const o = createOLED(card, 128, 64);
+    scr.drawLand(o);
     o.flush();
 
     grid.appendChild(card);
   }
 }
 
-function switchTab(orientation) {
-  currentOrientation = orientation;
-  const tabLand = document.getElementById('tabLand');
-  const tabPort = document.getElementById('tabPort');
-  const info = document.getElementById('tabInfo');
-
-  if (orientation === 'landscape') {
-    tabLand.classList.add('active');
-    tabPort.classList.remove('active');
-    info.textContent = '128\u00d764 pixel \u2014 Orientamento orizzontale (DISPLAY_ORIENTATION 0)';
-  } else {
-    tabPort.classList.add('active');
-    tabLand.classList.remove('active');
-    info.textContent = '64\u00d7128 pixel \u2014 Orientamento verticale (DISPLAY_ORIENTATION 1)';
-  }
-
-  renderAll(orientation);
-}
-
 // Render iniziale
-renderAll('landscape');
+renderAll();
 </script>
 </body>
 </html>
