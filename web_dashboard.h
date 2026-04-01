@@ -270,7 +270,7 @@ static void handleData(ESP8266WebServer& server) {
 
   // ---- Calcoli derivati ----
   float boost = (hMap && hBaro) ? (mapKpa - baroKpa) / 100.0f : 0;
-  int torque = hLoad ? (int)Audi27TDI140kW::estimateEngineTorqueNm(
+  int torque = hLoad ? (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
     loadPct, (float)rpm, mafGs, mapKpa, iatC,
     hRail ? (float)railBar * 100.0f : NAN,
     hV ? voltsV : NAN,

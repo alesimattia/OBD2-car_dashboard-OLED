@@ -36,60 +36,61 @@
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/dtc_descriptions.h"
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/TorqueEstimator.h"
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/BoostModel.h"
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/web_dashboard.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
 // ============================================================
 
 // Rete WiFi dell'adattatore ELM327 (varia per modello)
-#define ELM327_SSID       "WiFi_OBDII"
-#define ELM327_PASS       ""              // Vuoto se rete aperta
+#define ELM327_SSID "WiFi_OBDII"
+#define ELM327_PASS ""  // Vuoto se rete aperta
 
 // Indirizzo IP e porta TCP dell'ELM327
-#define ELM327_IP         "192.168.0.10"
-#define ELM327_PORT       35000
+#define ELM327_IP "192.168.0.10"
+#define ELM327_PORT 35000
 
 // Timeout risposta ELM327 (ms)
-#define ELM327_TIMEOUT    2000
+#define ELM327_TIMEOUT 2000
 // Timeout piu' lungo per il primo comando OBD (l'ELM327 cerca il protocollo)
 #define ELM327_FIRST_TIMEOUT 5000
 
 // Protocollo OBD2: "ATSP0" = auto-detect, "ATSP6" = CAN 11bit 500kbps (Audi/VW)
-#define ELM327_PROTOCOL   "ATSP6"
+#define ELM327_PROTOCOL "ATSP6"
 
 // Tentativi massimi di connessione
-#define MAX_RETRIES       3
+#define MAX_RETRIES 3
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/ota)
-#define OTA_SSID    "Audi_Dashboard"   // SSID del SoftAP per OTA
-#define OTA_PASS    "alesimattia"     // Password WPA2 (min 8 chars)
-#define OTA_PORT    80              // Porta web server
-#define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
+#define OTA_SSID "Audi_Dashboard"  // SSID del SoftAP per OTA
+#define OTA_PASS "alesimattia"     // Password WPA2 (min 8 chars)
+#define OTA_PORT 80                // Porta web server
+#define OTA_WINDOW_MS 180000       // Finestra OTA: 3 minuti dal boot
 
 // Debug: 1 = attiva diagnostica avanzata su Serial
 #define DEBUG 1
 
 // PID OBD2 per i dati di monitoraggio
-#define PID_MAP           0x0B    // Pressione assoluta collettore (kPa)
-#define PID_ENGINE_LOAD   0x04    // Carico motore calcolato (%)
-#define PID_COOLANT_TEMP  0x05    // Temperatura liquido raffreddamento (°C)
-#define PID_EGR           0x2C    // Apertura valvola EGR comandata (%)
-#define PID_EGR_ERROR     0x2D    // Errore EGR (%)
+#define PID_MAP 0x0B           // Pressione assoluta collettore (kPa)
+#define PID_ENGINE_LOAD 0x04   // Carico motore calcolato (%)
+#define PID_COOLANT_TEMP 0x05  // Temperatura liquido raffreddamento (°C)
+#define PID_EGR 0x2C           // Apertura valvola EGR comandata (%)
+#define PID_EGR_ERROR 0x2D     // Errore EGR (%)
 
 // Pressione atmosferica standard per calcolo boost
-#define ATMOSPHERIC_KPA   101.325f
+#define ATMOSPHERIC_KPA 101.325f
 
 // Layout display landscape 128x64 (font 7x14B, 7px wide)
 // Colonna destra: allineata al bordo destro. "44%(30)" = 7 chars × 7px = 49px → 128-49 = 79
-#define RIGHT_COL_X      79
+#define RIGHT_COL_X 79
 
 // Stima coppia: usa il modello TorqueEstimator (Audi27TDI140kW namespace)
 
 // DTC (Diagnostic Trouble Codes)
-#define MAX_DTC            6      // Max DTC gestibili (multi-line ELM327)
-#define DTC_PER_PAGE       2      // DTC per pagina display
+#define MAX_DTC 6                 // Max DTC gestibili (multi-line ELM327)
+#define DTC_PER_PAGE 2            // DTC per pagina display
 #define DTC_CHECK_INTERVAL 30000  // Intervallo controllo MIL (ms)
-#define SCREEN_SWITCH_MS   5000   // Alternanza schermate dati/errori (ms)
+#define SCREEN_SWITCH_MS 5000     // Alternanza schermate dati/errori (ms)
 
 // ============================================================
 // Oggetti globali
@@ -106,43 +107,45 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // Stato applicazione
 // ============================================================
 
-enum AppMode { MODE_CONNECT, MODE_SCAN, MODE_MONITOR };
+enum AppMode { MODE_CONNECT,
+               MODE_SCAN,
+               MODE_MONITOR };
 AppMode currentMode = MODE_CONNECT;
 
 // Bitmask PID supportati dall'ECU (256 bit = 32 byte)
 uint8_t pidSupported[32];
 
 // Flag: PID specifici supportati (determinati dalla scansione)
-bool mapSupported       = false;
-bool loadSupported      = false;    // PID 0x04
-bool coolantSupported   = false;    // PID 0x05
-bool egrSupported       = false;    // PID 0x2C
-bool egrErrorSupported  = false;    // PID 0x2D
+bool mapSupported = false;
+bool loadSupported = false;      // PID 0x04
+bool coolantSupported = false;   // PID 0x05
+bool egrSupported = false;       // PID 0x2C
+bool egrErrorSupported = false;  // PID 0x2D
 
 // Valori correnti delle letture
-float boostBar    = 0.0f;
-int   loadPct     = 0;              // Carico motore (%)
-int   torqueNm    = 0;              // Coppia stimata (TorqueEstimator)
-int   coolantC    = 0;              // Temperatura liquido (°C)
-int   egrPct      = 0;              // Apertura EGR (%)
-int   egrErrPct   = 0;              // Errore EGR (%)
+float boostBar = 0.0f;
+int loadPct = 0;    // Carico motore (%)
+int torqueNm = 0;   // Coppia stimata (TorqueEstimator)
+int coolantC = 0;   // Temperatura liquido (°C)
+int egrPct = 0;     // Apertura EGR (%)
+int egrErrPct = 0;  // Errore EGR (%)
 
 // Flag disponibilita' runtime (false se PID va in timeout)
-bool mapAvailable     = false;
-bool loadAvailable    = false;
+bool mapAvailable = false;
+bool loadAvailable = false;
 bool coolantAvailable = false;
-bool egrAvailable     = false;
-bool egrErrAvailable  = false;
+bool egrAvailable = false;
+bool egrErrAvailable = false;
 
 // DTC — codici errore e stato MIL
-uint8_t  dtcCount = 0;
-bool     milOn = false;
+uint8_t dtcCount = 0;
+bool milOn = false;
 uint16_t dtcCodes[MAX_DTC];
 unsigned long lastDtcCheck = 0;
 unsigned long lastScreenSwitch = 0;
 // Schermata corrente: 0 = dati, 1 = pagina DTC 1, 2 = pagina DTC 2, etc.
-uint8_t  currentScreen = 0;
-uint8_t  totalScreens  = 1;
+uint8_t currentScreen = 0;
+uint8_t totalScreens = 1;
 
 // Flag per il primo comando OBD (timeout piu' lungo per auto-detect protocollo)
 bool firstOBDQuery = true;
@@ -161,21 +164,21 @@ unsigned long cycleCount = 0;
 // Boost e coppia pesati ~4x rispetto a temp, egr e egrError
 // EGR e EGR_ERROR separati in slot distinti per cicli uniformi
 // ============================================================
-const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3, 0, 4};
+const uint8_t PID_SCHEDULE[] PROGMEM = { 0, 1, 0, 1, 2, 0, 1, 0, 1, 3, 0, 4 };
 const uint8_t PID_SCHEDULE_LEN = 12;
 uint8_t pidScheduleIdx = 0;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
 float prevBoostBar = -999.0f;
-int prevBoostInt = -99999;   // (int)(boostBar * 100) per confronto senza errori float
+int prevBoostInt = -99999;  // (int)(boostBar * 100) per confronto senza errori float
 int prevTorqueNm = -999;
 int prevCoolantC = -999;
 int prevEgrPct = -999;
-bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
+bool labelsDrawn = false;  // Etichette statiche gia' disegnate nel buffer
 
 // Dashboard web live (endpoint /monitor e /data)
 #define OBD_CONN_WIFI
-#include "web_dashboard.h"
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/web_dashboard.h"
 
 // ============================================================
 // SETUP
@@ -351,8 +354,7 @@ bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* act
   int pos = -1;
   int rLen = (int)response.length();
   for (int i = 0; i <= rLen - 4; i++) {
-    if (toupper(response[i])   == pattern[0] && toupper(response[i+1]) == pattern[1] &&
-        toupper(response[i+2]) == pattern[2] && toupper(response[i+3]) == pattern[3]) {
+    if (toupper(response[i]) == pattern[0] && toupper(response[i + 1]) == pattern[1] && toupper(response[i + 2]) == pattern[2] && toupper(response[i + 3]) == pattern[3]) {
       pos = i;
       break;
     }
@@ -391,7 +393,7 @@ bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* act
  */
 void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
   uint8_t offset = basePid / 8;
-  pidSupported[offset]     = fourBytes[0];
+  pidSupported[offset] = fourBytes[0];
   pidSupported[offset + 1] = fourBytes[1];
   pidSupported[offset + 2] = fourBytes[2];
   pidSupported[offset + 3] = fourBytes[3];
@@ -404,7 +406,7 @@ void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
 bool isPIDSupported(uint8_t pid) {
   if (pid == 0) return true;
   uint8_t byteIndex = (pid - 1) / 8;
-  uint8_t bitIndex  = 7 - ((pid - 1) % 8);
+  uint8_t bitIndex = 7 - ((pid - 1) % 8);
   return (pidSupported[byteIndex] & (1 << bitIndex)) != 0;
 }
 
@@ -419,7 +421,7 @@ bool isPIDSupported(uint8_t pid) {
 void executeConnectMode() {
   // --- Fase 1: Connessione WiFi ---
   String ssidLine = String("SSID: ") + ELM327_SSID;
-  String pswLine  = String("PSW: ") + (strlen(ELM327_PASS) > 0 ? ELM327_PASS : "(aperta)");
+  String pswLine = String("PSW: ") + (strlen(ELM327_PASS) > 0 ? ELM327_PASS : "(aperta)");
   drawConnectScreen(ssidLine.c_str(), pswLine.c_str());
 
   Serial.print(F("Connessione WiFi a: "));
@@ -438,7 +440,7 @@ void executeConnectMode() {
     wifiAttempts++;
     if (wifiAttempts > 30) {
       Serial.println(F("\nRete non trovata!"));
-      showError(("Rete "+String(ELM327_SSID)).c_str(), " non trovata");
+      showError(("Rete " + String(ELM327_SSID)).c_str(), " non trovata");
       delay(3000);
       wifiAttempts = 0;
       drawConnectScreen("WiFi...", ELM327_SSID);
@@ -471,7 +473,10 @@ void executeConnectMode() {
     Serial.println(F(" fallito"));
     if (attempt == MAX_RETRIES) {
       showError("TCP fallito", ELM327_IP);
-      while (true) { if (otaActive) httpServer.handleClient(); yield(); }
+      while (true) {
+        if (otaActive) httpServer.handleClient();
+        yield();
+      }
     }
     if (otaActive) httpServer.handleClient();
     delay(1000);
@@ -580,19 +585,24 @@ void executeScanMode() {
   Serial.println(totalFound);
 
   // Imposta flag per i PID di monitoraggio
-  mapSupported       = isPIDSupported(PID_MAP);
-  loadSupported      = isPIDSupported(PID_ENGINE_LOAD);
-  coolantSupported   = isPIDSupported(PID_COOLANT_TEMP);
-  egrSupported       = isPIDSupported(PID_EGR);
-  egrErrorSupported  = isPIDSupported(PID_EGR_ERROR);
+  mapSupported = isPIDSupported(PID_MAP);
+  loadSupported = isPIDSupported(PID_ENGINE_LOAD);
+  coolantSupported = isPIDSupported(PID_COOLANT_TEMP);
+  egrSupported = isPIDSupported(PID_EGR);
+  egrErrorSupported = isPIDSupported(PID_EGR_ERROR);
 
   // Log disponibilita'
   Serial.println(F("\nDisponibilita' PID monitor:"));
-  Serial.print(F("  MAP (0x0B):        ")); Serial.println(mapSupported ? "SI" : "NO");
-  Serial.print(F("  Load (0x04):       ")); Serial.println(loadSupported ? "SI" : "NO");
-  Serial.print(F("  Coolant (0x05):    ")); Serial.println(coolantSupported ? "SI" : "NO");
-  Serial.print(F("  EGR (0x2C):        ")); Serial.println(egrSupported ? "SI" : "NO");
-  Serial.print(F("  EGR Err (0x2D):    ")); Serial.println(egrErrorSupported ? "SI" : "NO");
+  Serial.print(F("  MAP (0x0B):        "));
+  Serial.println(mapSupported ? "SI" : "NO");
+  Serial.print(F("  Load (0x04):       "));
+  Serial.println(loadSupported ? "SI" : "NO");
+  Serial.print(F("  Coolant (0x05):    "));
+  Serial.println(coolantSupported ? "SI" : "NO");
+  Serial.print(F("  EGR (0x2C):        "));
+  Serial.println(egrSupported ? "SI" : "NO");
+  Serial.print(F("  EGR Err (0x2D):    "));
+  Serial.println(egrErrorSupported ? "SI" : "NO");
 
   // Mostra risultato su display
   char countBuf[20];
@@ -601,10 +611,10 @@ void executeScanMode() {
   u8g2.setFont(u8g2_font_5x7_tr);
   drawStrCentered(0, "SCAN COMPLETA");
   drawStrCentered(10, countBuf);
-  u8g2.drawStr(0, 24, mapSupported     ? "BOOST:  SI" : "BOOST:  NO");
-  u8g2.drawStr(0, 34, loadSupported    ? "COPPIA: SI" : "COPPIA: NO");
+  u8g2.drawStr(0, 24, mapSupported ? "BOOST:  SI" : "BOOST:  NO");
+  u8g2.drawStr(0, 34, loadSupported ? "COPPIA: SI" : "COPPIA: NO");
   u8g2.drawStr(0, 44, coolantSupported ? "TEMP:  SI" : "TEMP:  NO");
-  u8g2.drawStr(0, 54, egrSupported     ? "EGR:    SI" : "EGR:    NO");
+  u8g2.drawStr(0, 54, egrSupported ? "EGR:    SI" : "EGR:    NO");
   u8g2.sendBuffer();
 
   delay(2000);  // Mostra risultati scan (era 5000ms)
@@ -743,15 +753,14 @@ void readDTCCodes() {
   dtcCount = 0;
 
   for (int i = 0; i < MAX_DTC; i++) {
-    int bytePos = dataStart + (i * 4); // 4 hex chars = 2 byte per DTC
+    int bytePos = dataStart + (i * 4);  // 4 hex chars = 2 byte per DTC
     if (bytePos + 3 >= (int)upperResp.length()) break;
 
     char c1 = upperResp[bytePos];
     char c2 = upperResp[bytePos + 1];
     char c3 = upperResp[bytePos + 2];
     char c4 = upperResp[bytePos + 3];
-    if (!isHexadecimalDigit(c1) || !isHexadecimalDigit(c2) ||
-        !isHexadecimalDigit(c3) || !isHexadecimalDigit(c4)) break;
+    if (!isHexadecimalDigit(c1) || !isHexadecimalDigit(c2) || !isHexadecimalDigit(c3) || !isHexadecimalDigit(c4)) break;
 
     uint8_t hi = parseHexByte(upperResp, bytePos);
     uint8_t lo = parseHexByte(upperResp, bytePos + 2);
@@ -855,36 +864,47 @@ void executeMonitorMode() {
 
     // Legge UN solo PID per ciclo
     switch (pidIdx) {
-      case 0: { // Boost (BoostModel: legge map, baro, maf, rpm, iat, load)
-        uint8_t bd[4]; uint8_t bn;
-        float bMap = NAN, bBaro = NAN, bMaf = NAN, bRpm = NAN, bIat = NAN, bLoad = NAN;
-        if (queryOBDPID(0x0B,bd,1,&bn)&&bn>=1) { bMap=(float)bd[0]; }
-        if (queryOBDPID(0x33,bd,1,&bn)&&bn>=1) { bBaro=(float)bd[0]; }
-        if (queryOBDPID(0x10,bd,2,&bn)&&bn>=2) { bMaf=((float)((bd[0]<<8)|bd[1]))/100.0f; }
-        if (queryOBDPID(0x0C,bd,2,&bn)&&bn>=2) { bRpm=(float)(((bd[0]<<8)|bd[1])/4); }
-        if (queryOBDPID(0x0F,bd,1,&bn)&&bn>=1) { bIat=(float)bd[0]-40.0f; }
-        if (queryOBDPID(0x04,bd,1,&bn)&&bn>=1) { bLoad=((float)bd[0]*100.0f)/255.0f; }
-        float result = Audi27TDI140kW::estimateTurboPressureBar(
-          bMap, bBaro, bMaf, bRpm, bIat, bLoad);
-        if (!isnan(result)) { boostBar = result; mapAvailable = true; }
-        break;
-      }
-      case 1: { // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
-        uint8_t td[4]; uint8_t tn;
-        float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;
-        float tRail = NAN, tVolts = NAN, tBaro = NAN;
-        if (queryOBDPID(0x04,td,1,&tn)&&tn>=1) { tLoad=((float)td[0]*100.0f)/255.0f; loadPct=(int)tLoad; loadAvailable=true; }
-        if (queryOBDPID(0x0C,td,2,&tn)&&tn>=2) { tRpm=(float)(((td[0]<<8)|td[1])/4); }
-        if (queryOBDPID(0x10,td,2,&tn)&&tn>=2) { tMaf=((float)((td[0]<<8)|td[1]))/100.0f; }
-        if (queryOBDPID(0x0B,td,1,&tn)&&tn>=1) { tMap=(float)td[0]; }
-        if (queryOBDPID(0x0F,td,1,&tn)&&tn>=1) { tIat=(float)td[0]-40.0f; }
-        if (queryOBDPID(0x23,td,2,&tn)&&tn>=2) { tRail=(float)(((td[0]<<8)|td[1])*10); }
-        if (queryOBDPID(0x42,td,2,&tn)&&tn>=2) { tVolts=((float)((td[0]<<8)|td[1]))/1000.0f; }
-        if (queryOBDPID(0x33,td,1,&tn)&&tn>=1) { tBaro=(float)td[0]; }
-        torqueNm = (int)Audi27TDI140kW::estimateEngineTorqueNm(
-          tLoad, tRpm, tMaf, tMap, tIat, tRail, tVolts, tBaro);
-        break;
-      }
+      case 0:
+        {  // Boost (BoostModel: legge map, baro, maf, rpm, iat, load)
+          uint8_t bd[4];
+          uint8_t bn;
+          float bMap = NAN, bBaro = NAN, bMaf = NAN, bRpm = NAN, bIat = NAN, bLoad = NAN;
+          if (queryOBDPID(0x0B, bd, 1, &bn) && bn >= 1) { bMap = (float)bd[0]; }
+          if (queryOBDPID(0x33, bd, 1, &bn) && bn >= 1) { bBaro = (float)bd[0]; }
+          if (queryOBDPID(0x10, bd, 2, &bn) && bn >= 2) { bMaf = ((float)((bd[0] << 8) | bd[1])) / 100.0f; }
+          if (queryOBDPID(0x0C, bd, 2, &bn) && bn >= 2) { bRpm = (float)(((bd[0] << 8) | bd[1]) / 4); }
+          if (queryOBDPID(0x0F, bd, 1, &bn) && bn >= 1) { bIat = (float)bd[0] - 40.0f; }
+          if (queryOBDPID(0x04, bd, 1, &bn) && bn >= 1) { bLoad = ((float)bd[0] * 100.0f) / 255.0f; }
+          float result = Audi27TDI140kW::Boost::estimateTurboPressureBar(
+            bMap, bBaro, bMaf, bRpm, bIat, bLoad);
+          if (!isnan(result)) {
+            boostBar = result;
+            mapAvailable = true;
+          }
+          break;
+        }
+      case 1:
+        {  // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
+          uint8_t td[4];
+          uint8_t tn;
+          float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;
+          float tRail = NAN, tVolts = NAN, tBaro = NAN;
+          if (queryOBDPID(0x04, td, 1, &tn) && tn >= 1) {
+            tLoad = ((float)td[0] * 100.0f) / 255.0f;
+            loadPct = (int)tLoad;
+            loadAvailable = true;
+          }
+          if (queryOBDPID(0x0C, td, 2, &tn) && tn >= 2) { tRpm = (float)(((td[0] << 8) | td[1]) / 4); }
+          if (queryOBDPID(0x10, td, 2, &tn) && tn >= 2) { tMaf = ((float)((td[0] << 8) | td[1])) / 100.0f; }
+          if (queryOBDPID(0x0B, td, 1, &tn) && tn >= 1) { tMap = (float)td[0]; }
+          if (queryOBDPID(0x0F, td, 1, &tn) && tn >= 1) { tIat = (float)td[0] - 40.0f; }
+          if (queryOBDPID(0x23, td, 2, &tn) && tn >= 2) { tRail = (float)(((td[0] << 8) | td[1]) * 10); }
+          if (queryOBDPID(0x42, td, 2, &tn) && tn >= 2) { tVolts = ((float)((td[0] << 8) | td[1])) / 1000.0f; }
+          if (queryOBDPID(0x33, td, 1, &tn) && tn >= 1) { tBaro = (float)td[0]; }
+          torqueNm = (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
+            tLoad, tRpm, tMaf, tMap, tIat, tRail, tVolts, tBaro);
+          break;
+        }
       case 2:  // Temperatura liquido
         if (coolantSupported) {
           coolantAvailable = readCoolantTemp(&coolantC);
@@ -1164,161 +1184,250 @@ void printAdvancedDiagnostics() {
 
   // 1. Carico motore (0x04) [0-100%]
   if (queryOBDPID(0x04, d, 1, &n) && n >= 1) {
-    loadPctL = ((float)d[0] * 100.0f) / 255.0f; hLoad = true;
-    Serial.print(F("  01. Carico motore: ")); Serial.print(loadPctL, 1);
+    loadPctL = ((float)d[0] * 100.0f) / 255.0f;
+    hLoad = true;
+    Serial.print(F("  01. Carico motore: "));
+    Serial.print(loadPctL, 1);
     Serial.println(F(" %  [idle: 15-25%, pieno carico: 80-100%]"));
-  } else { Serial.println(F("  01. Carico motore: N/D")); }
+  } else {
+    Serial.println(F("  01. Carico motore: N/D"));
+  }
 
   // 2. Temp. liquido refrigerante (0x05) [-40..215 C]
   if (queryOBDPID(0x05, d, 1, &n) && n >= 1) {
-    coolC = (float)d[0] - 40.0f; hCool = true;
-    Serial.print(F("  02. Temp. liquido: ")); Serial.print((int)coolC);
+    coolC = (float)d[0] - 40.0f;
+    hCool = true;
+    Serial.print(F("  02. Temp. liquido: "));
+    Serial.print((int)coolC);
     Serial.println(F(" C  [regime: 85-95 C]"));
-  } else { Serial.println(F("  02. Temp. liquido: N/D")); }
+  } else {
+    Serial.println(F("  02. Temp. liquido: N/D"));
+  }
 
   // 3. MAP - pressione collettore (0x0B) [0-255 kPa]
   if (queryOBDPID(0x0B, d, 1, &n) && n >= 1) {
-    mapKpa = (float)d[0]; hMap = true;
-    Serial.print(F("  03. MAP: ")); Serial.print((int)mapKpa);
+    mapKpa = (float)d[0];
+    hMap = true;
+    Serial.print(F("  03. MAP: "));
+    Serial.print((int)mapKpa);
     Serial.println(F(" kPa  [aspirato: ~100, boost: 120-250]"));
-  } else { Serial.println(F("  03. MAP: N/D")); }
+  } else {
+    Serial.println(F("  03. MAP: N/D"));
+  }
 
   // 4. RPM (0x0C) [0-16383 rpm]
   if (queryOBDPID(0x0C, d, 2, &n) && n >= 2) {
-    rpm = ((d[0] << 8) | d[1]) / 4; hRpm = true;
-    Serial.print(F("  04. RPM: ")); Serial.print(rpm);
+    rpm = ((d[0] << 8) | d[1]) / 4;
+    hRpm = true;
+    Serial.print(F("  04. RPM: "));
+    Serial.print(rpm);
     Serial.println(F(" rpm  [idle: 750-850, max: ~4500]"));
-  } else { Serial.println(F("  04. RPM: N/D")); }
+  } else {
+    Serial.println(F("  04. RPM: N/D"));
+  }
 
   // 5. Velocita' veicolo (0x0D) [0-255 km/h]
   if (queryOBDPID(0x0D, d, 1, &n) && n >= 1) {
-    speedKmh = d[0]; hSpeed = true;
-    Serial.print(F("  05. Velocita: ")); Serial.print(speedKmh);
+    speedKmh = d[0];
+    hSpeed = true;
+    Serial.print(F("  05. Velocita: "));
+    Serial.print(speedKmh);
     Serial.println(F(" km/h"));
-  } else { Serial.println(F("  05. Velocita: N/D")); }
+  } else {
+    Serial.println(F("  05. Velocita: N/D"));
+  }
 
   // 6. Temp. aria aspirazione IAT (0x0F) [-40..215 C]
   if (queryOBDPID(0x0F, d, 1, &n) && n >= 1) {
-    iatC = (float)d[0] - 40.0f; hIat = true;
-    Serial.print(F("  06. Temp. aria (IAT): ")); Serial.print((int)iatC);
+    iatC = (float)d[0] - 40.0f;
+    hIat = true;
+    Serial.print(F("  06. Temp. aria (IAT): "));
+    Serial.print((int)iatC);
     Serial.println(F(" C  [post-intercooler: ambiente+10-30]"));
-  } else { Serial.println(F("  06. Temp. aria (IAT): N/D")); }
+  } else {
+    Serial.println(F("  06. Temp. aria (IAT): N/D"));
+  }
 
   // 7. Portata aria MAF (0x10) [0-655.35 g/s]
   if (queryOBDPID(0x10, d, 2, &n) && n >= 2) {
-    mafGs = ((float)((d[0] << 8) | d[1])) / 100.0f; hMaf = true;
-    Serial.print(F("  07. MAF: ")); Serial.print(mafGs, 1);
+    mafGs = ((float)((d[0] << 8) | d[1])) / 100.0f;
+    hMaf = true;
+    Serial.print(F("  07. MAF: "));
+    Serial.print(mafGs, 1);
     Serial.println(F(" g/s  [idle: 3-8, pieno carico: 40-80]"));
-  } else { Serial.println(F("  07. MAF: N/D")); }
+  } else {
+    Serial.println(F("  07. MAF: N/D"));
+  }
 
   // 8. Pressione rail (0x23) [0-655350 kPa]
   if (queryOBDPID(0x23, d, 2, &n) && n >= 2) {
     int railKpa = ((d[0] << 8) | d[1]) * 10;
-    railBar = railKpa / 100; hRail = true;
-    Serial.print(F("  08. Pressione rail: ")); Serial.print(railBar);
+    railBar = railKpa / 100;
+    hRail = true;
+    Serial.print(F("  08. Pressione rail: "));
+    Serial.print(railBar);
     Serial.println(F(" bar  [idle: 250-400, carico: 800-1800]"));
-  } else { Serial.println(F("  08. Pressione rail: N/D")); }
+  } else {
+    Serial.println(F("  08. Pressione rail: N/D"));
+  }
 
   // 9. Lambda (0x24) [0-2 ratio]
   if (queryOBDPID(0x24, d, 4, &n) && n >= 2) {
-    lambdaV = ((float)((d[0] << 8) | d[1])) / 32768.0f; hLambda = true;
-    Serial.print(F("  09. Lambda: ")); Serial.print(lambdaV, 3);
+    lambdaV = ((float)((d[0] << 8) | d[1])) / 32768.0f;
+    hLambda = true;
+    Serial.print(F("  09. Lambda: "));
+    Serial.print(lambdaV, 3);
     Serial.println(F("  [stechiometrico: 1.0, diesel normale: 1.3-3.5]"));
-  } else { Serial.println(F("  09. Lambda: N/D")); }
+  } else {
+    Serial.println(F("  09. Lambda: N/D"));
+  }
 
   // 10. Tensione O2 Bank1-S1 (0x24 byte C,D) [0-8 V]
   if (hLambda && n >= 4) {
     float o2v = ((float)((d[2] << 8) | d[3])) / 8192.0f;
-    Serial.print(F("  10. Tensione O2: ")); Serial.print(o2v, 3);
+    Serial.print(F("  10. Tensione O2: "));
+    Serial.print(o2v, 3);
     Serial.println(F(" V  [0-8 V]"));
-  } else { Serial.println(F("  10. Tensione O2: N/D")); }
+  } else {
+    Serial.println(F("  10. Tensione O2: N/D"));
+  }
 
   // 11. EGR comandato (0x2C) [0-100%]
   if (queryOBDPID(0x2C, d, 1, &n) && n >= 1) {
-    egrCmd = ((int)d[0] * 100) / 255; hEgr = true;
-    Serial.print(F("  11. EGR comandato: ")); Serial.print(egrCmd);
+    egrCmd = ((int)d[0] * 100) / 255;
+    hEgr = true;
+    Serial.print(F("  11. EGR comandato: "));
+    Serial.print(egrCmd);
     Serial.println(F(" %  [0=chiuso, regime: 10-50%]"));
-  } else { Serial.println(F("  11. EGR comandato: N/D")); }
+  } else {
+    Serial.println(F("  11. EGR comandato: N/D"));
+  }
 
   // 12. Errore EGR (0x2D) [-100..+99%]
   if (queryOBDPID(0x2D, d, 1, &n) && n >= 1) {
-    egrErr = ((int)d[0] - 128) * 100 / 128; hEgrErr = true;
-    Serial.print(F("  12. Errore EGR: ")); Serial.print(egrErr);
+    egrErr = ((int)d[0] - 128) * 100 / 128;
+    hEgrErr = true;
+    Serial.print(F("  12. Errore EGR: "));
+    Serial.print(egrErr);
     Serial.println(F(" %  [normale: -5..+5%, allarme: >|10|%]"));
-  } else { Serial.println(F("  12. Errore EGR: N/D")); }
+  } else {
+    Serial.println(F("  12. Errore EGR: N/D"));
+  }
 
   // 13. Pressione barometrica (0x33) [0-255 kPa]
   if (queryOBDPID(0x33, d, 1, &n) && n >= 1) {
-    baroKpa = (float)d[0]; hBaro = true;
-    Serial.print(F("  13. Pressione baro: ")); Serial.print((int)baroKpa);
+    baroKpa = (float)d[0];
+    hBaro = true;
+    Serial.print(F("  13. Pressione baro: "));
+    Serial.print((int)baroKpa);
     Serial.println(F(" kPa  [livello mare: 101 kPa]"));
-  } else { Serial.println(F("  13. Pressione baro: N/D")); }
+  } else {
+    Serial.println(F("  13. Pressione baro: N/D"));
+  }
 
   // 14. Batteria (0x42) [0-65.5 V]
   if (queryOBDPID(0x42, d, 2, &n) && n >= 2) {
-    volts = ((float)((d[0] << 8) | d[1])) / 1000.0f; hVolts = true;
-    Serial.print(F("  14. Batteria: ")); Serial.print(volts, 1);
+    volts = ((float)((d[0] << 8) | d[1])) / 1000.0f;
+    hVolts = true;
+    Serial.print(F("  14. Batteria: "));
+    Serial.print(volts, 1);
     Serial.println(F(" V  [motore acceso: 13.5-14.5 V]"));
-  } else { Serial.println(F("  14. Batteria: N/D")); }
+  } else {
+    Serial.println(F("  14. Batteria: N/D"));
+  }
 
   // 15. Temp. esterna (0x46) [-40..215 C]
   if (queryOBDPID(0x46, d, 1, &n) && n >= 1) {
-    ambC = (float)d[0] - 40.0f; hAmb = true;
-    Serial.print(F("  15. Temp. esterna: ")); Serial.print((int)ambC);
+    ambC = (float)d[0] - 40.0f;
+    hAmb = true;
+    Serial.print(F("  15. Temp. esterna: "));
+    Serial.print((int)ambC);
     Serial.println(F(" C"));
-  } else { Serial.println(F("  15. Temp. esterna: N/D")); }
+  } else {
+    Serial.println(F("  15. Temp. esterna: N/D"));
+  }
 
   // 16. Pedale acceleratore D (0x49) [0-100%]
   if (queryOBDPID(0x49, d, 1, &n) && n >= 1) {
-    pedalD = ((int)d[0] * 100) / 255; hPedD = true;
-    Serial.print(F("  16. Pedale acc. D: ")); Serial.print(pedalD);
+    pedalD = ((int)d[0] * 100) / 255;
+    hPedD = true;
+    Serial.print(F("  16. Pedale acc. D: "));
+    Serial.print(pedalD);
     Serial.println(F(" %"));
-  } else { Serial.println(F("  16. Pedale acc. D: N/D")); }
+  } else {
+    Serial.println(F("  16. Pedale acc. D: N/D"));
+  }
 
   // 17. Pedale acceleratore E (0x4A) [0-100%]
   if (queryOBDPID(0x4A, d, 1, &n) && n >= 1) {
-    pedalE = ((int)d[0] * 100) / 255; hPedE = true;
-    Serial.print(F("  17. Pedale acc. E: ")); Serial.print(pedalE);
+    pedalE = ((int)d[0] * 100) / 255;
+    hPedE = true;
+    Serial.print(F("  17. Pedale acc. E: "));
+    Serial.print(pedalE);
     Serial.println(F(" %"));
-  } else { Serial.println(F("  17. Pedale acc. E: N/D")); }
+  } else {
+    Serial.println(F("  17. Pedale acc. E: N/D"));
+  }
 
   // 18. Farfalla comandata (0x4C) [0-100%]
   if (queryOBDPID(0x4C, d, 1, &n) && n >= 1) {
-    throttle = ((int)d[0] * 100) / 255; hThrottle = true;
-    Serial.print(F("  18. Farfalla cmd: ")); Serial.print(throttle);
+    throttle = ((int)d[0] * 100) / 255;
+    hThrottle = true;
+    Serial.print(F("  18. Farfalla cmd: "));
+    Serial.print(throttle);
     Serial.println(F(" %"));
-  } else { Serial.println(F("  18. Farfalla cmd: N/D")); }
+  } else {
+    Serial.println(F("  18. Farfalla cmd: N/D"));
+  }
 
   // 19. Stato MIL + DTC (0x01)
   if (queryOBDPID(0x01, d, 4, &n) && n >= 1) {
     bool mil = (d[0] & 0x80) != 0;
     int dtcN = d[0] & 0x7F;
-    Serial.print(F("  19. MIL: ")); Serial.print(mil ? "ACCESA" : "SPENTA");
-    Serial.print(F(", DTC attivi: ")); Serial.println(dtcN);
-  } else { Serial.println(F("  19. MIL/DTC: N/D")); }
+    Serial.print(F("  19. MIL: "));
+    Serial.print(mil ? "ACCESA" : "SPENTA");
+    Serial.print(F(", DTC attivi: "));
+    Serial.println(dtcN);
+  } else {
+    Serial.println(F("  19. MIL/DTC: N/D"));
+  }
 
   // 20. Tempo motore acceso (0x1F) [0-65535 s]
   if (queryOBDPID(0x1F, d, 2, &n) && n >= 2) {
-    runtimeS = (d[0] << 8) | d[1]; hRuntime = true;
+    runtimeS = (d[0] << 8) | d[1];
+    hRuntime = true;
     int h = runtimeS / 3600;
     int m = (runtimeS % 3600) / 60;
     int s = runtimeS % 60;
-    Serial.print(F("  20. Tempo motore: ")); Serial.print(h); Serial.print(F(":"));
-    if (m < 10) Serial.print(F("0")); Serial.print(m); Serial.print(F(":"));
-    if (s < 10) Serial.print(F("0")); Serial.println(s);
-  } else { Serial.println(F("  20. Tempo motore: N/D")); }
+    Serial.print(F("  20. Tempo motore: "));
+    Serial.print(h);
+    Serial.print(F(":"));
+    if (m < 10) Serial.print(F("0"));
+    Serial.print(m);
+    Serial.print(F(":"));
+    if (s < 10) Serial.print(F("0"));
+    Serial.println(s);
+  } else {
+    Serial.println(F("  20. Tempo motore: N/D"));
+  }
 
   // 21. Km con MIL accesa (0x21)
   if (queryOBDPID(0x21, d, 2, &n) && n >= 2) {
     int kmMil = (d[0] << 8) | d[1];
-    Serial.print(F("  21. Km con MIL: ")); Serial.print(kmMil);
+    Serial.print(F("  21. Km con MIL: "));
+    Serial.print(kmMil);
     Serial.println(F(" km  [0 = nessun errore attivo]"));
-  } else { Serial.println(F("  21. Km con MIL: N/D")); }
+  } else {
+    Serial.println(F("  21. Km con MIL: N/D"));
+  }
 
   // 22. Avviamenti da reset DTC (0x30)
   if (queryOBDPID(0x30, d, 1, &n) && n >= 1) {
-    Serial.print(F("  22. Avviamenti da reset: ")); Serial.println(d[0]);
-  } else { Serial.println(F("  22. Avviamenti da reset: N/D")); }
+    Serial.print(F("  22. Avviamenti da reset: "));
+    Serial.println(d[0]);
+  } else {
+    Serial.println(F("  22. Avviamenti da reset: N/D"));
+  }
 
   // ---- VALORI CALCOLATI ----
   Serial.println(F("  --- CALCOLATI ---"));
@@ -1326,38 +1435,47 @@ void printAdvancedDiagnostics() {
   // 24. Boost (bar)
   if (hMap && hBaro) {
     float boostBar = (mapKpa - baroKpa) / 100.0f;
-    Serial.print(F("  24. Boost: ")); Serial.print(boostBar, 2);
+    Serial.print(F("  24. Boost: "));
+    Serial.print(boostBar, 2);
     Serial.println(F(" bar  [aspira: <0, turbo: 0.3-1.5]"));
-  } else { Serial.println(F("  24. Boost: N/D")); }
+  } else {
+    Serial.println(F("  24. Boost: N/D"));
+  }
 
   // 25. Coppia stimata (TorqueEstimator)
   if (hLoad) {
     float tRailKpa = hRail ? (float)railBar * 100.0f : NAN;
     float tVoltsV = hVolts ? volts : NAN;
     float tBaroKpa = hBaro ? baroKpa : NAN;
-    int torqueNmL = (int)Audi27TDI140kW::estimateEngineTorqueNm(
+    int torqueNmL = (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
       loadPctL, (float)rpm, mafGs, mapKpa, iatC, tRailKpa, tVoltsV, tBaroKpa, false);
-    Serial.print(F("  25. Coppia stimata: ")); Serial.print(torqueNmL);
+    Serial.print(F("  25. Coppia stimata: "));
+    Serial.print(torqueNmL);
     Serial.println(F(" Nm  [idle: 60-100, max: 400]"));
 
     // 26. Potenza stimata (kW)
     if (hRpm && rpm > 0) {
       float powKw = (float)torqueNmL * (float)rpm / 9549.0f;
-      Serial.print(F("  26. Potenza stimata: ")); Serial.print(powKw, 1);
+      Serial.print(F("  26. Potenza stimata: "));
+      Serial.print(powKw, 1);
       Serial.println(F(" kW  [max: 132]"));
 
       // 27. Potenza stimata (CV)
       float powCv = powKw * 1.36f;
-      Serial.print(F("  27. Potenza stimata: ")); Serial.print(powCv, 1);
+      Serial.print(F("  27. Potenza stimata: "));
+      Serial.print(powCv, 1);
       Serial.println(F(" CV  [max: 180]"));
 
       // 47. Consumo specifico (g/kWh)
       if (hMaf && hLambda && powKw > 1.0f) {
         float fGs = mafGs / (14.5f * (lambdaV > 0.5f ? lambdaV : 1.0f));
         float bsfc = (fGs * 3600.0f) / powKw;
-        Serial.print(F("  47. Cons. specifico:")); Serial.print((int)bsfc);
+        Serial.print(F("  47. Cons. specifico:"));
+        Serial.print((int)bsfc);
         Serial.println(F(" g/kWh  [ottimo: 200-250, normale: 250-350]"));
-      } else { Serial.println(F("  47. Cons. specifico:N/D (potenza insufficiente)")); }
+      } else {
+        Serial.println(F("  47. Cons. specifico:N/D (potenza insufficiente)"));
+      }
     } else {
       Serial.println(F("  26. Potenza kW: N/D"));
       Serial.println(F("  27. Potenza CV: N/D"));
@@ -1373,9 +1491,12 @@ void printAdvancedDiagnostics() {
   // 28. Air/Fuel Ratio
   if (hLambda) {
     float afr = lambdaV * 14.5f;
-    Serial.print(F("  28. Air/Fuel Ratio: ")); Serial.print(afr, 1);
+    Serial.print(F("  28. Air/Fuel Ratio: "));
+    Serial.print(afr, 1);
     Serial.println(F("  [diesel: 18-50, stechiometrico: 14.5]"));
-  } else { Serial.println(F("  28. Air/Fuel Ratio: N/D")); }
+  } else {
+    Serial.println(F("  28. Air/Fuel Ratio: N/D"));
+  }
 
   // 30. Consumo istantaneo (L/100km)
   float fuelLh = 0;
@@ -1388,23 +1509,32 @@ void printAdvancedDiagnostics() {
   }
   if (haveFuel && hSpeed && speedKmh > 3) {
     float l100 = (fuelLh / (float)speedKmh) * 100.0f;
-    Serial.print(F("  30. Consumo: ")); Serial.print(l100, 1);
+    Serial.print(F("  30. Consumo: "));
+    Serial.print(l100, 1);
     Serial.println(F(" L/100km  [citta: 8-12, strada: 5-7, autostrada: 7-10]"));
-  } else { Serial.println(F("  30. Consumo L/100km: N/D (fermo o dati mancanti)")); }
+  } else {
+    Serial.println(F("  30. Consumo L/100km: N/D (fermo o dati mancanti)"));
+  }
 
   // 31. Altitudine stimata (m)
   if (hBaro && baroKpa > 0) {
     float altM = 44330.0f * (1.0f - pow(baroKpa / 101.325f, 0.1903f));
-    Serial.print(F("  31. Altitudine: ")); Serial.print((int)altM);
+    Serial.print(F("  31. Altitudine: "));
+    Serial.print((int)altM);
     Serial.println(F(" m  [rif: 101.3 kPa = 0 m]"));
-  } else { Serial.println(F("  31. Altitudine: N/D")); }
+  } else {
+    Serial.println(F("  31. Altitudine: N/D"));
+  }
 
   // 32. Densita' aria (kg/m3)
   if (hMap && hIat) {
     float rho = (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f));
-    Serial.print(F("  32. Densita aria: ")); Serial.print(rho, 3);
+    Serial.print(F("  32. Densita aria: "));
+    Serial.print(rho, 3);
     Serial.println(F(" kg/m3  [livello mare 20C: 1.204]"));
-  } else { Serial.println(F("  32. Densita aria: N/D")); }
+  } else {
+    Serial.println(F("  32. Densita aria: N/D"));
+  }
 
   // 33. Efficienza intercooler (%)
   if (hMap && hBaro && hIat && hAmb && mapKpa > baroKpa) {
@@ -1413,34 +1543,50 @@ void printAdvancedDiagnostics() {
     float denom = tTeor - ambC;
     if (denom > 1.0f) {
       int eff = (int)(((tTeor - iatC) / denom) * 100.0f);
-      Serial.print(F("  33. Eff. intercooler: ")); Serial.print(eff);
+      Serial.print(F("  33. Eff. intercooler: "));
+      Serial.print(eff);
       Serial.println(F(" %  [buono: 60-85%]"));
-    } else { Serial.println(F("  33. Eff. intercooler: N/D (denom troppo piccolo)")); }
-  } else { Serial.println(F("  33. Eff. intercooler: N/D (no boost)")); }
+    } else {
+      Serial.println(F("  33. Eff. intercooler: N/D (denom troppo piccolo)"));
+    }
+  } else {
+    Serial.println(F("  33. Eff. intercooler: N/D (no boost)"));
+  }
 
   // 34. Rapporto compressione turbo
   if (hMap && hBaro && baroKpa > 0) {
     float pr = mapKpa / baroKpa;
-    Serial.print(F("  34. Rapporto compr. turbo: ")); Serial.print(pr, 2);
+    Serial.print(F("  34. Rapporto compr. turbo: "));
+    Serial.print(pr, 2);
     Serial.println(F("  [1.0=aspirato, 1.5=0.5bar, 2.0=1bar]"));
-  } else { Serial.println(F("  34. Rapporto compr. turbo: N/D")); }
+  } else {
+    Serial.println(F("  34. Rapporto compr. turbo: N/D"));
+  }
 
   // 36. Efficienza volumetrica (%)
   if (hMaf && hRpm && hMap && hIat && rpm > 0) {
     float rho = (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f));
     float volEff = (mafGs * 120.0f) / (2.698f * (float)rpm * rho / 1000.0f);
-    Serial.print(F("  36. Eff. volumetrica: ")); Serial.print((int)volEff);
+    Serial.print(F("  36. Eff. volumetrica: "));
+    Serial.print((int)volEff);
     Serial.println(F(" %  [normale: 70-95%]"));
-  } else { Serial.println(F("  36. Eff. volumetrica: N/D")); }
+  } else {
+    Serial.println(F("  36. Eff. volumetrica: N/D"));
+  }
 
   // 37. Drift pedale acceleratore
   if (hPedD && hPedE) {
     int drift = abs(pedalD - pedalE);
-    Serial.print(F("  37. Drift pedale: ")); Serial.print(drift);
-    Serial.print(F(" % (D=")); Serial.print(pedalD);
-    Serial.print(F(" E=")); Serial.print(pedalE);
+    Serial.print(F("  37. Drift pedale: "));
+    Serial.print(drift);
+    Serial.print(F(" % (D="));
+    Serial.print(pedalD);
+    Serial.print(F(" E="));
+    Serial.print(pedalE);
     Serial.println(F(")  [normale: <3%, allarme: >5%]"));
-  } else { Serial.println(F("  37. Drift pedale: N/D")); }
+  } else {
+    Serial.println(F("  37. Drift pedale: N/D"));
+  }
 
   // 38. Pressione rail (bar) — gia' stampato come diretto (#8)
   // (omesso per evitare duplicato)
@@ -1448,25 +1594,34 @@ void printAdvancedDiagnostics() {
   // 39. Risposta farfalla (delta farfalla-pedale)
   if (hThrottle && hPedD) {
     int resp = throttle - pedalD;
-    Serial.print(F("  39. Delta farfalla-pedale: ")); Serial.print(resp);
+    Serial.print(F("  39. Delta farfalla-pedale: "));
+    Serial.print(resp);
     Serial.println(F(" %  [normale: -5..+5%]"));
-  } else { Serial.println(F("  39. Delta farfalla-pedale: N/D")); }
+  } else {
+    Serial.println(F("  39. Delta farfalla-pedale: N/D"));
+  }
 
   // 40. Taglio iniezione (la centralina taglia il gasolio durante il rilascio acceleratore)
   if (hLoad) {
     bool dfco = (loadPctL < 1.0f);
-    Serial.print(F("  40. Taglio iniezione: ")); Serial.println(dfco ? "ATTIVO (consumo 0)" : "OFF");
-  } else { Serial.println(F("  40. Taglio iniezione: N/D")); }
+    Serial.print(F("  40. Taglio iniezione: "));
+    Serial.println(dfco ? "ATTIVO (consumo 0)" : "OFF");
+  } else {
+    Serial.println(F("  40. Taglio iniezione: N/D"));
+  }
 
   // 41. Tempo motore formattato (gia' stampato come #20)
   // (omesso per evitare duplicato)
 
   // 42. Marcia stimata (CVT Multitronic = rapporto continuo)
   if (hRpm && hSpeed && speedKmh > 5 && rpm > 0) {
-    float gearRatio = (float)rpm / ((float)speedKmh * 7.9f); // K~7.9 per A5 Multitronic
-    Serial.print(F("  42. Rapporto CVT: ")); Serial.print(gearRatio, 2);
+    float gearRatio = (float)rpm / ((float)speedKmh * 7.9f);  // K~7.9 per A5 Multitronic
+    Serial.print(F("  42. Rapporto CVT: "));
+    Serial.print(gearRatio, 2);
     Serial.println(F("  [basso(1a): ~3.5, alto(6a): ~0.6]"));
-  } else { Serial.println(F("  42. Rapporto CVT: N/D (fermo)")); }
+  } else {
+    Serial.println(F("  42. Rapporto CVT: N/D (fermo)"));
+  }
 
   // 43. Accelerazione (m/s2) — derivata dalla velocita'
   unsigned long nowMs = millis();
@@ -1474,10 +1629,13 @@ void printAdvancedDiagnostics() {
     float dtS = (float)(nowMs - prevMs) / 1000.0f;
     if (dtS > 0.05f) {
       float accMs2 = ((float)(speedKmh - prevSpeedKmh) / 3.6f) / dtS;
-      Serial.print(F("  43. Accelerazione: ")); Serial.print(accMs2, 2);
+      Serial.print(F("  43. Accelerazione: "));
+      Serial.print(accMs2, 2);
       Serial.println(F(" m/s2  [frenata: <-3, acc. forte: >2]"));
     }
-  } else { Serial.println(F("  43. Accelerazione: N/D (primo ciclo)")); }
+  } else {
+    Serial.println(F("  43. Accelerazione: N/D (primo ciclo)"));
+  }
 
   // 44. Variazione boost (bar/s) — derivata dal boost
   if (hMap && hBaro && prevMs > 0) {
@@ -1485,11 +1643,14 @@ void printAdvancedDiagnostics() {
     float curBoost = (mapKpa - baroKpa) / 100.0f;
     if (dtS > 0.05f) {
       float dBoost = (curBoost - prevBoostBar) / dtS;
-      Serial.print(F("  44. Variaz. boost: ")); Serial.print(dBoost, 2);
+      Serial.print(F("  44. Variaz. boost: "));
+      Serial.print(dBoost, 2);
       Serial.println(F(" bar/s  [risposta turbo: >0.5 = reattivo]"));
       prevBoostBar = curBoost;
     }
-  } else { Serial.println(F("  44. Variaz. boost: N/D (primo ciclo)")); }
+  } else {
+    Serial.println(F("  44. Variaz. boost: N/D (primo ciclo)"));
+  }
 
   // Salva valori per derivate del prossimo ciclo
   prevSpeedKmh = hSpeed ? speedKmh : 0;

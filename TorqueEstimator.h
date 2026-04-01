@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/EngineConstants.h"  //unluckily no relative path in Arduino IDE so defined in main project file
 
 /*
   TorqueEstimatorAudi27TDI.h
@@ -26,41 +27,8 @@
     e può essere attivato/disattivato tramite useFilter.
 */
 
-namespace Audi27TDI140kW
+namespace Audi27TDI140kW::Torque
 {
-    // =========================
-    // Parametri motore / modello
-    // =========================
-    static constexpr float ENGINE_DISPLACEMENT_M3 = 0.002698f; // m^3, 2.698 L
-    static constexpr float GAS_CONSTANT_AIR       = 287.05f;   // J/(kg*K)
-
-    static constexpr float TORQUE_MAX_NM          = 400.0f;
-    static constexpr float POWER_MAX_KW           = 140.0f;
-
-    // Plateau nominale coppia: ~1400..3250 rpm
-    static constexpr float TORQUE_PLATEAU_START_RPM = 1400.0f;
-    static constexpr float TORQUE_PLATEAU_END_RPM   = 3250.0f;
-
-    // Stima aria a pieno carico per diesel turbo
-    // Parametro più importante del modello
-    static constexpr float K_AIR_GPS_PER_KW = 1.22f;
-
-    // Range sanity
-    static constexpr float IDLE_MIN_RPM      = 550.0f;
-    static constexpr float MAX_VALID_RPM     = 5500.0f;
-    static constexpr float MIN_VALID_MAP_KPA = 20.0f;
-    static constexpr float MAX_VALID_MAP_KPA = 350.0f;
-    static constexpr float MIN_VALID_MAF_GPS = 0.0f;
-    static constexpr float MAX_VALID_MAF_GPS = 400.0f;
-
-    // =========================
-    // Parametri filtro EMA
-    // =========================
-    // Load più lento, MAF/MAP un po' più reattivi
-    static constexpr float EMA_ALPHA_LOAD = 0.12f;
-    static constexpr float EMA_ALPHA_MAF  = 0.25f;
-    static constexpr float EMA_ALPHA_MAP  = 0.25f;
-
     struct FilterState
     {
         float load;
@@ -77,8 +45,10 @@ namespace Audi27TDI140kW
     // =========================
     static inline float clampf(float x, float lo, float hi)
     {
-        if (x < lo) return lo;
-        if (x > hi) return hi;
+        if (x < lo)
+            return lo;
+        if (x > hi)
+            return hi;
         return x;
     }
 
@@ -102,7 +72,8 @@ namespace Audi27TDI140kW
     // =========================
     static inline float nominalMaxTorqueNm(float rpm)
     {
-        if (rpm < IDLE_MIN_RPM) return 0.0f;
+        if (rpm < IDLE_MIN_RPM)
+            return 0.0f;
 
         // Sotto il plateau: salita progressiva.
         // Non lineare pura, per evitare sovrastima ai bassissimi regimi.
@@ -136,7 +107,8 @@ namespace Audi27TDI140kW
     static inline float nominalPowerKwAtRpm(float rpm)
     {
         float t = nominalMaxTorqueNm(rpm);
-        if (rpm <= 0.0f) return 0.0f;
+        if (rpm <= 0.0f)
+            return 0.0f;
         return (t * rpm) / 9550.0f;
     }
 
@@ -155,14 +127,18 @@ namespace Audi27TDI140kW
     // =========================
     static inline float freshAirVolumetricEfficiency(float rpm, float maf_gps, float map_kpa, float iat_c)
     {
-        if (rpm < IDLE_MIN_RPM) return 0.0f;
-        if (map_kpa < MIN_VALID_MAP_KPA) return 0.0f;
-        if (maf_gps < 0.0f) return 0.0f;
+        if (rpm < IDLE_MIN_RPM)
+            return 0.0f;
+        if (map_kpa < MIN_VALID_MAP_KPA)
+            return 0.0f;
+        if (maf_gps < 0.0f)
+            return 0.0f;
 
         float T_kelvin = iat_c + 273.15f;
-        if (T_kelvin < 200.0f) T_kelvin = 200.0f;
+        if (T_kelvin < 200.0f)
+            T_kelvin = 200.0f;
 
-        float map_pa  = map_kpa * 1000.0f;
+        float map_pa = map_kpa * 1000.0f;
         float maf_kgs = maf_gps / 1000.0f;
 
         // 4T: una aspirazione ogni 2 giri => fattore 120
@@ -180,7 +156,7 @@ namespace Audi27TDI140kW
     static inline float mafCorrection(float rpm, float maf_gps)
     {
         float mafNom = nominalFullLoadMafGps(rpm);
-        float ratio  = maf_gps / mafNom;
+        float ratio = maf_gps / mafNom;
 
         // Clamp stretto per evitare che il MAF domini tutto
         return clampf(ratio, 0.70f, 1.15f);
@@ -217,10 +193,14 @@ namespace Audi27TDI140kW
         // basso carico -> rail anche modesto va bene
         // alto carico -> ci si aspetta rail ben più alto
         float expectedMin;
-        if (load < 0.25f)      expectedMin = 25000.0f;
-        else if (load < 0.50f) expectedMin = 45000.0f;
-        else if (load < 0.75f) expectedMin = 70000.0f;
-        else                   expectedMin = 95000.0f;
+        if (load < 0.25f)
+            expectedMin = 25000.0f;
+        else if (load < 0.50f)
+            expectedMin = 45000.0f;
+        else if (load < 0.75f)
+            expectedMin = 70000.0f;
+        else
+            expectedMin = 95000.0f;
 
         // Ai bassi giri concedi un po' più tolleranza
         if (rpm < 1500.0f)
@@ -288,16 +268,15 @@ namespace Audi27TDI140kW
     // Funzione principale
     // =========================
     static inline float estimateEngineTorqueNm(
-        float load_pct,        // PID 0x04
-        float rpm,             // PID 0x0C
-        float maf_gps,         // PID 0x10
-        float map_kpa,         // PID 0x0B
-        float iat_c,           // PID 0x0F
+        float load_pct,              // PID 0x04
+        float rpm,                   // PID 0x0C
+        float maf_gps,               // PID 0x10
+        float map_kpa,               // PID 0x0B
+        float iat_c,                 // PID 0x0F
         float fuelRail_kpa = NAN,    // PID 0x23
         float moduleVoltage_v = NAN, // PID 0x42
         float baro_kpa = NAN,        // PID 0x33
-        bool useFilter = true
-    )
+        bool useFilter = true)
     {
         // Sanity check input
         if (!isFiniteNumber(load_pct) || !isFiniteNumber(rpm) || !isFiniteNumber(maf_gps) ||
@@ -307,10 +286,10 @@ namespace Audi27TDI140kW
         }
 
         load_pct = clampf(load_pct, 0.0f, 100.0f);
-        rpm      = clampf(rpm, 0.0f, MAX_VALID_RPM);
-        maf_gps  = clampf(maf_gps, MIN_VALID_MAF_GPS, MAX_VALID_MAF_GPS);
-        map_kpa  = clampf(map_kpa, 0.0f, MAX_VALID_MAP_KPA);
-        iat_c    = clampf(iat_c, -40.0f, 120.0f);
+        rpm = clampf(rpm, 0.0f, MAX_VALID_RPM);
+        maf_gps = clampf(maf_gps, MIN_VALID_MAF_GPS, MAX_VALID_MAF_GPS);
+        map_kpa = clampf(map_kpa, 0.0f, MAX_VALID_MAP_KPA);
+        iat_c = clampf(iat_c, -40.0f, 120.0f);
 
         // =========================
         // Filtro EMA automatico opzionale
@@ -328,21 +307,21 @@ namespace Audi27TDI140kW
             if (!filterState.initialized)
             {
                 filterState.load = load_pct;
-                filterState.maf  = maf_gps;
-                filterState.map  = map_kpa;
+                filterState.maf = maf_gps;
+                filterState.map = map_kpa;
                 filterState.initialized = true;
             }
             else
             {
-                filterState.load = ema(filterState.load, load_pct, EMA_ALPHA_LOAD);
-                filterState.maf  = ema(filterState.maf,  maf_gps,  EMA_ALPHA_MAF);
-                filterState.map  = ema(filterState.map,  map_kpa,  EMA_ALPHA_MAP);
+                filterState.load = ema(filterState.load, load_pct, TORQUE_EMA_ALPHA_LOAD);
+                filterState.maf = ema(filterState.maf, maf_gps, TORQUE_EMA_ALPHA_MAF);
+                filterState.map = ema(filterState.map, map_kpa, TORQUE_EMA_ALPHA_MAP);
             }
 
             // Sovrascrive input con valori filtrati
             load_pct = filterState.load;
-            maf_gps  = filterState.maf;
-            map_kpa  = filterState.map;
+            maf_gps = filterState.maf;
+            map_kpa = filterState.map;
         }
         else
         {
@@ -392,13 +371,12 @@ namespace Audi27TDI140kW
     // Variante leggera: solo PID fondamentali
     // =========================
     static inline float estimateEngineTorqueNmBasic(
-        float load_pct,   // PID 0x04
-        float rpm,        // PID 0x0C
-        float maf_gps,    // PID 0x10
-        float map_kpa,    // PID 0x0B
-        float iat_c,      // PID 0x0F
-        bool useFilter = true
-    )
+        float load_pct, // PID 0x04
+        float rpm,      // PID 0x0C
+        float maf_gps,  // PID 0x10
+        float map_kpa,  // PID 0x0B
+        float iat_c,    // PID 0x0F
+        bool useFilter = true)
     {
         return estimateEngineTorqueNm(load_pct, rpm, maf_gps, map_kpa, iat_c, NAN, NAN, NAN, useFilter);
     }

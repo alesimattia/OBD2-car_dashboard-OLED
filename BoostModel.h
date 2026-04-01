@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/EngineConstants.h" //unluckily no relative path in Arduino IDE so defined in main project file
 
 /*
   TurboPressureEstimatorAudi27TDI.h
@@ -40,32 +41,8 @@
   - Mantiene valori negativi (NO clamp a 0)
 */
 
-namespace Audi27TDI140kW
+namespace Audi27TDI140kW::Boost
 {
-    // =========================
-    // Parametri fisici
-    // =========================
-
-    static constexpr float ENGINE_DISPLACEMENT_M3 = 0.002698f;
-    static constexpr float GAS_CONSTANT_AIR       = 287.05f;
-
-    static constexpr float IDLE_MIN_RPM = 550.0f;
-
-    // Range plausibili
-    static constexpr float MIN_VALID_MAF_GPS  = 0.0f;
-    static constexpr float MAX_VALID_MAP_KPA  = 350.0f;
-    static constexpr float MAX_VALID_RPM      = 5500.0f;
-    static constexpr float MAX_VALID_MAF_GPS  = 400.0f;
-
-    // =========================
-    // Parametri filtro EMA
-    // =========================
-
-    static constexpr float EMA_ALPHA_MAP  = 0.22f;
-    static constexpr float EMA_ALPHA_BARO = 0.10f;
-    static constexpr float EMA_ALPHA_MAF  = 0.20f;
-    static constexpr float EMA_ALPHA_LOAD = 0.12f;
-
     struct TurboFilterState
     {
         float map;
@@ -75,7 +52,7 @@ namespace Audi27TDI140kW
         bool initialized;
     };
 
-    static TurboFilterState turboFilterState = {0,0,0,0,false};
+    static TurboFilterState turboFilterState = {0, 0, 0, 0, false};
 
     // =========================
     // Utility
@@ -83,8 +60,10 @@ namespace Audi27TDI140kW
 
     static inline float clampf(float x, float lo, float hi)
     {
-        if (x < lo) return lo;
-        if (x > hi) return hi;
+        if (x < lo)
+            return lo;
+        if (x > hi)
+            return hi;
         return x;
     }
 
@@ -107,9 +86,10 @@ namespace Audi27TDI140kW
             return 0.0f;
 
         float T = iat_c + 273.15f;
-        if (T < 200.0f) T = 200.0f;
+        if (T < 200.0f)
+            T = 200.0f;
 
-        float map_pa  = map_kpa * 1000.0f;
+        float map_pa = map_kpa * 1000.0f;
         float maf_kgs = maf_gps / 1000.0f;
 
         float ve =
@@ -127,8 +107,7 @@ namespace Audi27TDI140kW
         float rpm,
         float iat_c,
         float map_kpa,
-        float load_pct
-    )
+        float load_pct)
     {
         if (rpm < 900.0f || maf_gps < 8.0f)
             return 0.0f;
@@ -138,16 +117,20 @@ namespace Audi27TDI140kW
         // Modello base
         float dp =
             (0.00075f * maf_gps * maf_gps) +
-            (0.0120f  * maf_gps);
+            (0.0120f * maf_gps);
 
         // Correzione VE
         float ve = freshAirVE(rpm, maf_gps, map_kpa, iat_c);
 
         float c_ve;
-        if (ve < 0.45f)      c_ve = 0.60f;
-        else if (ve < 0.65f) c_ve = 0.80f;
-        else if (ve < 1.10f) c_ve = 1.00f;
-        else                 c_ve = 1.05f;
+        if (ve < 0.45f)
+            c_ve = 0.60f;
+        else if (ve < 0.65f)
+            c_ve = 0.80f;
+        else if (ve < 1.10f)
+            c_ve = 1.00f;
+        else
+            c_ve = 1.05f;
 
         // Correzione carico
         float c_load = 0.35f + (0.65f * load);
@@ -195,49 +178,48 @@ namespace Audi27TDI140kW
         float iat_c,
         float load_pct,
         bool includeChargePathCorrection = true,
-        bool useFilter = true
-    )
+        bool useFilter = true)
     {
         // Validazione base
-        if (!isFiniteNumber(map_kpa)  ||
+        if (!isFiniteNumber(map_kpa) ||
             !isFiniteNumber(baro_kpa) ||
-            !isFiniteNumber(maf_gps)  ||
-            !isFiniteNumber(rpm)      ||
-            !isFiniteNumber(iat_c)    ||
+            !isFiniteNumber(maf_gps) ||
+            !isFiniteNumber(rpm) ||
+            !isFiniteNumber(iat_c) ||
             !isFiniteNumber(load_pct))
         {
             return NAN;
         }
 
-        map_kpa  = clampf(map_kpa,  0.0f, MAX_VALID_MAP_KPA);
+        map_kpa = clampf(map_kpa, 0.0f, MAX_VALID_MAP_KPA);
         baro_kpa = clampf(baro_kpa, 0.0f, 150.0f);
-        maf_gps  = clampf(maf_gps,  MIN_VALID_MAF_GPS, MAX_VALID_MAF_GPS);
-        rpm      = clampf(rpm,      0.0f, MAX_VALID_RPM);
+        maf_gps = clampf(maf_gps, MIN_VALID_MAF_GPS, MAX_VALID_MAF_GPS);
+        rpm = clampf(rpm, 0.0f, MAX_VALID_RPM);
         load_pct = clampf(load_pct, 0.0f, 100.0f);
-        iat_c    = clampf(iat_c,   -40.0f, 120.0f);
+        iat_c = clampf(iat_c, -40.0f, 120.0f);
 
         // Filtro opzionale
         if (useFilter)
         {
             if (!turboFilterState.initialized)
             {
-                turboFilterState.map  = map_kpa;
+                turboFilterState.map = map_kpa;
                 turboFilterState.baro = baro_kpa;
-                turboFilterState.maf  = maf_gps;
+                turboFilterState.maf = maf_gps;
                 turboFilterState.load = load_pct;
                 turboFilterState.initialized = true;
             }
             else
             {
-                turboFilterState.map  = ema(turboFilterState.map,  map_kpa,  EMA_ALPHA_MAP);
-                turboFilterState.baro = ema(turboFilterState.baro, baro_kpa, EMA_ALPHA_BARO);
-                turboFilterState.maf  = ema(turboFilterState.maf,  maf_gps,  EMA_ALPHA_MAF);
-                turboFilterState.load = ema(turboFilterState.load, load_pct, EMA_ALPHA_LOAD);
+                turboFilterState.map = ema(turboFilterState.map, map_kpa, BOOST_EMA_ALPHA_MAP);
+                turboFilterState.baro = ema(turboFilterState.baro, baro_kpa, BOOST_EMA_ALPHA_BARO);
+                turboFilterState.maf = ema(turboFilterState.maf, maf_gps, BOOST_EMA_ALPHA_MAF);
+                turboFilterState.load = ema(turboFilterState.load, load_pct, BOOST_EMA_ALPHA_LOAD);
             }
 
-            map_kpa  = turboFilterState.map;
+            map_kpa = turboFilterState.map;
             baro_kpa = turboFilterState.baro;
-            maf_gps  = turboFilterState.maf;
+            maf_gps = turboFilterState.maf;
             load_pct = turboFilterState.load;
         }
 
@@ -255,8 +237,7 @@ namespace Audi27TDI140kW
             rpm,
             iat_c,
             map_kpa,
-            load_pct
-        );
+            load_pct);
 
         // Se la macchina è in vera depressione e a bassissimo carico,
         // ha poco senso aggiungere tutta la perdita di carico.
@@ -284,19 +265,18 @@ namespace Audi27TDI140kW
         float iat_c,
         float load_pct,
         bool includeChargePathCorrection = true,
-        bool useFilter = true
-    )
+        bool useFilter = true)
     {
         return estimateTurboPressureKpa(
-            map_kpa,
-            baro_kpa,
-            maf_gps,
-            rpm,
-            iat_c,
-            load_pct,
-            includeChargePathCorrection,
-            useFilter
-        ) / 100.0f;
+                   map_kpa,
+                   baro_kpa,
+                   maf_gps,
+                   rpm,
+                   iat_c,
+                   load_pct,
+                   includeChargePathCorrection,
+                   useFilter) /
+               100.0f;
     }
 
 }
