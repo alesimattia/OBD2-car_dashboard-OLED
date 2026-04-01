@@ -35,6 +35,7 @@
 /** No relative path with Arduino IDE => decided to not to define it as an ext. lib. so abs. path*/
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/dtc_descriptions.h"
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/TorqueEstimator.h"
+#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/BoostModel.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -854,11 +855,20 @@ void executeMonitorMode() {
 
     // Legge UN solo PID per ciclo
     switch (pidIdx) {
-      case 0:  // Boost
-        if (mapSupported) {
-          mapAvailable = readBoostPressure(&boostBar);
-        }
+      case 0: { // Boost (BoostModel: legge map, baro, maf, rpm, iat, load)
+        uint8_t bd[4]; uint8_t bn;
+        float bMap = NAN, bBaro = NAN, bMaf = NAN, bRpm = NAN, bIat = NAN, bLoad = NAN;
+        if (queryOBDPID(0x0B,bd,1,&bn)&&bn>=1) { bMap=(float)bd[0]; }
+        if (queryOBDPID(0x33,bd,1,&bn)&&bn>=1) { bBaro=(float)bd[0]; }
+        if (queryOBDPID(0x10,bd,2,&bn)&&bn>=2) { bMaf=((float)((bd[0]<<8)|bd[1]))/100.0f; }
+        if (queryOBDPID(0x0C,bd,2,&bn)&&bn>=2) { bRpm=(float)(((bd[0]<<8)|bd[1])/4); }
+        if (queryOBDPID(0x0F,bd,1,&bn)&&bn>=1) { bIat=(float)bd[0]-40.0f; }
+        if (queryOBDPID(0x04,bd,1,&bn)&&bn>=1) { bLoad=((float)bd[0]*100.0f)/255.0f; }
+        float result = Audi27TDI140kW::estimateTurboPressureBar(
+          bMap, bBaro, bMaf, bRpm, bIat, bLoad);
+        if (!isnan(result)) { boostBar = result; mapAvailable = true; }
         break;
+      }
       case 1: { // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
         uint8_t td[4]; uint8_t tn;
         float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;

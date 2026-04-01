@@ -34,6 +34,7 @@
 #include <Wire.h>
 #include "dtc_descriptions.h"
 #include "TorqueEstimator.h"
+#include "BoostModel.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -739,11 +740,20 @@ void executeMonitorMode() {
 
     // Legge UN solo PID per ciclo
     switch (pidIdx) {
-      case 0:  // Boost
-        if (mapSupported) {
-          mapAvailable = readBoostPressure(&boostBar);
-        }
+      case 0: { // Boost (BoostModel: legge map, baro, maf, rpm, iat, load)
+        uint8_t bd[8]; uint8_t bl;
+        float bMap = NAN, bBaro = NAN, bMaf = NAN, bRpm = NAN, bIat = NAN, bLoad = NAN;
+        if (queryPID(0x0B,bd,&bl)) { bMap=(float)bd[3]; }
+        if (queryPID(0x33,bd,&bl)) { bBaro=(float)bd[3]; }
+        if (queryPID(0x10,bd,&bl)) { bMaf=((float)((bd[3]<<8)|bd[4]))/100.0f; }
+        if (queryPID(0x0C,bd,&bl)) { bRpm=(float)(((bd[3]<<8)|bd[4])/4); }
+        if (queryPID(0x0F,bd,&bl)) { bIat=(float)bd[3]-40.0f; }
+        if (queryPID(0x04,bd,&bl)) { bLoad=((float)bd[3]*100.0f)/255.0f; }
+        float result = Audi27TDI140kW::estimateTurboPressureBar(
+          bMap, bBaro, bMaf, bRpm, bIat, bLoad);
+        if (!isnan(result)) { boostBar = result; mapAvailable = true; }
         break;
+      }
       case 1: { // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
         uint8_t td[8]; uint8_t tl;
         float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;
