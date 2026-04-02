@@ -498,29 +498,45 @@ const screens = [
   {
     title: '9. Monitor dati (principale)',
     tag: 'monitor', tagLabel: 'MONITOR',
-    desc: 'Schermata principale con i 4 valori monitorati. Aggiornamento parziale ~2Hz.',
+    desc: 'Colonna DX a x=100: "100%" tocca il bordo. Valori larghi (TEMP, EGR con errore) traslano a sinistra.',
     drawLand(o) {
-      const rx = 79;
+      const rx = 100;
       o.draw7x14B(0, 0, "BOOST");
       o.draw7x14B(rx, 0, "TEMP");
-      o.draw7x14B(0, 15, "+0.85 bar");
+      o.draw7x14B(0, 15, "+0.85 Bar");
       o.draw7x14B(rx, 15, "92 C");
       o.draw7x14B(0, 35, "COPPIA");
       o.draw7x14B(rx, 35, "EGR");
       o.draw7x14B(0, 50, "160 Nm");
-      o.draw7x14B(rx, 50, "44%(30)");
+      o.draw7x14B(79, 50, "44%(30)");
     },
   },
   {
-    title: '10. Monitor (valori negativi/N-D)',
+    title: '10. Monitor (errore EGR zero)',
     tag: 'monitor', tagLabel: 'MONITOR',
-    desc: 'Boost negativo (aspirazione naturale) e un sensore non disponibile.',
+    desc: 'Errore EGR = 0: non mostrato. "100%" a x=100 tocca il bordo.',
     drawLand(o) {
-      const rx = 79;
+      const rx = 100;
       o.draw7x14B(0, 0, "BOOST");
       o.draw7x14B(rx, 0, "TEMP");
-      o.draw7x14B(0, 15, "-0.42 bar");
-      o.draw7x14B(rx, 15, "45 C");
+      o.draw7x14B(0, 15, "+1.25 Bar");
+      o.draw7x14B(rx, 15, "90 C");
+      o.draw7x14B(0, 35, "COPPIA");
+      o.draw7x14B(rx, 35, "EGR");
+      o.draw7x14B(0, 50, "350 Nm");
+      o.draw7x14B(rx, 50, "100%");
+    },
+  },
+  {
+    title: '11. Monitor (valori negativi/N-D)',
+    tag: 'monitor', tagLabel: 'MONITOR',
+    desc: 'Boost negativo. TEMP "-40 C" trasla a x=93. Etichette fisse a x=100.',
+    drawLand(o) {
+      const rx = 100;
+      o.draw7x14B(0, 0, "BOOST");
+      o.draw7x14B(rx, 0, "TEMP");
+      o.draw7x14B(0, 15, "-0.42 Bar");
+      o.draw7x14B(93, 15, "-40 C");
       o.draw7x14B(0, 35, "COPPIA");
       o.draw7x14B(rx, 35, "EGR");
       o.draw7x14B(0, 50, "80 Nm");
@@ -528,7 +544,23 @@ const screens = [
     },
   },
   {
-    title: '11. Errori DTC (pagina 1)',
+    title: '12. Monitor (worst case EGR)',
+    tag: 'monitor', tagLabel: 'MONITOR',
+    desc: 'EGR estremo "100%(-100)" trasla a x=58. TEMP "-40 C" trasla a x=93. Etichette fisse a x=100.',
+    drawLand(o) {
+      const rx = 100;
+      o.draw7x14B(0, 0, "BOOST");
+      o.draw7x14B(rx, 0, "TEMP");
+      o.draw7x14B(0, 15, "+2.50 Bar");
+      o.draw7x14B(93, 15, "-40 C");
+      o.draw7x14B(0, 35, "COPPIA");
+      o.draw7x14B(rx, 35, "EGR");
+      o.draw7x14B(0, 50, "400 Nm");
+      o.draw7x14B(58, 50, "100%(-100)");
+    },
+  },
+  {
+    title: '13. Errori DTC (pagina 1)',
     tag: 'dtc', tagLabel: 'DTC',
     desc: 'Codici errore attivi con descrizione.',
     drawLand(o) {
@@ -540,7 +572,7 @@ const screens = [
     },
   },
   {
-    title: '12. Errori DTC (pagina 2)',
+    title: '14. Errori DTC (pagina 2)',
     tag: 'dtc', tagLabel: 'DTC',
     desc: 'Seconda pagina DTC. Alterna automaticamente ogni 5 secondi.',
     drawLand(o) {
@@ -550,7 +582,7 @@ const screens = [
     },
   },
   {
-    title: '13. Errore: rete non trovata',
+    title: '15. Errore: rete non trovata',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'La rete WiFi dell\'ELM327 non e\' raggiungibile dopo 30 tentativi.',
     drawLand(o) {
@@ -560,7 +592,7 @@ const screens = [
     },
   },
   {
-    title: '14. Errore: TCP fallito',
+    title: '16. Errore: TCP fallito',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'Connessione TCP all\'ELM327 fallita dopo 3 tentativi (bloccante).',
     drawLand(o) {
@@ -570,7 +602,7 @@ const screens = [
     },
   },
   {
-    title: '15. Errore: ECU non risponde',
+    title: '17. Errore: ECU non risponde',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'La scansione PID 0x00 non ha ricevuto risposta. Quadro acceso?',
     drawLand(o) {

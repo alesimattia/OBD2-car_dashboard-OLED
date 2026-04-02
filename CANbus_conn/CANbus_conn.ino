@@ -75,8 +75,11 @@
 #define ATMOSPHERIC_KPA 101.325f
 
 // Layout display landscape 128x64 (font 7x14B, 7px wide)
-// Colonna destra: allineata al bordo destro. "44%(30)" = 7 chars × 7px = 49px → 128-49 = 79
-#define RIGHT_COL_X      79
+// Colonna DX: "100%" = 4 chars × 7px = 28px → 128-28 = 100
+// Valori piu' larghi (TEMP, EGR con errore) traslano a sinistra dinamicamente.
+#define RIGHT_COL_X 100
+#define TEMP_EXTENDED_X 93    // Min x TEMP: "-40 C"/"215 C" = 35px → 128-35
+#define EGR_EXTENDED_X 58     // Min x EGR: "100%(-100)" = 70px → 128-70
 
 // Stima coppia: usa il modello TorqueEstimator (Audi27TDI140kW namespace)
 
@@ -142,13 +145,22 @@ uint8_t totalScreens = 1;  // Calcolato in base a dtcCount
 
 // ============================================================
 // Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
-// Indici: 0=boost, 1=coppia(stima), 2=temp, 3=egr, 4=egrError
-// Boost e coppia pesati ~4x rispetto a temp, egr e egrError
-// EGR e EGR_ERROR separati in slot distinti per cicli uniformi
+// Indici: 0=MAP, 1=LOAD, 2=RPM, 3=MAF, 4=IAT, 5=BARO,
+//         6=COOLANT, 7=EGR, 8=EGR_ERR, 9=RAIL, 10=VOLTS
+// MAP/LOAD/RPM/MAF pesati 3x (core per boost+coppia, massima reattivita')
+// IAT/BARO/RAIL/VOLTS 1x (correzioni lente, cambiano poco)
+// COOLANT/EGR/EGR_ERR 1x (solo display, in coda)
 // ============================================================
-const uint8_t PID_SCHEDULE[] PROGMEM = {0, 1, 0, 1, 2, 0, 1, 0, 1, 3, 0, 4};
-const uint8_t PID_SCHEDULE_LEN = 12;
+const uint8_t PID_SCHEDULE[] PROGMEM = { 0,1,2,3, 0,1,2,3, 0,1,2,3, 4,5,9,10, 6,7,8 };
+const uint8_t PID_SCHEDULE_LEN = 19;
 uint8_t pidScheduleIdx = 0;
+
+// Cache PID condivisa per BoostModel e TorqueEstimator
+// Ogni PID viene letto singolarmente nel round-robin e cachato qui;
+// boost e coppia vengono ricalcolati dopo ogni lettura.
+float cachedMap = NAN, cachedBaro = NAN, cachedMaf = NAN;
+float cachedRpm = NAN, cachedIat = NAN, cachedLoad = NAN;
+float cachedRail = NAN, cachedVolts = NAN;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
 float prevBoostBar = -999.0f;
@@ -682,20 +694,51 @@ void readDTCCodes() {
 
 /**
  * Verifica se lo slot PID round-robin e' supportato dall'ECU.
- * @param slot indice nello scheduling (0=boost, 1=coppia, 2=temp, 3=egr, 4=egrError)
+ * @param slot indice nello scheduling (0=MAP,1=LOAD,2=RPM,3=MAF,4=IAT,5=BARO,6=COOL,7=EGR,8=EGR_ERR,9=RAIL,10=VOLTS)
  * @return true se il PID corrispondente e' supportato
  * @see executeMonitorMode()
  * @since 24/03/26 Mattia Alesi
- * @modified 31/03/26 — aggiunto slot 4 per EGR_ERROR separato
+ * @modified 02/04/26 — riscrittura per PID cache (1 PID per slot)
  */
 bool isPidSlotSupported(uint8_t slot) {
   switch (slot) {
-    case 0: return mapSupported;
-    case 1: return loadSupported;
-    case 2: return coolantSupported;
-    case 3: return egrSupported;
-    case 4: return egrErrorSupported;
+    case 0:  return mapSupported;            // MAP 0x0B
+    case 1:  return loadSupported;           // LOAD 0x04
+    case 2:  return isPIDSupported(0x0C);    // RPM
+    case 3:  return isPIDSupported(0x10);    // MAF
+    case 4:  return isPIDSupported(0x0F);    // IAT
+    case 5:  return isPIDSupported(0x33);    // BARO
+    case 6:  return coolantSupported;        // COOLANT 0x05
+    case 7:  return egrSupported;            // EGR 0x2C
+    case 8:  return egrErrorSupported;       // EGR_ERROR 0x2D
+    case 9:  return isPIDSupported(0x23);    // FUEL_RAIL
+    case 10: return isPIDSupported(0x42);    // VOLTAGE
     default: return false;
+  }
+}
+
+/**
+ * Ricalcola boost e coppia dai valori PID cachati.
+ * I modelli gestiscono internamente i NAN (opzionali) e i valori non ancora disponibili.
+ * @see executeMonitorMode()
+ * @since 02/04/26 Mattia Alesi
+ */
+void recalcModels() {
+  // Boost: richiede MAP, BARO, MAF, RPM, IAT, LOAD tutti finiti
+  // useFilter=false: il filtro EMA e' superfluo con la PID cache (smoothing implicito)
+  float bResult = Audi27TDI140kW::Boost::estimateTurboPressureBar(
+    cachedMap, cachedBaro, cachedMaf, cachedRpm, cachedIat, cachedLoad,
+    true, false);
+  if (!isnan(bResult)) {
+    boostBar = bResult;
+    mapAvailable = true;
+  }
+  // Coppia: richiede LOAD, RPM, MAF, MAP, IAT; RAIL/VOLTS/BARO opzionali (NAN ok)
+  float tResult = Audi27TDI140kW::Torque::estimateEngineTorqueNm(
+    cachedLoad, cachedRpm, cachedMaf, cachedMap, cachedIat,
+    cachedRail, cachedVolts, cachedBaro, false);
+  if (tResult > 0.0f || (!isnan(cachedLoad) && !isnan(cachedRpm))) {
+    torqueNm = (int)tResult;
   }
 }
 
@@ -738,53 +781,51 @@ void executeMonitorMode() {
       attempts++;
     } while (!isPidSlotSupported(pidIdx) && attempts < PID_SCHEDULE_LEN);
 
-    // Legge UN solo PID per ciclo
+    // Legge UN solo PID per ciclo e aggiorna la cache condivisa
+    uint8_t d[8]; uint8_t dl;
     switch (pidIdx) {
-      case 0: { // Boost (BoostModel: legge map, baro, maf, rpm, iat, load)
-        uint8_t bd[8]; uint8_t bl;
-        float bMap = NAN, bBaro = NAN, bMaf = NAN, bRpm = NAN, bIat = NAN, bLoad = NAN;
-        if (queryPID(0x0B,bd,&bl)) { bMap=(float)bd[3]; }
-        if (queryPID(0x33,bd,&bl)) { bBaro=(float)bd[3]; }
-        if (queryPID(0x10,bd,&bl)) { bMaf=((float)((bd[3]<<8)|bd[4]))/100.0f; }
-        if (queryPID(0x0C,bd,&bl)) { bRpm=(float)(((bd[3]<<8)|bd[4])/4); }
-        if (queryPID(0x0F,bd,&bl)) { bIat=(float)bd[3]-40.0f; }
-        if (queryPID(0x04,bd,&bl)) { bLoad=((float)bd[3]*100.0f)/255.0f; }
-        float result = Audi27TDI140kW::estimateTurboPressureBar(
-          bMap, bBaro, bMaf, bRpm, bIat, bLoad);
-        if (!isnan(result)) { boostBar = result; mapAvailable = true; }
+      case 0:  // MAP (0x0B)
+        if (queryPID(0x0B, d, &dl)) { cachedMap = (float)d[3]; }
         break;
-      }
-      case 1: { // Coppia (TorqueEstimator: legge load, rpm, maf, map, iat + opzionali)
-        uint8_t td[8]; uint8_t tl;
-        float tLoad = NAN, tRpm = NAN, tMaf = NAN, tMap = NAN, tIat = NAN;
-        float tRail = NAN, tVolts = NAN, tBaro = NAN;
-        if (queryPID(0x04,td,&tl)) { tLoad=((float)td[3]*100.0f)/255.0f; loadPct=(int)tLoad; loadAvailable=true; }
-        if (queryPID(0x0C,td,&tl)) { tRpm=(float)(((td[3]<<8)|td[4])/4); }
-        if (queryPID(0x10,td,&tl)) { tMaf=((float)((td[3]<<8)|td[4]))/100.0f; }
-        if (queryPID(0x0B,td,&tl)) { tMap=(float)td[3]; }
-        if (queryPID(0x0F,td,&tl)) { tIat=(float)td[3]-40.0f; }
-        if (queryPID(0x23,td,&tl)) { tRail=(float)(((td[3]<<8)|td[4])*10); }
-        if (queryPID(0x42,td,&tl)) { tVolts=((float)((td[3]<<8)|td[4]))/1000.0f; }
-        if (queryPID(0x33,td,&tl)) { tBaro=(float)td[3]; }
-        torqueNm = (int)Audi27TDI140kW::estimateEngineTorqueNm(
-          tLoad, tRpm, tMaf, tMap, tIat, tRail, tVolts, tBaro);
-        break;
-      }
-      case 2:  // Temperatura liquido
-        if (coolantSupported) {
-          coolantAvailable = readCoolantTemp(&coolantC);
+      case 1:  // LOAD (0x04)
+        if (queryPID(0x04, d, &dl)) {
+          cachedLoad = ((float)d[3] * 100.0f) / 255.0f;
+          loadPct = (int)cachedLoad;
+          loadAvailable = true;
         }
         break;
-      case 3:  // EGR
-        if (egrSupported) {
-          egrAvailable = readEGR(&egrPct);
-        }
+      case 2:  // RPM (0x0C)
+        if (queryPID(0x0C, d, &dl)) { cachedRpm = (float)(((d[3] << 8) | d[4]) / 4); }
         break;
-      case 4:  // Errore EGR (slot separato per cicli uniformi)
-        if (egrErrorSupported) {
-          egrErrAvailable = readEGRError(&egrErrPct);
-        }
+      case 3:  // MAF (0x10)
+        if (queryPID(0x10, d, &dl)) { cachedMaf = ((float)((d[3] << 8) | d[4])) / 100.0f; }
         break;
+      case 4:  // IAT (0x0F)
+        if (queryPID(0x0F, d, &dl)) { cachedIat = (float)d[3] - 40.0f; }
+        break;
+      case 5:  // BARO (0x33)
+        if (queryPID(0x33, d, &dl)) { cachedBaro = (float)d[3]; }
+        break;
+      case 6:  // Temperatura liquido (0x05)
+        if (coolantSupported) { coolantAvailable = readCoolantTemp(&coolantC); }
+        break;
+      case 7:  // EGR (0x2C)
+        if (egrSupported) { egrAvailable = readEGR(&egrPct); }
+        break;
+      case 8:  // Errore EGR (0x2D)
+        if (egrErrorSupported) { egrErrAvailable = readEGRError(&egrErrPct); }
+        break;
+      case 9:  // Fuel rail pressure (0x23)
+        if (queryPID(0x23, d, &dl)) { cachedRail = (float)(((d[3] << 8) | d[4]) * 10); }
+        break;
+      case 10: // Module voltage (0x42)
+        if (queryPID(0x42, d, &dl)) { cachedVolts = ((float)((d[3] << 8) | d[4])) / 1000.0f; }
+        break;
+    }
+    // Ricalcola boost e coppia solo quando un PID del modello e' stato aggiornato
+    // (evita iterazioni EMA inutili su COOLANT/EGR/EGR_ERR che non cambiano la cache)
+    if (pidIdx <= 5 || pidIdx == 9 || pidIdx == 10) {
+      recalcModels();
     }
     updateDisplay();
 #if DEBUG
@@ -847,9 +888,10 @@ void drawTorqueValue() {
 
 /**
  * Disegna il valore temperatura liquido raffreddamento.
- * Colonna destra (RIGHT_COL_X), y=15. Font deve essere gia' impostato.
+ * Colonna destra riga 1 (RIGHT_COL_X), y=15. Font deve essere gia' impostato.
  * @see updateDisplay()
  * @modified 31/03/26 — spostato da basso-SX a alto-DX
+ * @modified 02/04/26 — confine colonna dedicato per riga 1
  */
 void drawCoolantValue() {
   char val[14];
@@ -858,23 +900,34 @@ void drawCoolantValue() {
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(RIGHT_COL_X, 15, val);
+  // Valori larghi (es. "-40 C") traslano a sinistra per toccare il bordo destro
+  int w = u8g2.getStrWidth(val);
+  int x = (w > (128 - RIGHT_COL_X)) ? (128 - w) : RIGHT_COL_X;
+  u8g2.drawStr(x, 15, val);
 }
 
 /**
  * Disegna il valore apertura valvola EGR con errore tra parentesi.
- * Formato: "44%(30)" — colonna destra (RIGHT_COL_X), y=54.
+ * Formato: "44%(30)" — colonna destra riga 2 (RIGHT_COL_X), y=50.
  * @see updateDisplay()
  * @modified 31/03/26 — aggiunto errore EGR (PID 0x2D) tra parentesi
+ * @modified 02/04/26 — confine colonna dedicato per riga 2
  */
 void drawEgrValue() {
   char val[14];
   if (egrSupported && egrAvailable) {
-    snprintf(val, sizeof(val), "%d%%(%d)", egrPct, egrErrPct);
+    if (egrErrPct != 0) {
+      snprintf(val, sizeof(val), "%d%%(%d)", egrPct, egrErrPct);
+    } else {
+      snprintf(val, sizeof(val), "%d%%", egrPct);
+    }
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  u8g2.drawStr(RIGHT_COL_X, 50, val);
+  // Valori larghi (es. "100%(-100)") traslano a sinistra per toccare il bordo destro
+  int w = u8g2.getStrWidth(val);
+  int x = (w > (128 - RIGHT_COL_X)) ? (128 - w) : RIGHT_COL_X;
+  u8g2.drawStr(x, 50, val);
 }
 
 /**
@@ -933,15 +986,15 @@ void updateDisplay() {
 
   // Boost (colonna sinistra, riga 1)
   if (curBoostInt != prevBoostInt) {
-    clearValueArea(0, 15, RIGHT_COL_X, 14);
+    clearValueArea(0, 15, TEMP_EXTENDED_X, 14);
     drawBoostValue();
     prevBoostInt = curBoostInt;
     row1dirty = true;
   }
 
-  // Temperatura liquido (colonna destra, riga 1)
+  // Temperatura liquido (colonna destra, riga 1 — clear estesa per valori larghi)
   if (curCoolantC != prevCoolantC) {
-    clearValueArea(RIGHT_COL_X, 15, 128 - RIGHT_COL_X, 14);
+    clearValueArea(TEMP_EXTENDED_X, 15, 128 - TEMP_EXTENDED_X, 14);
     drawCoolantValue();
     prevCoolantC = curCoolantC;
     row1dirty = true;
@@ -949,15 +1002,15 @@ void updateDisplay() {
 
   // Coppia stimata (colonna sinistra, riga 2)
   if (curTorqueNm != prevTorqueNm) {
-    clearValueArea(0, 50, RIGHT_COL_X, 14);
+    clearValueArea(0, 50, EGR_EXTENDED_X, 14);
     drawTorqueValue();
     prevTorqueNm = curTorqueNm;
     row2dirty = true;
   }
 
-  // EGR (colonna destra, riga 2)
+  // EGR (colonna destra, riga 2 — clear estesa per valori larghi)
   if (curEgrPct != prevEgrPct) {
-    clearValueArea(RIGHT_COL_X, 50, 128 - RIGHT_COL_X, 14);
+    clearValueArea(EGR_EXTENDED_X, 50, 128 - EGR_EXTENDED_X, 14);
     drawEgrValue();
     prevEgrPct = curEgrPct;
     row2dirty = true;
