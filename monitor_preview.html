@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OBD2 Monitor — Dashboard Live</title>
+<title>OBD2 Dashboard Live</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -142,12 +142,22 @@
   .alarm { color: #f44; }
   .main-card .value.alarm { color: #f44; }
   .main-card .value.warn { color: #ca4; }
+  .tg { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; }
+  .tg label { color: #888; font-size: 0.8em; }
+  .sw { position: relative; width: 40px; height: 22px; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sl { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #333; border-radius: 22px; transition: 0.3s; }
+  .sl:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #888; border-radius: 50%; transition: 0.3s; }
+  .sw input:checked + .sl { background: #0a5; }
+  .sw input:checked + .sl:before { transform: translateX(18px); background: #fff; }
 </style>
 </head>
 <body>
 
-<h1>OBD2 Dashboard</h1>
+<h1>OBD2 Dashboard Live</h1>
 <p class="subtitle">Audi A5 B8 2.7 TDI CGKA</p>
+<div class="tg"><label>Diagnostica Serial</label><label class="sw"><input type="checkbox" id="dbgTgl" checked onchange="toggleDebug()"><span class="sl"></span></label></div>
+<p class="subtitle" id="dbgWarn" style="color:#ca4">Rallenta il refresh dei dati sul display</p>
 
 <!-- Dati principali -->
 <div class="section">
@@ -177,7 +187,7 @@
 </div>
 
 <!-- Motore -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Motore</div>
   <div class="grid">
     <div class="item"><span class="label">Carico</span><span class="value" id="v_load">22.5 %</span></div>
@@ -192,7 +202,7 @@
 </div>
 
 <!-- Veicolo -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Veicolo</div>
   <div class="grid">
     <div class="item"><span class="label">Velocit&agrave;</span><span class="value" id="v_speed">80 km/h</span></div>
@@ -205,7 +215,7 @@
 </div>
 
 <!-- Consumi -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Consumi</div>
   <div class="grid">
     <div class="item"><span class="label">Consumo</span><span class="value" id="v_fuelL100">5.3 L/100</span></div>
@@ -215,7 +225,7 @@
 </div>
 
 <!-- Turbo -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Turbo</div>
   <div class="grid">
     <div class="item"><span class="label">Boost</span><span class="value" id="v_boost2">+0.85 bar</span></div>
@@ -226,7 +236,7 @@
 </div>
 
 <!-- Diagnostica -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Diagnostica</div>
   <div class="grid">
     <div class="item"><span class="label">Batteria</span><span class="value" id="v_volts">14.2 V</span></div>
@@ -238,7 +248,7 @@
 </div>
 
 <!-- Ambiente -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Ambiente</div>
   <div class="grid">
     <div class="item"><span class="label">Temp. esterna</span><span class="value" id="v_ambient">18 &deg;C</span></div>
@@ -249,7 +259,7 @@
 </div>
 
 <!-- Contatori -->
-<div class="section">
+<div class="section debug">
   <div class="section-title">Contatori</div>
   <div class="grid">
     <div class="item"><span class="label">Tempo motore</span><span class="value" id="v_runtime">0:20:34</span></div>
@@ -267,13 +277,19 @@
   </div>
 </div>
 
-<div class="status-bar" id="statusBar">Aggiornamento ogni 500ms &mdash; Simulazione</div>
+<div class="status-bar" id="statusBar">Auto-refresh 500ms</div>
 
 <script>
 /**
  * Simulatore dati per monitor_preview.html
  * Genera valori casuali realistici per visualizzare il layout della dashboard.
  */
+function toggleDebug() {
+  var on = document.getElementById('dbgTgl').checked;
+  document.getElementById('dbgWarn').style.display = on ? '' : 'none';
+  document.querySelectorAll('.debug').forEach(function(e) { e.style.display = on ? '' : 'none'; });
+}
+
 function cls(base, val, redCond, yellowCond) {
   return base + (redCond ? ' alarm' : (yellowCond ? ' warn' : ''));
 }

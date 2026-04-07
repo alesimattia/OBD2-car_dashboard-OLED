@@ -68,8 +68,8 @@
 #define OTA_PORT    80              // Porta web server
 #define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
 
-// Debug: 1 = attiva diagnostica avanzata su Serial, 0 = disattiva
-#define DEBUG 0
+// Diagnostica avanzata su Serial: attivabile runtime da /dashboard
+bool debugMode = false;
 
 // Pressione atmosferica standard per calcolo boost
 #define ATMOSPHERIC_KPA 101.325f
@@ -175,7 +175,7 @@ bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;
 bool otaClientWasConnected = false;
 
-// Dashboard web live (endpoint /monitor e /data)
+// Dashboard web live (endpoint /dashboard, /data, /debug)
 #define OBD_CONN_CAN
 #include "web_dashboard.h"
 
@@ -828,9 +828,7 @@ void executeMonitorMode() {
       recalcModels();
     }
     updateDisplay();
-#if DEBUG
-    printAdvancedDiagnostics();
-#endif
+    if (debugMode) printAdvancedDiagnostics();
   }
   yield();
 }
@@ -1063,7 +1061,6 @@ void drawDTCScreen(uint8_t page) {
   u8g2.sendBuffer();
 }
 
-#if DEBUG
 // ============================================================
 // DIAGNOSTICA SERIALE AVANZATA
 // ============================================================
@@ -1071,7 +1068,7 @@ void drawDTCScreen(uint8_t page) {
 /**
  * Stampa su Serial tutti i 47 parametri (diretti + calcolati) dai PID disponibili.
  * Completamente autocontenuta: legge tutti i PID internamente via CAN.
- * Attivata da #define DEBUG 1. Con DEBUG 0 non viene compilata.
+ * Attivata da debugMode=true (toggle da /dashboard).
  *
  * @since 31/03/26 Mattia Alesi
  */
@@ -1424,7 +1421,6 @@ void printAdvancedDiagnostics() {
 
   Serial.println(F("==========================================================\n"));
 }
-#endif
 
 // ============================================================
 // UTILITA'

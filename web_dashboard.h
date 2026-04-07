@@ -1,9 +1,10 @@
 /**
  * Dashboard web live per OBD2 Monitor.
  *
- * Fornisce due endpoint HTTP:
- *   /monitor — pagina HTML dashboard con auto-refresh 500ms
- *   /data    — JSON con tutti i 47 parametri (diretti + calcolati)
+ * Fornisce tre endpoint HTTP:
+ *   /dashboard — pagina HTML dashboard con auto-refresh 500ms
+ *   /data      — JSON con tutti i 47 parametri (diretti + calcolati)
+ *   /debug     — toggle diagnostica seriale (?on/?off)
  *
  * L'handler /data legge i PID internamente, come printAdvancedDiagnostics().
  * Richiede che lo .ino definisca OBD_CONN_WIFI o OBD_CONN_CAN prima dell'include,
@@ -57,18 +58,28 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .hid{display:none}
 .sb{text-align:center;font-size:.65em;color:#444;margin-top:8px}
 .ok{color:#4a4}.w{color:#ca4}.al{color:#f44}.mc .v.al{color:#f44}.mc .v.w{color:#ca4}
+.tg{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px}
+.tg label{color:#888;font-size:.8em}
+.sw{position:relative;width:40px;height:22px}
+.sw input{opacity:0;width:0;height:0}
+.sl{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;border-radius:22px;transition:.3s}
+.sl:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
+.sw input:checked+.sl{background:#0a5}
+.sw input:checked+.sl:before{transform:translateX(18px);background:#fff}
 </style>
 </head>
 <body>
 <h1>OBD2 Dashboard</h1>
 <p class="sub">Audi A5 B8 2.7 TDI CGKA</p>
+<div class="tg"><label>Diagnostica Serial</label><label class="sw"><input type="checkbox" id="dbgTgl" onchange="fetch('/debug?'+(this.checked?'on':'off'))"><span class="sl"></span></label></div>
+<p class="sub" id="dbgWarn" style="display:none;color:#ca4">Rallenta il refresh dei dati sul display</p>
 <div class="s"><div class="st">Dati principali</div><div class="mg">
 <div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u">bar</div></div>
 <div class="mc"><div class="l">TEMP</div><div class="v" id="d_cool">--</div><div class="u">&deg;C</div></div>
 <div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u">Nm</div></div>
 <div class="mc"><div class="l">EGR</div><div class="v" id="d_egr">--</div><div class="u"></div></div>
 </div></div>
-<div class="s"><div class="st">Motore</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Motore</div><div class="g">
 <div class="i"><span class="l">Carico</span><span class="v" id="d_load">--</span></div>
 <div class="i"><span class="l">RPM</span><span class="v" id="d_rpm">--</span></div>
 <div class="i"><span class="l">MAF</span><span class="v" id="d_maf">--</span></div>
@@ -78,7 +89,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Temp. liq.</span><span class="v" id="d_cool2">--</span></div>
 <div class="i"><span class="l">IAT</span><span class="v" id="d_iat">--</span></div>
 </div></div>
-<div class="s"><div class="st">Veicolo</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Veicolo</div><div class="g">
 <div class="i"><span class="l">Velocit&agrave;</span><span class="v" id="d_spd">--</span></div>
 <div class="i"><span class="l">Farfalla</span><span class="v" id="d_thr">--</span></div>
 <div class="i"><span class="l">Rapporto CVT</span><span class="v" id="d_gear">--</span></div>
@@ -87,31 +98,31 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Pedale D</span><span class="v" id="d_pD">--</span></div>
 <div class="i"><span class="l">Pedale E</span><span class="v" id="d_pE">--</span></div>
 </div>
-<div class="s"><div class="st">Consumi</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Consumi</div><div class="g">
 <div class="i"><span class="l">Consumo</span><span class="v" id="d_fl100">--</span></div>
 <div class="i"><span class="l">Cons. specifico</span><span class="v" id="d_bsfc">--</span></div>
 <div class="i"><span class="l">Potenza</span><span class="v" id="d_pow">--</span></div>
 </div></div>
-<div class="s"><div class="st">Turbo</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Turbo</div><div class="g">
 <div class="i"><span class="l">Boost</span><span class="v" id="d_boost2">--</span></div>
 <div class="i"><span class="l">Rapporto compr.</span><span class="v" id="d_pr">--</span></div>
 <div class="i"><span class="l">Eff. intercooler</span><span class="v" id="d_ic">--</span></div>
 <div class="i"><span class="l">Variaz. boost</span><span class="v" id="d_br">--</span></div>
 </div></div>
-<div class="s"><div class="st">Diagnostica</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Diagnostica</div><div class="g">
 <div class="i"><span class="l">Batteria</span><span class="v" id="d_volt">--</span></div>
 <div class="i"><span class="l">Drift pedale</span><span class="v" id="d_drift">--</span></div>
 <div class="i"><span class="l">Taglio iniezione</span><span class="v" id="d_dfco">--</span></div>
 <div class="i"><span class="l">Eff. volum.</span><span class="v" id="d_ve">--</span></div>
 <div class="i"><span class="l">&Delta; farfalla</span><span class="v" id="d_dt">--</span></div>
 </div></div>
-<div class="s"><div class="st">Ambiente</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Ambiente</div><div class="g">
 <div class="i"><span class="l">Temp. esterna</span><span class="v" id="d_amb">--</span></div>
 <div class="i"><span class="l">Press. baro</span><span class="v" id="d_bar">--</span></div>
 <div class="i"><span class="l">Altitudine</span><span class="v" id="d_alt">--</span></div>
 <div class="i"><span class="l">Densit&agrave; aria</span><span class="v" id="d_ad">--</span></div>
 </div></div>
-<div class="s"><div class="st">Contatori</div><div class="g">
+<div class="s debug" style="display:none"><div class="st">Contatori</div><div class="g">
 <div class="i"><span class="l">Tempo motore</span><span class="v" id="d_rt">--</span></div>
 <div class="i"><span class="l">Km con MIL</span><span class="v" id="d_km">--</span></div>
 <div class="i"><span class="l">Avviamenti</span><span class="v" id="d_st">--</span></div>
@@ -121,11 +132,15 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <script>
 function u(){fetch('/data').then(r=>r.json()).then(d=>{
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
+document.getElementById('dbgTgl').checked=d.debug;
+document.getElementById('dbgWarn').style.display=d.debug?'':'none';
+document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
 var s=d.boost>=0?'+':'';
 var el=document.getElementById('d_boost');el.textContent=s+d.boost.toFixed(2);el.className='v'+(d.boost>1.5?' al':'');
 el=document.getElementById('d_cool');el.textContent=d.coolant;el.className='v'+(d.coolant>110?' al':d.coolant>100?' w':'');
 document.getElementById('d_torq').textContent=d.torque;
 el=document.getElementById('d_egr');el.textContent=d.egr+'%('+d.egrErr+')';el.className='v'+(Math.abs(d.egrErr)>10?' al':'');
+if(d.debug){
 document.getElementById('d_load').textContent=d.load.toFixed(1)+' %';
 document.getElementById('d_rpm').textContent=d.rpm;
 document.getElementById('d_maf').textContent=d.maf.toFixed(1)+' g/s';
@@ -160,6 +175,7 @@ var rt=d.runtime;var h=Math.floor(rt/3600);var m=Math.floor((rt%3600)/60);var sc
 document.getElementById('d_rt').textContent=h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');
 document.getElementById('d_km').textContent=d.kmMil+' km';
 document.getElementById('d_st').textContent=d.starts;
+}
 var db=document.getElementById('dtcBox');
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+(d.dtc[i].desc||'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(()=>{});}
@@ -202,10 +218,44 @@ static bool _readPidCan(uint8_t pid) {
 // ============================================================
 
 static void handleData(ESP8266WebServer& server) {
+  extern bool debugMode;
+
+  // Variabili globali dal round-robin (sempre disponibili, zero query OBD)
+  extern float boostBar;
+  extern int coolantC, torqueNm, egrPct, egrErrPct;
+  extern bool mapAvailable, coolantAvailable, loadAvailable, egrAvailable;
+  extern bool milOn;
+  extern uint8_t dtcCount;
+  extern uint16_t dtcCodes[];
+
+  if (!debugMode) {
+    // --- JSON ridotto: solo 4 valori principali + DTC ---
+    char json[384];
+    int p = 0;
+    int bc = (int)(boostBar * 100.0f);
+    p += snprintf(json + p, sizeof(json) - p,
+      "{\"boost\":%.2f,\"coolant\":%d,\"torque\":%d,"
+      "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,\"debug\":false,\"dtc\":[",
+      boostBar, coolantC, torqueNm,
+      egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount);
+    for (int i = 0; i < dtcCount && i < 6; i++) {
+      char code[6];
+      decodeDTC(dtcCodes[i], code);
+      const char* desc = getDTCDescription(dtcCodes[i]);
+      char descBuf[22] = "";
+      if (desc) { strncpy_P(descBuf, desc, 21); descBuf[21] = 0; }
+      p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
+        i > 0 ? "," : "", code, descBuf);
+    }
+    p += snprintf(json + p, sizeof(json) - p, "]}");
+    server.send(200, "application/json", json);
+    return;
+  }
+
+  // --- JSON completo: legge TUTTI i PID internamente ---
   uint8_t d[4];
   uint8_t n;
 
-  // Variabili locali per tutti i PID
   float loadPct = 0, mapKpa = 0, baroKpa = 0, mafGs = 0, lambdaVal = 1.0f;
   float iatC = 0, ambC = 0, coolC = 0, voltsV = 0, o2v = 0;
   int rpm = 0, speedKmh = 0, pedalD = 0, pedalE = 0, throttle = 0;
@@ -215,7 +265,6 @@ static void handleData(ESP8266WebServer& server) {
   bool mil = false;
   int dtcN = 0;
 
-  // Flag lettura
   bool hLoad=0,hMap=0,hBaro=0,hMaf=0,hLam=0,hIat=0,hAmb=0,hCool=0;
   bool hRpm=0,hSpd=0,hPD=0,hPE=0,hThr=0,hEgr=0,hEgrE=0,hRail=0,hV=0,hRt=0;
 
@@ -351,10 +400,7 @@ static void handleData(ESP8266WebServer& server) {
     bsfc);
 
   // DTC array
-  p += snprintf(json + p, sizeof(json) - p, "\"dtc\":[");
-  // Usa i DTC globali gia' letti da checkMILStatus()
-  extern uint8_t dtcCount;
-  extern uint16_t dtcCodes[];
+  p += snprintf(json + p, sizeof(json) - p, "\"debug\":true,\"dtc\":[");
   for (int i = 0; i < dtcCount && i < 6; i++) {
     char code[6];
     decodeDTC(dtcCodes[i], code);
@@ -374,7 +420,7 @@ static void handleData(ESP8266WebServer& server) {
 // ============================================================
 
 /**
- * Registra gli endpoint /monitor e /data sul web server HTTP.
+ * Registra gli endpoint /dashboard, /data e /debug sul web server HTTP.
  * Chiamare dopo httpUpdater.setup() e prima di httpServer.begin().
  *
  * @param server riferimento al web server ESP8266
@@ -382,11 +428,21 @@ static void handleData(ESP8266WebServer& server) {
  * @since 01/04/26 Mattia Alesi
  */
 void setupWebDashboard(ESP8266WebServer& server) {
-  server.on("/monitor", HTTP_GET, [&server]() {
+  server.on("/dashboard", HTTP_GET, [&server]() {
     server.send_P(200, "text/html", DASHBOARD_HTML);
   });
   server.on("/data", HTTP_GET, [&server]() {
     handleData(server);
+  });
+  // Toggle diagnostica seriale: /debug?on, /debug?off, /debug (stato)
+  extern bool debugMode;
+  server.on("/debug", HTTP_GET, [&server]() {
+    extern bool debugMode;
+    if (server.hasArg("on")) { debugMode = true; }
+    else if (server.hasArg("off")) { debugMode = false; }
+    char json[20];
+    snprintf(json, sizeof(json), "{\"debug\":%s}", debugMode ? "true" : "false");
+    server.send(200, "application/json", json);
   });
 }
 

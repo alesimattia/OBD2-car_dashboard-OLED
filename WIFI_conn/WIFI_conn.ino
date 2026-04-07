@@ -67,8 +67,8 @@
 #define OTA_PORT 80                // Porta web server
 #define OTA_WINDOW_MS 180000       // Finestra OTA: 3 minuti dal boot
 
-// Debug: 1 = attiva diagnostica avanzata su Serial
-#define DEBUG 1
+// Diagnostica avanzata su Serial: attivabile runtime da /dashboard
+bool debugMode = false;
 
 // PID OBD2 per i dati di monitoraggio
 #define PID_MAP 0x0B           // Pressione assoluta collettore (kPa)
@@ -188,7 +188,7 @@ int prevCoolantC = -999;
 int prevEgrPct = -999;
 bool labelsDrawn = false;  // Etichette statiche gia' disegnate nel buffer
 
-// Dashboard web live (endpoint /monitor e /data)
+// Dashboard web live (endpoint /dashboard, /data, /debug)
 #define OBD_CONN_WIFI
 #include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/web_dashboard.h"
 
@@ -948,9 +948,7 @@ void executeMonitorMode() {
       recalcModels();
     }
     updateDisplay();
-#if DEBUG
-    printAdvancedDiagnostics();
-#endif
+    if (debugMode) printAdvancedDiagnostics();
   }
   yield();
 }
@@ -1167,7 +1165,6 @@ void drawDTCScreen(uint8_t page) {
   u8g2.sendBuffer();
 }
 
-#if DEBUG
 // ============================================================
 // DIAGNOSTICA SERIALE AVANZATA
 // ============================================================
@@ -1175,7 +1172,7 @@ void drawDTCScreen(uint8_t page) {
 /**
  * Stampa su Serial tutti i 47 parametri (diretti + calcolati) dai PID disponibili.
  * Completamente autocontenuta: legge tutti i PID internamente.
- * Attivata da #define DEBUG 1. Con DEBUG 0 non viene compilata.
+ * Attivata da debugMode=true (toggle da /dashboard).
  *
  * @since 31/03/26 Mattia Alesi
  */
@@ -1679,7 +1676,6 @@ void printAdvancedDiagnostics() {
 
   Serial.println(F("==========================================================\n"));
 }
-#endif
 
 // ============================================================
 // UTILITA'
