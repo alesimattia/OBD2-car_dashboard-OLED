@@ -41,6 +41,7 @@
 // D3/D4 occupati dall'I2C OLED su questo sketch → usa D5
 #define BUTTON_PIN D5
 #include "button_handler.h"
+#include "light_sensor.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -212,6 +213,7 @@ void setup() {
   u8g2.setBusClock(400000);
   u8g2.begin();
   u8g2.setFontPosTop();
+  initBrightness();  // legge LDR e applica contrasto iniziale
 
   // OTA web server (attivo anche prima della connessione ELM327)
   httpUpdater.setup(&httpServer, "/ota");
@@ -240,6 +242,8 @@ void setup() {
 // ============================================================
 
 void loop() {
+  updateBrightness();  // sample LDR + state machine auto-brightness (non bloccante)
+
   // OTA: attivo finche' otaDeadline non scade E nessun client e' connesso.
   // Se un client si connette, il timeout si sospende.
   // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.

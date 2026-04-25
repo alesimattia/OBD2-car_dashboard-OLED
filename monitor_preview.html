@@ -130,6 +130,8 @@
     border-radius: 4px;
     margin-left: 8px;
   }
+  .dtc-box .section-title { display: flex; align-items: center; gap: 8px; }
+  .dtc-box .mil-on { flex: 0 0 auto; margin-left: 0; font-size: 0.85em; padding: 5px 10px; }
   .hidden { display: none; }
   .status-bar {
     text-align: center;
@@ -150,6 +152,10 @@
   .sl:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: #888; border-radius: 50%; transition: 0.3s; }
   .sw input:checked + .sl { background: #0a5; }
   .sw input:checked + .sl:before { transform: translateX(18px); background: #fff; }
+  #btnClr { flex: 1; background: #1a0808; color: #ff8888; border: 1px solid #cc3333; border-radius: 4px; padding: 7px 10px; font-size: 0.9em; font-weight: 700; cursor: pointer; letter-spacing: 0.5px; }
+  #btnClr:hover { background: #cc3333; color: #fff; }
+  #btnClr:active { background: #881111; }
+  #btnClr:disabled { opacity: 0.5; cursor: wait; }
 </style>
 </head>
 <body>
@@ -183,6 +189,27 @@
       <div class="value" id="v_egr">44%(30)</div>
       <div class="unit"></div>
     </div>
+  </div>
+</div>
+
+<!-- Luce ambiente: LDR + slider override + reset auto -->
+<div class="section">
+  <div class="section-title">Luce ambiente</div>
+  <div class="grid">
+    <div class="item"><span class="label">LDR</span><span class="value" id="v_ldr">512</span></div>
+    <div class="item"><span class="label">Contrasto</span><span class="value" id="v_contrast">128</span></div>
+  </div>
+  <div class="item" style="margin-top:6px"><span class="label">Modo</span><span class="value" id="v_brMode">auto</span></div>
+  <input type="range" min="0" max="255" id="brSld" value="128" oninput="brSet(this.value)" style="width:100%;margin-top:8px">
+  <button onclick="brAuto()" style="width:100%;margin-top:6px;background:#1a2a30;color:#8eddf0;border:1px solid #1a3060;border-radius:4px;padding:6px;font-weight:600;cursor:pointer">Reset auto</button>
+</div>
+
+<!-- DTC box (visibile solo se ci sono errori) -->
+<div class="dtc-box" id="dtcBox">
+  <div class="section-title">Errori DTC <span class="mil-on" id="milBadge">MIL ON</span><button id="btnClr" onclick="clrDtc()">CANCELLA</button></div>
+  <div id="dtcList">
+    <div class="dtc-item"><span class="dtc-code">P0401</span> <span class="dtc-desc">Flusso EGR scarso</span></div>
+    <div class="dtc-item"><span class="dtc-code">P0234</span> <span class="dtc-desc">Sovrapressione turbo</span></div>
   </div>
 </div>
 
@@ -268,15 +295,6 @@
   </div>
 </div>
 
-<!-- DTC box (visibile solo se ci sono errori) -->
-<div class="dtc-box" id="dtcBox">
-  <div class="section-title">Errori DTC <span class="mil-on" id="milBadge">MIL ON</span></div>
-  <div id="dtcList">
-    <div class="dtc-item"><span class="dtc-code">P0401</span> <span class="dtc-desc">Flusso EGR scarso</span></div>
-    <div class="dtc-item"><span class="dtc-code">P0234</span> <span class="dtc-desc">Sovrapressione turbo</span></div>
-  </div>
-</div>
-
 <div class="status-bar" id="statusBar">Auto-refresh 500ms</div>
 
 <script>
@@ -290,6 +308,19 @@ function toggleDebug() {
   document.querySelectorAll('.debug').forEach(function(e) { e.style.display = on ? '' : 'none'; });
 }
 
+// Mock del bottone "Cancella DTC" — preview standalone, nessuna chiamata di rete.
+function clrDtc() {
+  if (!confirm('Cancellare i codici DTC?\nSi perde lo storico errori e si resettano i monitor di readiness.')) return;
+  var b = document.getElementById('btnClr');
+  b.disabled = true; b.textContent = '...';
+  setTimeout(function() {
+    alert('DTC cancellati (mock). Re-check in corso.');
+    document.getElementById('dtcList').innerHTML = '';
+    document.getElementById('dtcBox').className = 'dtc-box hidden';
+    b.disabled = false; b.textContent = 'CANCELLA';
+  }, 600);
+}
+
 function cls(base, val, redCond, yellowCond) {
   return base + (redCond ? ' alarm' : (yellowCond ? ' warn' : ''));
 }
@@ -301,6 +332,33 @@ function randomBetween(min, max) {
 let prevSpeed = 80;
 let prevBoost = 0.85;
 let simTime = 1234;
+
+// Simulazione auto-brightness (mirror della state machine in light_sensor.h)
+let simLdr = 500;
+let simMode = 'auto';
+let simContrast = 128;
+let simManual = 128;
+let simLdrAtOverride = 0;
+let simTarget = 128;
+
+function adcToContrast(adc) {
+  if (adc < 30) adc = 30;
+  if (adc > 950) adc = 950;
+  const n = (adc - 30) / 920;
+  return Math.round(5 + n * n * 235);
+}
+function brSet(v) {
+  simManual = parseInt(v);
+  simContrast = simManual;
+  simLdrAtOverride = Math.round(simLdr);
+  simMode = 'manual';
+  document.getElementById('v_contrast').textContent = simContrast;
+  document.getElementById('v_brMode').textContent = simMode;
+}
+function brAuto() {
+  simTarget = adcToContrast(simLdr);
+  simMode = 'fading';
+}
 
 function simulateData() {
   const load = randomBetween(15, 85);
@@ -410,6 +468,26 @@ function simulateData() {
   // DTC box: mostra/nascondi simulando presenza errori
   const showDtc = (simTime % 20) < 10;  // alterna ogni 10 cicli
   document.getElementById('dtcBox').className = showDtc ? 'dtc-box' : 'dtc-box hidden';
+
+  // Luce ambiente: onda lenta + rumore per simulare variazioni di luminosita'
+  simLdr = 500 + 400 * Math.sin(simTime / 30) + (Math.random() - 0.5) * 40;
+  if (simMode === 'manual' && Math.abs(simLdr - simLdrAtOverride) > 150) {
+    simTarget = adcToContrast(simLdr);
+    simMode = 'fading';
+  }
+  if (simMode === 'auto') {
+    simContrast = adcToContrast(simLdr);
+  } else if (simMode === 'fading') {
+    simTarget = adcToContrast(simLdr);
+    const delta = simTarget - simContrast;
+    if (Math.abs(delta) <= 1) { simContrast = simTarget; simMode = 'auto'; }
+    else simContrast += (delta > 0 ? 2 : -2);
+  }
+  document.getElementById('v_ldr').textContent = Math.round(simLdr);
+  document.getElementById('v_contrast').textContent = simContrast;
+  document.getElementById('v_brMode').textContent = simMode;
+  const sl = document.getElementById('brSld');
+  if (document.activeElement !== sl) sl.value = simContrast;
 }
 
 setInterval(simulateData, 500);

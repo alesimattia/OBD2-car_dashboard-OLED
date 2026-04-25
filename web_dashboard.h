@@ -1,10 +1,12 @@
 /**
  * Dashboard web live per OBD2 Monitor.
  *
- * Fornisce tre endpoint HTTP:
- *   /dashboard — pagina HTML dashboard con auto-refresh 500ms
- *   /data      — JSON con tutti i 47 parametri (diretti + calcolati)
- *   /debug     — toggle diagnostica seriale (?on/?off)
+ * Fornisce gli endpoint HTTP:
+ *   /dashboard  — pagina HTML dashboard con auto-refresh 500ms
+ *   /data       — JSON con tutti i 47 parametri (diretti + calcolati)
+ *   /debug      — toggle diagnostica seriale (?on/?off)
+ *   /brightness — stato/override luminosità OLED (?set=N | ?auto)
+ *   /clear-dtc  — cancella DTC (OBD2 Mode 04)
  *
  * L'handler /data legge i PID internamente, come printAdvancedDiagnostics().
  * Richiede che lo .ino definisca OBD_CONN_WIFI o OBD_CONN_CAN prima dell'include,
@@ -20,6 +22,7 @@
 
 #include <ESP8266WebServer.h>
 #include "dtc_descriptions.h"
+#include "light_sensor.h"
 
 // ============================================================
 // HTML della dashboard (PROGMEM)
@@ -55,6 +58,8 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .dc{color:#ff8888;font-weight:700;font-size:.95em}
 .dd{color:#cc8888;font-size:.75em}
 .mil{display:inline-block;background:#cc3333;color:#fff;font-size:.7em;font-weight:700;padding:2px 8px;border-radius:4px;margin-left:8px}
+.db .st{display:flex;align-items:center;gap:8px}
+.db .mil{flex:0 0 auto;margin-left:0;font-size:.85em;padding:5px 10px}
 .hid{display:none}
 .sb{text-align:center;font-size:.65em;color:#444;margin-top:8px}
 .ok{color:#4a4}.w{color:#ca4}.al{color:#f44}.mc .v.al{color:#f44}.mc .v.w{color:#ca4}
@@ -66,9 +71,10 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .sl:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
 .sw input:checked+.sl{background:#0a5}
 .sw input:checked+.sl:before{transform:translateX(18px);background:#fff}
-#btnClr{float:right;background:#1a0808;color:#ff8888;border:1px solid #cc3333;border-radius:4px;padding:2px 10px;font-size:.7em;font-weight:600;cursor:pointer;letter-spacing:.5px}
+#btnClr{flex:1;background:#1a0808;color:#ff8888;border:1px solid #cc3333;border-radius:4px;padding:7px 10px;font-size:.9em;font-weight:700;cursor:pointer;letter-spacing:.5px}
 #btnClr:hover{background:#cc3333;color:#fff}
 #btnClr:active{background:#881111}
+#btnClr:disabled{opacity:.5;cursor:wait}
 </style>
 </head>
 <body>
@@ -82,6 +88,16 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u">Nm</div></div>
 <div class="mc"><div class="l">EGR</div><div class="v" id="d_egr">--</div><div class="u"></div></div>
 </div></div>
+<div class="s"><div class="st">Luce ambiente</div>
+<div class="g">
+<div class="i"><span class="l">LDR</span><span class="v" id="d_ldr">--</span></div>
+<div class="i"><span class="l">Contrasto</span><span class="v" id="d_ctr">--</span></div>
+</div>
+<div class="i" style="margin-top:6px"><span class="l">Modo</span><span class="v" id="d_brm">--</span></div>
+<input type="range" min="0" max="255" id="brSld" oninput="brSet(this.value)" style="width:100%;margin-top:8px">
+<button onclick="fetch('/brightness?auto')" style="width:100%;margin-top:6px;background:#1a2a30;color:#8eddf0;border:1px solid #1a3060;border-radius:4px;padding:6px;font-weight:600;cursor:pointer">Reset auto</button>
+</div>
+<div class="db hid" id="dtcBox"><div class="st">Errori DTC <span class="mil" id="milB">MIL</span><button id="btnClr" onclick="clrDtc()">CANCELLA</button></div><div id="dtcL"></div></div>
 <div class="s debug" style="display:none"><div class="st">Motore</div><div class="g">
 <div class="i"><span class="l">Carico</span><span class="v" id="d_load">--</span></div>
 <div class="i"><span class="l">RPM</span><span class="v" id="d_rpm">--</span></div>
@@ -130,9 +146,9 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Km con MIL</span><span class="v" id="d_km">--</span></div>
 <div class="i"><span class="l">Avviamenti</span><span class="v" id="d_st">--</span></div>
 </div></div>
-<div class="db hid" id="dtcBox"><div class="st">Errori DTC <span class="mil" id="milB">MIL</span><button id="btnClr" onclick="clrDtc()">CANCELLA</button></div><div id="dtcL"></div></div>
 <div class="sb">Auto-refresh 500ms</div>
 <script>
+var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function u(){fetch('/data').then(r=>r.json()).then(d=>{
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
 document.getElementById('dbgTgl').checked=d.debug;
@@ -143,6 +159,10 @@ var el=document.getElementById('d_boost');el.textContent=s+d.boost.toFixed(2);el
 el=document.getElementById('d_cool');el.textContent=d.coolant;el.className='v'+(d.coolant>110?' al':d.coolant>100?' w':'');
 document.getElementById('d_torq').textContent=d.torque;
 el=document.getElementById('d_egr');el.textContent=d.egr+'%('+d.egrErr+')';el.className='v'+(Math.abs(d.egrErr)>10?' al':'');
+document.getElementById('d_ldr').textContent=d.lightLevel;
+document.getElementById('d_ctr').textContent=d.contrast;
+document.getElementById('d_brm').textContent=d.brightnessMode;
+var sl=document.getElementById('brSld');if(document.activeElement!==sl)sl.value=d.contrast;
 if(d.debug){
 document.getElementById('d_load').textContent=d.load.toFixed(1)+' %';
 document.getElementById('d_rpm').textContent=d.rpm;
@@ -237,11 +257,15 @@ static void handleData(ESP8266WebServer& server) {
     char json[384];
     int p = 0;
     int bc = (int)(boostBar * 100.0f);
+    const char* brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
     p += snprintf(json + p, sizeof(json) - p,
       "{\"boost\":%.2f,\"coolant\":%d,\"torque\":%d,"
-      "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,\"debug\":false,\"dtc\":[",
+      "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,"
+      "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\","
+      "\"debug\":false,\"dtc\":[",
       boostBar, coolantC, torqueNm,
-      egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount);
+      egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount,
+      (int)br.ldrEma, br.currentContrast, brm);
     for (int i = 0; i < dtcCount && i < 6; i++) {
       char code[6];
       decodeDTC(dtcCodes[i], code);
@@ -403,8 +427,11 @@ static void handleData(ESP8266WebServer& server) {
     accel, boostRate,
     bsfc);
 
-  // DTC array
-  p += snprintf(json + p, sizeof(json) - p, "\"debug\":true,\"dtc\":[");
+  // Brightness state + DTC array
+  const char* brmDbg = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
+  p += snprintf(json + p, sizeof(json) - p,
+    "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\",\"debug\":true,\"dtc\":[",
+    (int)br.ldrEma, br.currentContrast, brmDbg);
   for (int i = 0; i < dtcCount && i < 6; i++) {
     char code[6];
     decodeDTC(dtcCodes[i], code);
@@ -424,7 +451,7 @@ static void handleData(ESP8266WebServer& server) {
 // ============================================================
 
 /**
- * Registra gli endpoint /dashboard, /data e /debug sul web server HTTP.
+ * Registra gli endpoint /dashboard, /data, /debug, /brightness, /clear-dtc sul web server HTTP.
  * Chiamare dopo httpUpdater.setup() e prima di httpServer.begin().
  *
  * @param server riferimento al web server ESP8266
@@ -447,6 +474,28 @@ void setupWebDashboard(ESP8266WebServer& server) {
     char json[20];
     snprintf(json, sizeof(json), "{\"debug\":%s}", debugMode ? "true" : "false");
     server.send(200, "application/json", json);
+  });
+  // Brightness: stato + slider override (?set=N) + reset auto (?auto)
+  server.on("/brightness", HTTP_GET, [&server]() {
+    if (server.hasArg("set")) {
+      int v = server.arg("set").toInt();
+      if (v < 0) v = 0;
+      if (v > 255) v = 255;
+      br.manualContrast  = (uint8_t)v;
+      br.currentContrast = (uint8_t)v;
+      br.ldrAtOverride   = (int)br.ldrEma;
+      br.mode            = BR_MANUAL;
+      u8g2.setContrast((uint8_t)v);
+    } else if (server.hasArg("auto")) {
+      br.targetContrast = adcToContrast((int)br.ldrEma);
+      br.mode = BR_FADING;
+    }
+    const char* m = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
+    char j[140];
+    snprintf(j, sizeof(j),
+      "{\"ldr\":%d,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
+      (int)br.ldrEma, br.currentContrast, m, br.ldrAtOverride);
+    server.send(200, "application/json", j);
   });
   // Cancellazione DTC (OBD2 Mode 04). Implementata in CANbus_conn.ino o WIFI_conn.ino.
   server.on("/clear-dtc", HTTP_GET, [&server]() {

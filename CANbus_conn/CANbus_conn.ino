@@ -38,6 +38,7 @@
 #include "TorqueEstimator.h"
 #include "BoostModel.h"
 #include "button_handler.h"
+#include "light_sensor.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -206,6 +207,7 @@ void setup() {
   u8g2.setBusClock(400000);
   u8g2.begin();
   u8g2.setFontPosTop();
+  initBrightness();  // legge LDR e applica contrasto iniziale
 
   // Splash screen — centrato verticalmente
   u8g2.clearBuffer();
@@ -245,6 +247,8 @@ void setup() {
 // ============================================================
 
 void loop() {
+  updateBrightness();  // sample LDR + state machine auto-brightness (non bloccante)
+
   // OTA: attivo finche' otaDeadline non scade E nessun client e' connesso.
   // Se un client si connette, il timeout si sospende.
   // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.
