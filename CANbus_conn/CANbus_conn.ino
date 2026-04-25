@@ -71,9 +71,6 @@
 // Diagnostica avanzata su Serial: attivabile runtime da /dashboard
 bool debugMode = false;
 
-// Pressione atmosferica standard per calcolo boost
-#define ATMOSPHERIC_KPA 101.325f
-
 // Layout display landscape 128x64 (font 7x14B, 7px wide)
 // Colonna DX: "100%" = 4 chars × 7px = 28px → 128-28 = 100
 // Valori piu' larghi (TEMP, EGR con errore) traslano a sinistra dinamicamente.
@@ -163,7 +160,6 @@ float cachedRpm = NAN, cachedIat = NAN, cachedLoad = NAN;
 float cachedRail = NAN, cachedVolts = NAN;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
-float prevBoostBar = -999.0f;
 int prevBoostInt = -99999;   // (int)(boostBar * 100) per confronto senza errori float
 int prevTorqueNm = -999;
 int prevCoolantC = -999;
@@ -174,6 +170,9 @@ bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
 bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;
 bool otaClientWasConnected = false;
+
+// Forward decl per web_dashboard.h (vede queryPID prima della sua definizione)
+bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len);
 
 // Dashboard web live (endpoint /dashboard, /data, /debug)
 #define OBD_CONN_CAN
@@ -189,8 +188,8 @@ void setup() {
   Serial.println(F("Audi A5 B8 2.7 TDI CGKA"));
 
   // I2C su pin ESP8266: SDA=GPIO4(D2), SCL=GPIO5(D1)
+  // (sono i default del core ESP8266, ma li dichiariamo per chiarezza)
   Wire.begin(4, 5);
-  Wire.setClock(400000);
 
   // SoftAP per aggiornamento OTA via browser
   WiFi.mode(WIFI_AP);
@@ -400,9 +399,14 @@ void executeScanMode() {
   }
 
   if (!connected) {
-    Serial.println(F("ERRORE: ECU non risponde!"));
+    Serial.println(F("ERRORE: ECU non risponde, retry tra 10s"));
     showError("ECU non risp.", "Quadro acceso?");
-    while (true) { yield(); }
+    unsigned long retryAt = millis() + 10000;
+    while (millis() < retryAt) {
+      if (otaActive) httpServer.handleClient();
+      yield();
+    }
+    return;  // executeScanMode rientra dal loop e ritenta
   }
 
   Serial.println(F("ECU connessa!"));
@@ -498,25 +502,8 @@ void executeScanMode() {
 // ============================================================
 
 /**
- * Legge la pressione MAP e calcola il boost in bar.
- * Boost = (MAP_kPa - pressione_atmosferica) / 100
- * @see PID 0x0B: 1 byte, range 0-255 kPa
- */
-bool readBoostPressure(float* boost) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_MAP, data, &len)) {
-    float mapKpa = (float)data[3];
-    *boost = (mapKpa - ATMOSPHERIC_KPA) / 100.0f;
-    return true;
-  }
-  return false;
-}
-
-/**
  * Legge il carico motore calcolato.
  * @see PID 0x04: 1 byte, formula = A * 100 / 255, range 0..100 %
- * @since 27/03/26 Mattia Alesi
  */
 bool readEngineLoad(int* load) {
   uint8_t data[8];
@@ -531,7 +518,6 @@ bool readEngineLoad(int* load) {
 /**
  * Legge la temperatura del liquido di raffreddamento.
  * @see PID 0x05: 1 byte, formula = A - 40, range -40..215 C
- * @since 27/03/26 Mattia Alesi
  */
 bool readCoolantTemp(int* temp) {
   uint8_t data[8];
@@ -546,7 +532,6 @@ bool readCoolantTemp(int* temp) {
 /**
  * Legge l'apertura comandata della valvola EGR.
  * @see PID 0x2C: 1 byte, formula = A * 100 / 255, range 0..100 %
- * @since 27/03/26 Mattia Alesi
  */
 bool readEGR(int* egr) {
   uint8_t data[8];
@@ -561,7 +546,6 @@ bool readEGR(int* egr) {
 /**
  * Legge l'errore EGR (differenza tra comandato e reale).
  * @see PID 0x2D: 1 byte, formula = (A - 128) * 100 / 128, range -100..+99 %
- * @since 31/03/26 Mattia Alesi
  */
 bool readEGRError(int* err) {
   uint8_t data[8];
@@ -697,8 +681,6 @@ void readDTCCodes() {
  * @param slot indice nello scheduling (0=MAP,1=LOAD,2=RPM,3=MAF,4=IAT,5=BARO,6=COOL,7=EGR,8=EGR_ERR,9=RAIL,10=VOLTS)
  * @return true se il PID corrispondente e' supportato
  * @see executeMonitorMode()
- * @since 24/03/26 Mattia Alesi
- * @modified 02/04/26 — riscrittura per PID cache (1 PID per slot)
  */
 bool isPidSlotSupported(uint8_t slot) {
   switch (slot) {
@@ -721,7 +703,6 @@ bool isPidSlotSupported(uint8_t slot) {
  * Ricalcola boost e coppia dai valori PID cachati.
  * I modelli gestiscono internamente i NAN (opzionali) e i valori non ancora disponibili.
  * @see executeMonitorMode()
- * @since 02/04/26 Mattia Alesi
  */
 void recalcModels() {
   // Boost: richiede MAP, BARO, MAF, RPM, IAT, LOAD tutti finiti
@@ -732,6 +713,8 @@ void recalcModels() {
   if (!isnan(bResult)) {
     boostBar = bResult;
     mapAvailable = true;
+  } else {
+    mapAvailable = false;
   }
   // Coppia: richiede LOAD, RPM, MAF, MAP, IAT; RAIL/VOLTS/BARO opzionali (NAN ok)
   float tResult = Audi27TDI140kW::Torque::estimateEngineTorqueNm(
@@ -781,47 +764,103 @@ void executeMonitorMode() {
       attempts++;
     } while (!isPidSlotSupported(pidIdx) && attempts < PID_SCHEDULE_LEN);
 
-    // Legge UN solo PID per ciclo e aggiorna la cache condivisa
+    // Legge UN solo PID per ciclo e aggiorna la cache condivisa.
+    // Dopo MAX_CONSEC_TIMEOUTS letture consecutive fallite, il valore cachato
+    // torna NAN/false in modo che display e dashboard mostrino N/D.
+    static uint8_t consecTo[11] = {0};
+    static uint8_t totalTo = 0;
+    bool ok = false;
     uint8_t d[8]; uint8_t dl;
     switch (pidIdx) {
       case 0:  // MAP (0x0B)
-        if (queryPID(0x0B, d, &dl)) { cachedMap = (float)d[3]; }
+        ok = queryPID(0x0B, d, &dl);
+        if (ok) cachedMap = (float)d[3];
         break;
       case 1:  // LOAD (0x04)
-        if (queryPID(0x04, d, &dl)) {
+        ok = queryPID(0x04, d, &dl);
+        if (ok) {
           cachedLoad = ((float)d[3] * 100.0f) / 255.0f;
           loadPct = (int)cachedLoad;
           loadAvailable = true;
         }
         break;
       case 2:  // RPM (0x0C)
-        if (queryPID(0x0C, d, &dl)) { cachedRpm = (float)(((d[3] << 8) | d[4]) / 4); }
+        ok = queryPID(0x0C, d, &dl);
+        if (ok) cachedRpm = (float)(((d[3] << 8) | d[4]) / 4);
         break;
       case 3:  // MAF (0x10)
-        if (queryPID(0x10, d, &dl)) { cachedMaf = ((float)((d[3] << 8) | d[4])) / 100.0f; }
+        ok = queryPID(0x10, d, &dl);
+        if (ok) cachedMaf = ((float)((d[3] << 8) | d[4])) / 100.0f;
         break;
       case 4:  // IAT (0x0F)
-        if (queryPID(0x0F, d, &dl)) { cachedIat = (float)d[3] - 40.0f; }
+        ok = queryPID(0x0F, d, &dl);
+        if (ok) cachedIat = (float)d[3] - 40.0f;
         break;
       case 5:  // BARO (0x33)
-        if (queryPID(0x33, d, &dl)) { cachedBaro = (float)d[3]; }
+        ok = queryPID(0x33, d, &dl);
+        if (ok) cachedBaro = (float)d[3];
         break;
       case 6:  // Temperatura liquido (0x05)
-        if (coolantSupported) { coolantAvailable = readCoolantTemp(&coolantC); }
+        if (coolantSupported) {
+          ok = readCoolantTemp(&coolantC);
+          if (ok) coolantAvailable = true;
+        }
         break;
       case 7:  // EGR (0x2C)
-        if (egrSupported) { egrAvailable = readEGR(&egrPct); }
+        if (egrSupported) {
+          ok = readEGR(&egrPct);
+          if (ok) egrAvailable = true;
+        }
         break;
       case 8:  // Errore EGR (0x2D)
-        if (egrErrorSupported) { egrErrAvailable = readEGRError(&egrErrPct); }
+        if (egrErrorSupported) {
+          ok = readEGRError(&egrErrPct);
+          if (ok) egrErrAvailable = true;
+        }
         break;
       case 9:  // Fuel rail pressure (0x23)
-        if (queryPID(0x23, d, &dl)) { cachedRail = (float)(((d[3] << 8) | d[4]) * 10); }
+        ok = queryPID(0x23, d, &dl);
+        if (ok) cachedRail = (float)(((d[3] << 8) | d[4]) * 10);
         break;
       case 10: // Module voltage (0x42)
-        if (queryPID(0x42, d, &dl)) { cachedVolts = ((float)((d[3] << 8) | d[4])) / 1000.0f; }
+        ok = queryPID(0x42, d, &dl);
+        if (ok) cachedVolts = ((float)((d[3] << 8) | d[4])) / 1000.0f;
         break;
     }
+
+    if (ok) {
+      consecTo[pidIdx] = 0;
+      totalTo = 0;
+    } else {
+      if (++consecTo[pidIdx] >= 3) {
+        // Stale value: invalida la cache cosi' recalcModels() produrra' NAN
+        // e i flag *Available verranno azzerati a valle.
+        switch (pidIdx) {
+          case 0: cachedMap = NAN; break;
+          case 1: cachedLoad = NAN; loadAvailable = false; break;
+          case 2: cachedRpm = NAN; break;
+          case 3: cachedMaf = NAN; break;
+          case 4: cachedIat = NAN; break;
+          case 5: cachedBaro = NAN; break;
+          case 6: coolantAvailable = false; break;
+          case 7: egrAvailable = false; break;
+          case 8: egrErrAvailable = false; break;
+          case 9: cachedRail = NAN; break;
+          case 10: cachedVolts = NAN; break;
+        }
+      }
+      // Bus-off recovery: dopo 10 timeout consecutivi totali, se il MCP2515
+      // segnala BUS_OFF (EFLG bit 5) re-inizializza il transceiver.
+      if (++totalTo >= 10) {
+        if (CAN.getError() & 0x20) {
+          Serial.println(F("CAN bus-off, re-init MCP2515"));
+          CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL);
+          CAN.setMode(MCP_NORMAL);
+        }
+        totalTo = 0;
+      }
+    }
+
     // Ricalcola boost e coppia solo quando un PID del modello e' stato aggiornato
     // (evita iterazioni EMA inutili su COOLANT/EGR/EGR_ERR che non cambiano la cache)
     if (pidIdx <= 5 || pidIdx == 9 || pidIdx == 10) {
@@ -841,7 +880,6 @@ void executeMonitorMode() {
  * Cancella un'area rettangolare nel framebuffer senza toccare il resto.
  * Usa setDrawColor(0) + drawBox per azzerare solo i pixel specificati.
  * @see updateDisplay()
- * @since 24/03/26 Mattia Alesi
  */
 void clearValueArea(int x, int y, int w, int h) {
   u8g2.setDrawColor(0);
@@ -853,7 +891,6 @@ void clearValueArea(int x, int y, int w, int h) {
  * Disegna il valore boost con 2 cifre decimali.
  * Colonna sinistra, y=15. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @since 24/03/26 Mattia Alesi
  */
 void drawBoostValue() {
   char val[14];
@@ -1069,8 +1106,6 @@ void drawDTCScreen(uint8_t page) {
  * Stampa su Serial tutti i 47 parametri (diretti + calcolati) dai PID disponibili.
  * Completamente autocontenuta: legge tutti i PID internamente via CAN.
  * Attivata da debugMode=true (toggle da /dashboard).
- *
- * @since 31/03/26 Mattia Alesi
  */
 void printAdvancedDiagnostics() {
   uint8_t data[8];
@@ -1258,10 +1293,16 @@ void printAdvancedDiagnostics() {
   // ---- VALORI CALCOLATI ----
   Serial.println(F("  --- CALCOLATI ---"));
 
-  // 24. Boost (bar)
+  // 24. Boost (bar) — via BoostModel (stesso modello del flusso principale)
   if (hMap && hBaro) {
-    float boostBar = (mapKpa - baroKpa) / 100.0f;
-    Serial.print(F("  24. Boost: ")); Serial.print(boostBar, 2);
+    float boostBarLoc = Audi27TDI140kW::Boost::estimateTurboPressureBar(
+      mapKpa, baroKpa,
+      hMaf ? mafGs : NAN,
+      hRpm ? (float)rpm : NAN,
+      hIat ? iatC : NAN,
+      hLoad ? loadPctL : NAN,
+      true, false);
+    Serial.print(F("  24. Boost: ")); Serial.print(boostBarLoc, 2);
     Serial.println(F(" bar  [aspira: <0, turbo: 0.3-1.5]"));
   } else { Serial.println(F("  24. Boost: N/D")); }
 
@@ -1270,7 +1311,7 @@ void printAdvancedDiagnostics() {
     float tRailKpa = hRail ? (float)railBar * 100.0f : NAN;
     float tVoltsV = hVolts ? volts : NAN;
     float tBaroKpa = hBaro ? baroKpa : NAN;
-    int torqueNmL = (int)Audi27TDI140kW::estimateEngineTorqueNm(
+    int torqueNmL = (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
       loadPctL, (float)rpm, mafGs, mapKpa, iatC, tRailKpa, tVoltsV, tBaroKpa, false);
     Serial.print(F("  25. Coppia stimata: ")); Serial.print(torqueNmL);
     Serial.println(F(" Nm  [idle: 60-100, max: 400]"));
@@ -1332,7 +1373,7 @@ void printAdvancedDiagnostics() {
 
   // 32. Densita' aria
   if (hMap && hIat) {
-    float rho = (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f));
+    float rho = (mapKpa * 1000.0f) / (Audi27TDI140kW::GAS_CONSTANT_AIR * (iatC + 273.15f));
     Serial.print(F("  32. Densita aria: ")); Serial.print(rho, 3);
     Serial.println(F(" kg/m3  [livello mare 20C: 1.204]"));
   } else { Serial.println(F("  32. Densita aria: N/D")); }
@@ -1358,8 +1399,9 @@ void printAdvancedDiagnostics() {
 
   // 36. Efficienza volumetrica
   if (hMaf && hRpm && hMap && hIat && rpm > 0) {
-    float rho = (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f));
-    float volEff = (mafGs * 120.0f) / (2.698f * (float)rpm * rho / 1000.0f);
+    float rho = (mapKpa * 1000.0f) / (Audi27TDI140kW::GAS_CONSTANT_AIR * (iatC + 273.15f));
+    float displL = Audi27TDI140kW::ENGINE_DISPLACEMENT_M3 * 1000.0f;
+    float volEff = (mafGs * 120.0f) / (displL * (float)rpm * rho / 1000.0f);
     Serial.print(F("  36. Eff. volumetrica: ")); Serial.print((int)volEff);
     Serial.println(F(" %  [normale: 70-95%]"));
   } else { Serial.println(F("  36. Eff. volumetrica: N/D")); }
@@ -1404,10 +1446,16 @@ void printAdvancedDiagnostics() {
     }
   } else { Serial.println(F("  43. Accelerazione: N/D (primo ciclo)")); }
 
-  // 44. Variazione boost
+  // 44. Variazione boost — derivata sul boost calcolato dal modello
   if (hMap && hBaro && prevMs > 0) {
     float dtS = (float)(nowMs - prevMs) / 1000.0f;
-    float curBoost = (mapKpa - baroKpa) / 100.0f;
+    float curBoost = Audi27TDI140kW::Boost::estimateTurboPressureBar(
+      mapKpa, baroKpa,
+      hMaf ? mafGs : NAN,
+      hRpm ? (float)rpm : NAN,
+      hIat ? iatC : NAN,
+      hLoad ? loadPctL : NAN,
+      true, false);
     if (dtS > 0.05f) {
       float dBoost = (curBoost - prevBoostBar) / dtS;
       Serial.print(F("  44. Variaz. boost: ")); Serial.print(dBoost, 2);

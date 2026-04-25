@@ -1,0 +1,23 @@
+{
+  "arduino.useArduinoCli": true,
+  "arduino.path": "/opt/homebrew/bin",
+  "arduino.commandPath": "arduino-cli",
+  "arduino.logLevel": "info",
+  "arduino.enableUSBDetection": true,
+  "arduino.disableTestingOpen": false,
+  "arduino.clearOutputOnBuild": true,
+  "files.associations": {
+    "*.ino": "cpp",
+    "*.h": "cpp",
+    "*.hpp": "cpp"
+  },
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.errorSquiggles": "enabled",
+  "search.exclude": {
+    "**/build": true,
+    "**/.cache": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true
+  }
+}
