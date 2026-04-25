@@ -582,6 +582,33 @@ const screens = [
     },
   },
   {
+    title: '15a. Clear DTC — invio',
+    tag: 'monitor', tagLabel: 'BUTTON',
+    desc: 'Pulsante fisico tenuto premuto >=2.5s: invio OBD2 Mode 04 alla centralina.',
+    drawLand(o) {
+      o.draw6x10(37, 11, "CLEAR DTC");
+      o.draw6x10(16, 32, "Invio Mode 04...");
+    },
+  },
+  {
+    title: '15b. Clear DTC — successo',
+    tag: 'monitor', tagLabel: 'BUTTON',
+    desc: 'La centralina ha confermato (servizio 0x44). DTC azzerati, re-check forzato.',
+    drawLand(o) {
+      o.draw6x10(37, 11, "CLEAR DTC");
+      o.draw6x10(34, 32, "Cleared OK");
+    },
+  },
+  {
+    title: '15c. Clear DTC — fallito',
+    tag: 'monitor', tagLabel: 'BUTTON',
+    desc: 'Nessuna risposta valida dalla centralina (timeout o ELM "NO DATA").',
+    drawLand(o) {
+      o.draw6x10(37, 11, "CLEAR DTC");
+      o.draw6x10(28, 32, "Clear FAILED");
+    },
+  },
+  {
     title: '15. Errore: rete non trovata',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'La rete WiFi dell\'ELM327 non e\' raggiungibile dopo 30 tentativi.',

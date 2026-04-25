@@ -66,6 +66,9 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .sl:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#888;border-radius:50%;transition:.3s}
 .sw input:checked+.sl{background:#0a5}
 .sw input:checked+.sl:before{transform:translateX(18px);background:#fff}
+#btnClr{float:right;background:#1a0808;color:#ff8888;border:1px solid #cc3333;border-radius:4px;padding:2px 10px;font-size:.7em;font-weight:600;cursor:pointer;letter-spacing:.5px}
+#btnClr:hover{background:#cc3333;color:#fff}
+#btnClr:active{background:#881111}
 </style>
 </head>
 <body>
@@ -127,7 +130,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Km con MIL</span><span class="v" id="d_km">--</span></div>
 <div class="i"><span class="l">Avviamenti</span><span class="v" id="d_st">--</span></div>
 </div></div>
-<div class="db hid" id="dtcBox"><div class="st">Errori DTC <span class="mil" id="milB">MIL</span></div><div id="dtcL"></div></div>
+<div class="db hid" id="dtcBox"><div class="st">Errori DTC <span class="mil" id="milB">MIL</span><button id="btnClr" onclick="clrDtc()">CANCELLA</button></div><div id="dtcL"></div></div>
 <div class="sb">Auto-refresh 500ms</div>
 <script>
 function u(){fetch('/data').then(r=>r.json()).then(d=>{
@@ -179,6 +182,7 @@ document.getElementById('d_st').textContent=d.starts;
 var db=document.getElementById('dtcBox');
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+(d.dtc[i].desc||'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(()=>{});}
+function clrDtc(){if(!confirm('Cancellare i codici DTC?\nSi perde lo storico errori e si resettano i monitor di readiness.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(r=>r.json()).then(d=>{alert(d.ok?'DTC cancellati. Re-check in corso.':'Cancellazione fallita.');}).catch(()=>alert('Errore di rete')).finally(()=>{b.disabled=false;b.textContent='CANCELLA';});}
 setInterval(u,500);u();
 </script>
 </body>
@@ -442,6 +446,25 @@ void setupWebDashboard(ESP8266WebServer& server) {
     else if (server.hasArg("off")) { debugMode = false; }
     char json[20];
     snprintf(json, sizeof(json), "{\"debug\":%s}", debugMode ? "true" : "false");
+    server.send(200, "application/json", json);
+  });
+  // Cancellazione DTC (OBD2 Mode 04). Implementata in CANbus_conn.ino o WIFI_conn.ino.
+  server.on("/clear-dtc", HTTP_GET, [&server]() {
+    bool ok = false;
+    #ifdef OBD_CONN_CAN
+      extern bool clearDTCsViaCAN();
+      ok = clearDTCsViaCAN();
+    #endif
+    #ifdef OBD_CONN_WIFI
+      extern bool clearDTCsViaELM();
+      ok = clearDTCsViaELM();
+    #endif
+    if (ok) {
+      extern unsigned long lastDtcCheck;
+      lastDtcCheck = 0;  // forza re-check immediato al prossimo monitor cycle
+    }
+    char json[24];
+    snprintf(json, sizeof(json), "{\"ok\":%s}", ok ? "true" : "false");
     server.send(200, "application/json", json);
   });
 }

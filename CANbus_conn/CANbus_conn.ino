@@ -17,6 +17,8 @@
  *   MCP2515: VCC->5V, GND->GND, CS->D8, SO->D6, SI->D7, SCK->D5, INT->D0
  *   OLED:    VCC->3.3V, GND->GND, SCL->D1, SDA->D2
  *   OBD2:    CANH->Pin6, CANL->Pin14, GND->Pin4/5
+ *   Pulsante: NA tra D3 (GPIO0) e GND. Click breve = scorri schermate;
+ *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04).
  *
  * Velocità di acquisizione dati OBD ~8-10Hz (round-robin PID + aggiornamento parziale display)
  *
@@ -35,6 +37,7 @@
 #include "dtc_descriptions.h"
 #include "TorqueEstimator.h"
 #include "BoostModel.h"
+#include "button_handler.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -229,6 +232,9 @@ void setup() {
   CAN.setMode(MCP_NORMAL);
   Serial.println(F("MCP2515 OK - CAN 500kbps"));
 
+  // Pulsante fisico (clear DTC + cycle schermate)
+  buttonInit();
+
   // Prepara scansione PID
   memset(pidSupported, 0, sizeof(pidSupported));
   currentMode = MODE_SCAN;
@@ -292,6 +298,28 @@ void flushCANBuffer() {
 bool sendOBD2Request(uint8_t pid) {
   uint8_t data[8] = { 0x02, 0x01, pid, 0x00, 0x00, 0x00, 0x00, 0x00 };
   return (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) == CAN_OK);
+}
+
+/**
+ * Invia OBD2 Service 04 (Clear Diagnostic Trouble Codes).
+ * Frame: PCI=0x01 (single frame, 1 byte payload), service 0x04, no PID.
+ * La centralina cancella DTC e resetta i monitor di readiness.
+ */
+bool clearDTCsViaCAN() {
+  flushCANBuffer();
+  uint8_t data[8] = { 0x01, 0x04, 0, 0, 0, 0, 0, 0 };
+  if (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) != CAN_OK) return false;
+  // Verifica risposta positiva (Service ID + 0x40 = 0x44)
+  unsigned long start = millis();
+  unsigned long rxId; uint8_t len; uint8_t buf[8];
+  while ((millis() - start) < OBD2_TIMEOUT_MS) {
+    if (CAN.checkReceive() == CAN_MSGAVAIL) {
+      CAN.readMsgBuf(&rxId, &len, buf);
+      if (rxId == OBD2_RESPONSE_ID && buf[1] == 0x44) return true;
+    }
+    yield();
+  }
+  return false;
 }
 
 /**
@@ -734,6 +762,21 @@ void recalcModels() {
  * @modified 24/03/26 — round-robin PID invece di lettura sequenziale
  */
 void executeMonitorMode() {
+  // Pulsante fisico: short = ciclo schermate, long = clear DTC.
+  ButtonEvent ev = buttonPoll();
+  if (ev == BTN_SHORT && totalScreens > 1) {
+    currentScreen = (currentScreen + 1) % totalScreens;
+    lastScreenSwitch = millis();   // posticipa l'auto-cycle
+    labelsDrawn = false;           // forza redraw completo al prossimo update
+  } else if (ev == BTN_LONG) {
+    drawStatusScreen("CLEAR DTC", "Invio Mode 04...");
+    bool ok = clearDTCsViaCAN();
+    drawStatusScreen("CLEAR DTC", ok ? "Cleared OK" : "Clear FAILED");
+    delay(1200);
+    if (ok) lastDtcCheck = 0;      // forza re-check immediato
+    labelsDrawn = false;
+  }
+
   // Controllo periodico MIL/DTC (ogni DTC_CHECK_INTERVAL ms)
   if (millis() - lastDtcCheck > DTC_CHECK_INTERVAL) {
     checkMILStatus();
@@ -1492,6 +1535,15 @@ void drawScanScreen(const char* status, const char* detail) {
   drawStrCentered(11, "SCANSIONE PID");
   drawStrCentered(27, status);
   drawStrCentered(43, detail);
+  u8g2.sendBuffer();
+}
+
+/** Schermata di stato generica: titolo in alto, messaggio centrato. */
+void drawStatusScreen(const char* title, const char* msg) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  drawStrCentered(11, title);
+  drawStrCentered(32, msg);
   u8g2.sendBuffer();
 }
 

@@ -19,6 +19,9 @@
  *   OLED GND -> GND
  *   OLED SDA -> GPIO0
  *   OLED SCL -> GPIO2
+ *   Pulsante: NA tra D5 (GPIO14) e GND. Click breve = scorri schermate;
+ *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04 via ELM327).
+ *             Pin diverso dal CAN sketch (lì D3) perché qui D3/D4 sono I2C.
  *
  * Velocità di acquisizione dati OBD (in WiFi) ~2Hz (round-robin PID + aggiornamento parziale display)
  *
@@ -35,6 +38,9 @@
 #include "dtc_descriptions.h"
 #include "TorqueEstimator.h"
 #include "BoostModel.h"
+// D3/D4 occupati dall'I2C OLED su questo sketch → usa D5
+#define BUTTON_PIN D5
+#include "button_handler.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -222,6 +228,9 @@ void setup() {
   u8g2.sendBuffer();
   delay(2000);
 
+  // Pulsante fisico (clear DTC + cycle schermate)
+  buttonInit();
+
   memset(pidSupported, 0, sizeof(pidSupported));
   currentMode = MODE_CONNECT;
 }
@@ -332,6 +341,17 @@ bool sendATCommand(const char* cmd, String& response, unsigned long timeout) {
   Serial.println(response);
 
   return response.length() > 0;
+}
+
+/**
+ * Invia OBD2 Service 04 (Clear DTC) via ELM327.
+ * Risposta positiva contiene "44" (0x40 + 0x04). NO DATA / errore → false.
+ */
+bool clearDTCsViaELM() {
+  String resp;
+  if (!sendATCommand("04", resp, ELM327_TIMEOUT)) return false;
+  if (resp.indexOf("NO DATA") >= 0 || resp.indexOf("ERROR") >= 0) return false;
+  return resp.indexOf("44") >= 0;
 }
 
 /**
@@ -863,6 +883,21 @@ void executeMonitorMode() {
     labelsDrawn = false;
     currentMode = MODE_CONNECT;
     return;
+  }
+
+  // Pulsante fisico: short = ciclo schermate, long = clear DTC.
+  ButtonEvent ev = buttonPoll();
+  if (ev == BTN_SHORT && totalScreens > 1) {
+    currentScreen = (currentScreen + 1) % totalScreens;
+    lastScreenSwitch = millis();
+    labelsDrawn = false;
+  } else if (ev == BTN_LONG) {
+    drawStatusScreen("CLEAR DTC", "Invio Mode 04...");
+    bool ok = clearDTCsViaELM();
+    drawStatusScreen("CLEAR DTC", ok ? "Cleared OK" : "Clear FAILED");
+    delay(1200);
+    if (ok) lastDtcCheck = 0;
+    labelsDrawn = false;
   }
 
   // Controllo periodico MIL/DTC (ogni DTC_CHECK_INTERVAL ms)
@@ -1773,6 +1808,15 @@ void drawScanScreen(const char* status, const char* detail) {
   u8g2.drawStr(25, 11, "SCANSIONE PID");
   u8g2.drawStr(0, 27, status);
   u8g2.drawStr(0, 43, detail);
+  u8g2.sendBuffer();
+}
+
+/** Schermata di stato generica: titolo in alto, messaggio centrato. */
+void drawStatusScreen(const char* title, const char* msg) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  drawStrCentered(11, title);
+  drawStrCentered(32, msg);
   u8g2.sendBuffer();
 }
 
