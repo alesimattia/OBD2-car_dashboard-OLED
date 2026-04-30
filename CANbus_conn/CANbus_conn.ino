@@ -68,8 +68,8 @@
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/update)
 #define OTA_SSID    "OBD2_UPDATE"   // SSID del SoftAP per OTA
-#define OTA_PASS    "obd2flash"     // Password WPA2 (min 8 chars)
-#define OTA_PORT    80              // Porta web server
+#define OTA_PASS    "alesimattia"     // WPA2 (min 8 chars)
+#define OTA_PORT    80              // web server
 #define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
 
 // Diagnostica avanzata su Serial: attivabile runtime da /dashboard
@@ -81,8 +81,6 @@ bool debugMode = false;
 #define RIGHT_COL_X 100
 #define TEMP_EXTENDED_X 93    // Min x TEMP: "-40 C"/"215 C" = 35px → 128-35
 #define EGR_EXTENDED_X 58     // Min x EGR: "100%(-100)" = 70px → 128-70
-
-// Stima coppia: usa il modello TorqueEstimator (Audi27TDI140kW namespace)
 
 // DTC (Diagnostic Trouble Codes)
 #define MAX_DTC 6                 // Max DTC gestibili (multi-frame CAN)
@@ -170,7 +168,7 @@ int prevCoolantC = -999;
 int prevEgrPct = -999;
 bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
 
-// OTA: true finche' la finestra di aggiornamento e' attiva
+// OTA: true finche' la finestra di aggiornamento è attiva
 bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;
 bool otaClientWasConnected = false;
@@ -249,7 +247,7 @@ void setup() {
 void loop() {
   updateBrightness();  // sample LDR + state machine auto-brightness (non bloccante)
 
-  // OTA: attivo finche' otaDeadline non scade E nessun client e' connesso.
+  /** OTA attivo finche' otaDeadline non scade E nessun client è connesso.
   // Se un client si connette, il timeout si sospende.
   // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.
   if (otaActive) {
@@ -384,7 +382,7 @@ void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
 }
 
 /**
- * Verifica se un PID specifico e' supportato dall'ECU.
+ * Verifica se un PID specifico è supportato dall'ECU.
  * Controlla il bit corrispondente nel bitmask pidSupported[].
  */
 bool isPIDSupported(uint8_t pid) {
@@ -709,9 +707,9 @@ void readDTCCodes() {
 // ============================================================
 
 /**
- * Verifica se lo slot PID round-robin e' supportato dall'ECU.
+ * Verifica se lo slot PID round-robin è supportato dall'ECU.
  * @param slot indice nello scheduling (0=MAP,1=LOAD,2=RPM,3=MAF,4=IAT,5=BARO,6=COOL,7=EGR,8=EGR_ERR,9=RAIL,10=VOLTS)
- * @return true se il PID corrispondente e' supportato
+ * @return true se il PID corrispondente è supportato
  * @see executeMonitorMode()
  */
 bool isPidSlotSupported(uint8_t slot) {
@@ -738,7 +736,7 @@ bool isPidSlotSupported(uint8_t slot) {
  */
 void recalcModels() {
   // Boost: richiede MAP, BARO, MAF, RPM, IAT, LOAD tutti finiti
-  // useFilter=false: il filtro EMA e' superfluo con la PID cache (smoothing implicito)
+  // useFilter=false: il filtro EMA è superfluo con la PID cache (smoothing implicito)
   float bResult = Audi27TDI140kW::Boost::estimateTurboPressureBar(
     cachedMap, cachedBaro, cachedMaf, cachedRpm, cachedIat, cachedLoad,
     true, false);
@@ -908,7 +906,7 @@ void executeMonitorMode() {
       }
     }
 
-    // Ricalcola boost e coppia solo quando un PID del modello e' stato aggiornato
+    // Ricalcola boost e coppia solo quando un PID del modello è stato aggiornato
     // (evita iterazioni EMA inutili su COOLANT/EGR/EGR_ERR che non cambiano la cache)
     if (pidIdx <= 5 || pidIdx == 9 || pidIdx == 10) {
       recalcModels();
@@ -1523,7 +1521,7 @@ void printAdvancedDiagnostics() {
 
 /**
  * Disegna una stringa centrata orizzontalmente nel display.
- * Se la stringa e' piu' larga del display, viene allineata a sinistra (x=0).
+ * Se la stringa è piu' larga del display, viene allineata a sinistra (x=0).
  * Il font deve essere gia' impostato prima della chiamata.
  * @since 31/03/26 Mattia Alesi
  */

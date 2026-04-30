@@ -93,7 +93,7 @@ const int numSpeeds = 4;
 
 /**
  * Cerca o crea una entry nelle statistiche per il CAN ID specificato.
- * Se l'ID non esiste e c'e' spazio, ne crea uno nuovo.
+ * Se l'ID non esiste e c'è spazio, ne crea uno nuovo.
  * @return indice nell'array idStats, oppure -1 se pieno
  * @since 07/04/26 Mattia Alesi
  */
@@ -255,7 +255,7 @@ bool trySpeed(int speedIndex) {
 
 /**
  * Tenta l'auto-detect della velocita' del bus CAN provando tutte le velocita' note.
- * @return true se il bus e' stato rilevato con successo
+ * @return true se il bus è stato rilevato con successo
  * @since 07/04/26 Mattia Alesi
  */
 bool autoDetectSpeed() {

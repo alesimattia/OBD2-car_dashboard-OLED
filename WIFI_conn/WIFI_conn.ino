@@ -67,7 +67,7 @@
 #define MAX_RETRIES 3
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/ota)
-#define OTA_SSID "Audi_Dashboard"  // SSID del SoftAP per OTA
+#define OTA_SSID "OBD2_UPDATE"  // SSID del SoftAP per OTA
 #define OTA_PASS "alesimattia"     // Password WPA2 (min 8 chars)
 #define OTA_PORT 80                // Porta web server
 #define OTA_WINDOW_MS 180000       // Finestra OTA: 3 minuti dal boot
@@ -155,7 +155,7 @@ uint8_t totalScreens = 1;
 // Flag per il primo comando OBD (timeout piu' lungo per auto-detect protocollo)
 bool firstOBDQuery = true;
 
-// OTA: true finche' la finestra di aggiornamento e' attiva
+// OTA: true finche' la finestra di aggiornamento è attiva
 bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;  // Deadline OTA (resettata se client si disconnette)
 bool otaClientWasConnected = false;         // Traccia se un client era connesso
@@ -244,7 +244,7 @@ void setup() {
 void loop() {
   updateBrightness();  // sample LDR + state machine auto-brightness (non bloccante)
 
-  // OTA: attivo finche' otaDeadline non scade E nessun client e' connesso.
+  // OTA: attivo finche' otaDeadline non scade E nessun client è connesso.
   // Se un client si connette, il timeout si sospende.
   // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.
   if (otaActive) {
@@ -304,7 +304,7 @@ uint8_t parseHexByte(const String& s, int pos) {
 /**
  * Invia un comando AT/OBD all'ELM327 e attende la risposta.
  * Legge fino al prompt '>' dell'ELM327 o fino al timeout.
- * Restituisce true se una risposta e' stata ricevuta.
+ * Restituisce true se una risposta è stata ricevuta.
  */
 bool sendATCommand(const char* cmd, String& response, unsigned long timeout) {
   if (!elmClient.connected()) return false;
@@ -362,7 +362,7 @@ bool clearDTCsViaELM() {
  * Interroga un PID OBD2 via ELM327.
  * Invia il comando "01XX" e cerca nella risposta il pattern "41XX".
  * Estrae fino a maxBytes byte di dati dalla risposta hex.
- * Restituisce true se la risposta e' valida.
+ * Restituisce true se la risposta è valida.
  */
 bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* actualBytes) {
   // Formatta comando OBD: "01XX"
@@ -433,7 +433,7 @@ void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
 }
 
 /**
- * Verifica se un PID specifico e' supportato dall'ECU.
+ * Verifica se un PID specifico è supportato dall'ECU.
  * Controlla il bit corrispondente nel bitmask pidSupported[].
  */
 bool isPIDSupported(uint8_t pid) {
@@ -592,7 +592,7 @@ void executeScanMode() {
       }
       Serial.println(F("]"));
 
-      // L'ultimo bit indica se il range successivo e' supportato
+      // L'ultimo bit indica se il range successivo è supportato
       chainContinues = (dataBytes[3] & 0x01) != 0;
     } else {
       Serial.println(F("Nessuna risposta"));
@@ -822,7 +822,7 @@ void readDTCCodes() {
 // ============================================================
 
 /**
- * Verifica se lo slot PID round-robin e' supportato dall'ECU.
+ * Verifica se lo slot PID round-robin è supportato dall'ECU.
  * @param slot indice nello scheduling (0=MAP,1=LOAD,2=RPM,3=MAF,4=IAT,5=BARO,6=COOL,7=EGR,8=EGR_ERR,9=RAIL,10=VOLTS)
  */
 bool isPidSlotSupported(uint8_t slot) {
@@ -850,7 +850,7 @@ bool isPidSlotSupported(uint8_t slot) {
  */
 void recalcModels() {
   // Boost: richiede MAP, BARO, MAF, RPM, IAT, LOAD tutti finiti
-  // useFilter=false: il filtro EMA e' superfluo con la PID cache (smoothing implicito)
+  // useFilter=false: il filtro EMA è superfluo con la PID cache (smoothing implicito)
   float bResult = Audi27TDI140kW::Boost::estimateTurboPressureBar(
     cachedMap, cachedBaro, cachedMaf, cachedRpm, cachedIat, cachedLoad,
     true, false);
@@ -1031,7 +1031,7 @@ void executeMonitorMode() {
       }
     }
 
-    // Ricalcola boost e coppia solo quando un PID del modello e' stato aggiornato
+    // Ricalcola boost e coppia solo quando un PID del modello è stato aggiornato
     // (evita iterazioni EMA inutili su COOLANT/EGR/EGR_ERR che non cambiano la cache)
     if (pidIdx <= 5 || pidIdx == 9 || pidIdx == 10) {
       recalcModels();
@@ -1786,7 +1786,7 @@ void printAdvancedDiagnostics() {
 
 /**
  * Disegna una stringa centrata orizzontalmente nel display.
- * Se la stringa e' piu' larga del display, viene allineata a sinistra (x=0).
+ * Se la stringa è piu' larga del display, viene allineata a sinistra (x=0).
  * Il font deve essere gia' impostato prima della chiamata.
  * @since 31/03/26 Mattia Alesi
  */

@@ -5,7 +5,7 @@
  * e la head unit stessa. Rileva automaticamente baud rate e protocollo.
  *
  * Usa SoftwareSerial perche' l'ESP8266 ha una sola UART hardware (usata per il
- * Serial Monitor USB). Il pin RX SoftwareSerial e' configurabile.
+ * Serial Monitor USB). Il pin RX SoftwareSerial è configurabile.
  *
  * Protocolli CAN box supportati per il riconoscimento:
  *   - RZC-04: header 0x2E, [len], [tipo], [dati...], [checksum]
@@ -52,7 +52,7 @@
 /** Dimensione buffer per accumulare byte di un frame */
 #define FRAME_BUF_SIZE 64
 
-/** Timeout frame: se non arrivano byte per questo tempo, il frame e' completo (ms) */
+/** Timeout frame: se non arrivano byte per questo tempo, il frame è completo (ms) */
 #define FRAME_TIMEOUT_MS 5
 
 // ============================================================
@@ -73,7 +73,7 @@ enum Protocol {
 
 SoftwareSerial canboxSerial(CANBOX_RX_PIN, CANBOX_TX_PIN);
 
-/** Baud rate da testare in ordine (38400 e' il piu' comune per CAN box) */
+/** Baud rate da testare in ordine (38400 è il piu' comune per CAN box) */
 const long baudRates[] = {38400, 19200, 115200, 57600, 9600};
 const int numBaudRates = 5;
 
@@ -146,7 +146,7 @@ int testBaudRate(long baud) {
 
 /**
  * Prova tutte le velocita' e seleziona quella con piu' byte validi ricevuti.
- * @return true se un baud rate e' stato rilevato
+ * @return true se un baud rate è stato rilevato
  * @since 07/04/26 Mattia Alesi
  */
 bool autoDetectBaud() {
@@ -368,7 +368,7 @@ void decodeHiworldFrame(uint8_t* buf, int len) {
 
 /**
  * Processa un frame completo accumulato nel buffer.
- * Stampa i byte raw in hex e, se il protocollo e' noto, decodifica il frame.
+ * Stampa i byte raw in hex e, se il protocollo è noto, decodifica il frame.
  * @since 07/04/26 Mattia Alesi
  */
 void processFrame() {
@@ -528,7 +528,7 @@ void loop() {
         processFrame();
     }
 
-    /** Controlla periodicamente se il protocollo e' stato identificato */
+    /** Controlla periodicamente se il protocollo è stato identificato */
     if (totalBytes > 0 && totalBytes % 100 == 0) {
         checkProtocolDetection();
     }

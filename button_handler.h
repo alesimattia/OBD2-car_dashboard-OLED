@@ -54,14 +54,14 @@ inline ButtonEvent buttonPoll() {
       pressStartMs = now;
       longFired = false;
     } else {
-      // Rilascio confermato: se non era un long, e' uno short
+      // Rilascio confermato: se non era un long, è uno short
       if (!longFired) {
         return BTN_SHORT;
       }
     }
   }
 
-  // Mentre il pulsante e' premuto, controlla soglia long-press una sola volta
+  // Mentre il pulsante è premuto, controlla soglia long-press una sola volta
   if (stableLevel == LOW && !longFired && (now - pressStartMs) >= BUTTON_LONGPRESS_MS) {
     longFired = true;
     return BTN_LONG;

@@ -1,0 +1,6 @@
+- [Hardware setup](project_hardware.md) — ESP-01 vs D1 Mini, vincoli pin/flash, scelte cablaggio
+- [Veicolo target](project_vehicle.md) — Audi A5 B8 2.7 TDI CGKA: PID supportati, parametri specifici motore/trasmissione
+- [Limitazioni OBD2 VAG](project_obd2_vag.md) — perché molti PID standard non sono supportati su questa auto
+- [Architettura sketch](project_architecture.md) — round-robin slot, helper header-only, web endpoint
+- [Helper non modificabili](feedback_helpers_readonly.md) — TorqueEstimator.h e BoostModel.h sono forniti dall'utente
+- [Endpoint e credenziali](reference_endpoints.md) — URL dashboard, OTA, WiFi ELM327
