@@ -24,6 +24,7 @@
 #include "dtc_descriptions.h"
 #include "light_sensor.h"
 #include "pid_descriptions.h"
+#include "serial_logger.h"  // per TeeSerial::logReadFrom() nell'handler /serial-data
 
 // ============================================================
 // HTML della dashboard (PROGMEM)
@@ -89,6 +90,12 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .pl span{background:#0f1a30;border:1px solid #1a3060;border-radius:4px;padding:3px 8px;font-size:.78em;color:#cfe6f5}
 .empty{color:#888;font-style:italic;font-size:.85em}
 .fnote{color:#666;font-size:.72em;text-align:center;margin-top:14px}
+.smHdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.smBtn{background:#1a2a30;color:#8eddf0;border:1px solid #1a3060;border-radius:4px;padding:3px 10px;font-size:.72em;font-weight:600;cursor:pointer;font-family:inherit}
+.smBtn:hover{background:#1a3060;color:#fff}
+.smPre{background:#0a0a14;border:1px solid #222;border-radius:6px;padding:8px;height:60vh;overflow-y:auto;color:#cfe6f5;font-family:Consolas,Menlo,monospace;font-size:.78em;line-height:1.35;white-space:pre-wrap;word-break:break-all;margin:0;tab-size:4}
+.smStat{color:#666;font-size:.7em;margin-top:6px;text-align:right}
+.smStat.drp{color:#ca4}
 </style>
 </head>
 <body>
@@ -99,6 +106,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="tabs">
 <button class="tabBtn act" id="tbD" onclick="swT('d')">Dashboard</button>
 <button class="tabBtn" id="tbS" onclick="swT('s')">PID supportati</button>
+<button class="tabBtn" id="tbL" onclick="swT('l')">Serial monitor</button>
 </div>
 <div class="tabC act" id="tcD">
 <div class="s"><div class="st">Dati principali</div><div class="mg">
@@ -171,9 +179,17 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div id="scR" class="empty">Carico elenco PID...</div>
 <p class="fnote">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
 </div>
+<div class="tabC" id="tcL">
+<div class="s">
+<div class="smHdr"><div class="st" style="border:none;padding:0;margin:0">Serial monitor</div><div><button class="smBtn" onclick="logScrollEnd()">A fine</button> <button class="smBtn" onclick="logClr()">Pulisci</button></div></div>
+<pre id="smPre" class="smPre"></pre>
+<p class="smStat" id="smStat">In attesa...</p>
+</div>
+</div>
 <script>
 var scLoaded=false;
-function swT(w){var d=document.getElementById('tcD'),s=document.getElementById('tcS'),bd=document.getElementById('tbD'),bs=document.getElementById('tbS');if(w==='s'){d.classList.remove('act');s.classList.add('act');bd.classList.remove('act');bs.classList.add('act');if(!scLoaded){loadScan();}}else{s.classList.remove('act');d.classList.add('act');bs.classList.remove('act');bd.classList.add('act');}}
+var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']};
+function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s'&&!scLoaded)loadScan();if(w==='l')logStart();else logStop();}
 function loadScan(){fetch('/scan-data').then(r=>r.json()).then(d=>{var r=document.getElementById('scR');if(!d.ecus||d.ecus.length===0){r.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}var h='';d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';if(e.pids.length===0){h+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}else{h+='<div class="pl">';e.pids.forEach(function(p){h+='<span>'+p+'</span>';});h+='</div>';}h+='</div>';});r.innerHTML=h;scLoaded=true;}).catch(()=>{document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function u(){fetch('/data').then(r=>r.json()).then(d=>{
@@ -230,6 +246,12 @@ var db=document.getElementById('dtcBox');
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+(d.dtc[i].desc||'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(()=>{});}
 function clrDtc(){if(!confirm('Cancellare i codici DTC?\nSi perde lo storico errori e si resettano i monitor di readiness.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(r=>r.json()).then(d=>{alert(d.ok?'DTC cancellati. Re-check in corso.':'Cancellazione fallita.');}).catch(()=>alert('Errore di rete')).finally(()=>{b.disabled=false;b.textContent='CANCELLA';});}
+var logSeq=-1,logTimer=null,logStick=true,logErr=0;
+function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,250);}
+function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
+function logClr(){document.getElementById('smPre').textContent='';logStick=true;}
+function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;logStick=true;}
+function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd||logStick){p.scrollTop=p.scrollHeight;logStick=true;}else{logStick=false;}st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
 setInterval(u,500);u();
 </script>
 </body>
@@ -611,6 +633,38 @@ void setupWebDashboard(ESP8266WebServer& server) {
   });
   server.on("/data", HTTP_GET, [&server]() {
     handleData(server);
+  });
+  // Serial monitor live: ritorna i byte da ?since=N (cursor del client)
+  // fino al piu' recente disponibile nel buffer circolare di TeeSerial.
+  // Usa text/plain con header X-Seq (nuovo cursor) e X-Dropped (1 se il
+  // client ha perso byte per overflow del buffer).
+  server.on("/serial-data", HTTP_GET, [&server]() {
+    uint32_t since = 0;
+    bool firstFetch = !server.hasArg("since");
+    if (!firstFetch) {
+      since = (uint32_t)strtoul(server.arg("since").c_str(), nullptr, 10);
+    } else {
+      // Primo fetch: parto dal piu' vecchio byte ancora in buffer per
+      // mostrare lo storico recente, non l'intera sequenza dall'avvio.
+      uint32_t head = TeeSerial::logHeadSeq();
+      size_t bs = TeeSerial::logBufferSize();
+      since = head > bs ? head - bs : 0;
+    }
+    static uint8_t chunk[1024];
+    uint32_t nextSeq;
+    bool dropped = false;
+    size_t n = TeeSerial::logReadFrom(since, chunk, sizeof(chunk),
+                                      &nextSeq, &dropped);
+
+    server.sendHeader(F("X-Seq"), String((unsigned long)nextSeq));
+    server.sendHeader(F("X-Dropped"), dropped ? "1" : "0");
+    server.sendHeader(F("Cache-Control"), F("no-store"));
+    // String((const char*)chunk, n) non esiste in Arduino String: copio
+    // byte-a-byte. n e' al massimo 1024, costo trascurabile.
+    String body;
+    body.reserve(n);
+    for (size_t i = 0; i < n; i++) body += (char)chunk[i];
+    server.send(200, "text/plain", body);
   });
   // Pagina e dati scan multi-ECU (solo build CAN: gli ECU multipli sono
   // raggiungibili solo via bus CAN diretto, non tramite ELM/WiFi)

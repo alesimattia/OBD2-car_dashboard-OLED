@@ -191,6 +191,11 @@ bool otaClientWasConnected = false;
 // Forward decl per web_dashboard.h (vede queryPID prima della sua definizione)
 bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len);
 
+// Logger seriale: cattura Serial.* nel buffer circolare leggibile via /serial-data.
+// Va incluso DOPO tutti gli header di sistema (Arduino.h ecc.) per non
+// rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
+#include "serial_logger_macros.h"
+
 // Dashboard web live (endpoint /dashboard, /data, /debug)
 #define OBD_CONN_CAN
 #include "web_dashboard.h"
@@ -1762,3 +1767,13 @@ void showError(const char* line1, const char* line2) {
   Serial.println(line1);
   Serial.println(line2);
 }
+
+// ============================================================
+// Logger seriale — definizione istanza globale
+// Il blocco #undef/#define e' richiesto perche' serial_logger_macros.h
+// in cima al file ha rimappato "Serial" in "logSerial": qui dobbiamo
+// passare la HardwareSerial reale al costruttore di TeeSerial.
+// ============================================================
+#undef Serial
+TeeSerial logSerial(Serial);
+#define Serial logSerial

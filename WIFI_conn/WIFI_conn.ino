@@ -193,6 +193,11 @@ bool labelsDrawn = false;  // Etichette statiche gia' disegnate nel buffer
 // Forward decl per web_dashboard.h (vede queryOBDPID prima della sua definizione)
 bool queryOBDPID(uint8_t pid, uint8_t* dataBytes, uint8_t maxBytes, uint8_t* actualBytes);
 
+// Logger seriale: cattura Serial.* nel buffer circolare leggibile via /serial-data.
+// Va incluso DOPO tutti gli header di sistema (Arduino.h ecc.) per non
+// rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
+#include "serial_logger_macros.h"
+
 #define OBD_CONN_WIFI
 #include "web_dashboard.h"
 
@@ -1839,3 +1844,13 @@ void showError(const char* line1, const char* line2) {
   Serial.println(line1);
   Serial.println(line2);
 }
+
+// ============================================================
+// Logger seriale — definizione istanza globale
+// Il blocco #undef/#define e' richiesto perche' serial_logger_macros.h
+// in cima al file ha rimappato "Serial" in "logSerial": qui dobbiamo
+// passare la HardwareSerial reale al costruttore di TeeSerial.
+// ============================================================
+#undef Serial
+TeeSerial logSerial(Serial);
+#define Serial logSerial
