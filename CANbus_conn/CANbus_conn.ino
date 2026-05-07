@@ -39,6 +39,7 @@
 #include "BoostModel.h"
 #include "button_handler.h"
 #include "light_sensor.h"
+#include "pid_descriptions.h"
 
 // ============================================================
 // CONFIGURAZIONE — Modificare qui se necessario
@@ -109,6 +110,20 @@ AppMode currentMode = MODE_SCAN;
 
 // Bitmask PID supportati dall'ECU (256 bit = 32 byte)
 uint8_t pidSupported[32];
+
+// ============================================================
+// Scan multi-ECU: risultati per ogni ECU rispondente sul bus.
+// I PID Mode 01 sono standard SAE J1979, quindi ogni bit corrisponde
+// a un PID dal significato definito (vedi pid_descriptions.h).
+// ============================================================
+#define MAX_ECUS 4
+struct ECUScanResult {
+  uint16_t ecuId;        // 0x7E8..0x7EF (0 = slot vuoto)
+  uint8_t  mode01[32];   // bitmask Mode 01 dell'ECU
+  uint16_t pidCount;     // PID supportati totali (bit a 1)
+};
+ECUScanResult ecuResults[MAX_ECUS];
+uint8_t ecuCount = 0;
 
 // Flag: PID specifici supportati (determinati dalla scansione)
 bool mapSupported     = false;
@@ -364,6 +379,140 @@ bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len) {
 }
 
 // ============================================================
+// FUNZIONI DEDICATE ALLA SCANSIONE MULTI-ECU
+// (separate da queryPID/readOBD2Response per non interferire con
+//  monitor mode e gestione DTC, che restano filtrate su 0x7E8)
+// ============================================================
+
+/**
+ * Invia una richiesta OBD2 generica per un dato Service ID e PID.
+ * Wrapper analogo a sendOBD2Request ma con serviceId parametrico,
+ * predisposto per future estensioni (Mode 09, Mode 22, ecc.).
+ * @since 07/05/26 Mattia Alesi
+ */
+bool sendServiceRequest(uint8_t serviceId, uint8_t pid) {
+  uint8_t data[8] = { 0x02, serviceId, pid, 0x00, 0x00, 0x00, 0x00, 0x00 };
+  return (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) == CAN_OK);
+}
+
+/**
+ * Accumula tutte le risposte OBD2 da qualsiasi ECU del range 0x7E8-0x7EF
+ * per la finestra di tempo windowMs. Filtra il Service di risposta
+ * (serviceId + 0x40) e il PID atteso. De-duplica per ecuId.
+ *
+ * @param expectedSvcResp Service response atteso (es. 0x41 per Mode 01)
+ * @param expectedPid     PID atteso nella risposta
+ * @param outIds          buffer per gli ECU ID rispondenti (max maxEcus)
+ * @param out4Bytes       buffer per i 4 byte di payload (data[3..6]) di
+ *                        ogni ECU (allineato a outIds)
+ * @param maxEcus         dimensione massima di outIds/out4Bytes
+ * @param windowMs        finestra di ascolto in millisecondi
+ * @return numero di ECU univoci rispondenti
+ * @since 07/05/26 Mattia Alesi
+ */
+uint8_t collectMultiECUResponses(uint8_t expectedSvcResp, uint8_t expectedPid,
+                                 uint16_t* outIds, uint8_t out4Bytes[][4],
+                                 uint8_t maxEcus, unsigned long windowMs) {
+  uint8_t found = 0;
+  unsigned long start = millis();
+  unsigned long rxId;
+  uint8_t len;
+  uint8_t buf[8];
+
+  while ((millis() - start) < windowMs) {
+    if (CAN.checkReceive() == CAN_MSGAVAIL) {
+      CAN.readMsgBuf(&rxId, &len, buf);
+      // Solo risposte ECU motore/cambio/altri controllori
+      if (rxId < 0x7E8 || rxId > 0x7EF) { yield(); continue; }
+      if (buf[1] != expectedSvcResp || buf[2] != expectedPid) { yield(); continue; }
+
+      // Dedup: ignora se l'ECU ha gia' risposto in questa finestra
+      bool already = false;
+      for (uint8_t i = 0; i < found; i++) {
+        if (outIds[i] == (uint16_t)rxId) { already = true; break; }
+      }
+      if (already) { yield(); continue; }
+
+      if (found < maxEcus) {
+        outIds[found] = (uint16_t)rxId;
+        out4Bytes[found][0] = buf[3];
+        out4Bytes[found][1] = buf[4];
+        out4Bytes[found][2] = buf[5];
+        out4Bytes[found][3] = buf[6];
+        found++;
+      }
+    }
+    yield();
+  }
+  return found;
+}
+
+/**
+ * Esegue lo scan completo della catena bitmask Mode 01 (PID 0x00, 0x20,
+ * 0x40, ..., 0xE0) per uno specifico ECU. Aggiorna dest32[32] con il
+ * bitmask completo dei PID supportati.
+ *
+ * Riusa il broadcast su 0x7DF (l'OBD2 non supporta richieste indirizzate
+ * al singolo ECU senza UDS), filtrando le risposte tramite
+ * collectMultiECUResponses ed estraendo solo l'ECU richiesto.
+ *
+ * @param ecuId   ID risposta ECU target (0x7E8..0x7EF)
+ * @param dest32  bitmask di destinazione (32 byte)
+ * @return true se almeno il primo range (PID 0x00) e' stato letto
+ * @since 07/05/26 Mattia Alesi
+ */
+bool scanMode01ForECU(uint16_t ecuId, uint8_t* dest32) {
+  memset(dest32, 0, 32);
+  uint16_t ids[MAX_ECUS];
+  uint8_t  payload[MAX_ECUS][4];
+  bool gotFirst = false;
+  bool chainContinues = true;
+
+  for (uint16_t basePid = 0x00; basePid <= 0xE0 && chainContinues; basePid += 0x20) {
+    flushCANBuffer();
+    if (!sendServiceRequest(0x01, (uint8_t)basePid)) return gotFirst;
+
+    uint8_t n = collectMultiECUResponses(0x41, (uint8_t)basePid, ids, payload,
+                                         MAX_ECUS, OBD2_TIMEOUT_MS);
+    // Trova la risposta dell'ECU richiesto
+    int8_t idx = -1;
+    for (uint8_t i = 0; i < n; i++) {
+      if (ids[i] == ecuId) { idx = i; break; }
+    }
+    if (idx < 0) {
+      // L'ECU non ha risposto a questo range: catena interrotta
+      break;
+    }
+
+    // Memorizza i 4 byte nel bitmask globale
+    uint8_t offset = (uint8_t)basePid / 8;
+    dest32[offset]     = payload[idx][0];
+    dest32[offset + 1] = payload[idx][1];
+    dest32[offset + 2] = payload[idx][2];
+    dest32[offset + 3] = payload[idx][3];
+    gotFirst = true;
+
+    // Bit di continuazione: 4° byte bit 0 = 1 -> esiste il range successivo
+    chainContinues = (payload[idx][3] & 0x01) != 0;
+    delay(10);
+  }
+  return gotFirst;
+}
+
+/**
+ * Conta i bit a 1 nel bitmask 32 byte (= numero di PID supportati).
+ * @since 07/05/26 Mattia Alesi
+ */
+uint16_t countSupportedPIDs(const uint8_t* bitmask32) {
+  uint16_t cnt = 0;
+  for (uint8_t b = 0; b < 32; b++) {
+    uint8_t v = bitmask32[b];
+    while (v) { cnt += (v & 1); v >>= 1; }
+  }
+  return cnt;
+}
+
+// ============================================================
 // GESTIONE BITMASK PID SUPPORTATI
 // ============================================================
 
@@ -397,130 +546,179 @@ bool isPIDSupported(uint8_t pid) {
 // ============================================================
 
 /**
- * Esegue la scansione completa dei PID supportati dall'ECU.
- * Interroga i range 0x00, 0x20, 0x40, 0x60 seguendo la catena
- * di supporto (ogni risposta indica se il range successivo esiste).
- * Mostra il progresso su OLED e i risultati su Serial.
+ * Stampa su Serial il report dettagliato dello scan multi-ECU,
+ * con la descrizione SAE J1979 (italiano) per ogni PID supportato.
+ * @since 07/05/26 Mattia Alesi
+ */
+void printScanReportSerial() {
+  Serial.println(F("\n=== SCAN MULTI-ECU ==="));
+  for (uint8_t e = 0; e < ecuCount; e++) {
+    Serial.print(F("ECU 0x"));
+    Serial.print(ecuResults[e].ecuId, HEX);
+    Serial.print(F(": "));
+    Serial.print(ecuResults[e].pidCount);
+    Serial.println(F(" PID supportati"));
+
+    // Elenca tutti i PID supportati con descrizione SAE
+    for (int p = 1; p <= 0xFF; p++) {
+      uint8_t byteIdx = (p - 1) / 8;
+      uint8_t bitIdx  = 7 - ((p - 1) % 8);
+      if ((ecuResults[e].mode01[byteIdx] & (1 << bitIdx)) == 0) continue;
+
+      Serial.print(F("  0x"));
+      if (p < 0x10) Serial.print(F("0"));
+      Serial.print((uint8_t)p, HEX);
+      Serial.print(F("  "));
+
+      const char* desc = getPIDFullName((uint8_t)p);
+      if (desc) {
+        char buf[64];
+        strncpy_P(buf, desc, sizeof(buf) - 1);
+        buf[sizeof(buf) - 1] = 0;
+        Serial.println(buf);
+      } else {
+        Serial.println(F("(PID non documentato)"));
+      }
+    }
+  }
+  Serial.println();
+}
+
+/**
+ * Mostra su OLED il riepilogo dello scan multi-ECU per ~2.5s.
+ * Layout: titolo, conteggio ECU, una riga per ogni ECU (max 2 visibili).
+ * @since 07/05/26 Mattia Alesi
+ */
+void drawScanSummaryOLED() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tr);
+  drawStrCentered(0, "SCAN COMPLETA");
+
+  char buf[24];
+  snprintf(buf, sizeof(buf), "ECU rilevati: %u", (unsigned)ecuCount);
+  u8g2.drawStr(0, 16, buf);
+
+  // Una riga per ECU, max 2 (le restanti sono solo su Serial)
+  uint8_t shown = ecuCount > 2 ? 2 : ecuCount;
+  for (uint8_t e = 0; e < shown; e++) {
+    snprintf(buf, sizeof(buf), "ECU %03X: %u PID",
+             ecuResults[e].ecuId & 0xFFF, (unsigned)ecuResults[e].pidCount);
+    u8g2.drawStr(0, 32 + 12 * e, buf);
+  }
+  if (ecuCount > 2) {
+    snprintf(buf, sizeof(buf), "+%u altri (Serial)", (unsigned)(ecuCount - 2));
+    u8g2.drawStr(0, 56, buf);
+  }
+  u8g2.sendBuffer();
+}
+
+/**
+ * Esegue la scansione iniziale dei PID OBD2 supportati su tutti gli ECU
+ * rispondenti sul bus (range 0x7E8-0x7EF).
+ *
+ * Strategia:
+ *  1. Broadcast PID 0x00 + finestra di raccolta multi-ECU per scoprire
+ *     quali ECU sono presenti sul bus.
+ *  2. Per ogni ECU rilevato, completa la catena bitmask Mode 01.
+ *  3. Copia il bitmask del primo ECU (motore) in pidSupported[] per
+ *     compatibilita' col monitor mode esistente.
+ *  4. Stampa report descrittivo su Serial e riepilogo su OLED.
+ *
+ * @see executeMonitorMode (avviato dopo lo scan)
+ * @since 07/05/26 Mattia Alesi
  */
 void executeScanMode() {
   drawScanScreen("Connessione...", "");
 
-  // Tentativo di connessione con retry
-  uint8_t data[8];
-  uint8_t len;
-  bool connected = false;
+  // Reset risultati precedenti
+  ecuCount = 0;
+  for (uint8_t i = 0; i < MAX_ECUS; i++) {
+    ecuResults[i].ecuId = 0;
+    ecuResults[i].pidCount = 0;
+    memset(ecuResults[i].mode01, 0, 32);
+  }
 
-  for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    Serial.print(F("Tentativo ECU: "));
+  // Discovery ECU: broadcast PID 0x00 e raccolta finestra 200ms
+  uint16_t ids[MAX_ECUS];
+  uint8_t  payload[MAX_ECUS][4];
+  uint8_t  found = 0;
+
+  for (int attempt = 1; attempt <= MAX_RETRIES && found == 0; attempt++) {
+    Serial.print(F("Discovery ECU, tentativo "));
     Serial.print(attempt);
     Serial.print(F("/"));
     Serial.println(MAX_RETRIES);
 
-    char attBuf[20];
-    snprintf(attBuf, sizeof(attBuf), "Tentativo %d/%d", attempt, MAX_RETRIES);
+    char attBuf[24];
+    snprintf(attBuf, sizeof(attBuf), "Discovery %d/%d", attempt, MAX_RETRIES);
     drawScanScreen("Connessione...", attBuf);
 
-    if (queryPID(0x00, data, &len)) {
-      connected = true;
-      storeSupportBitmask(0x00, &data[3]);
-      break;
+    flushCANBuffer();
+    if (sendServiceRequest(0x01, 0x00)) {
+      found = collectMultiECUResponses(0x41, 0x00, ids, payload, MAX_ECUS, 200);
     }
-    delay(500);
+    if (found == 0) delay(500);
   }
 
-  if (!connected) {
-    Serial.println(F("ERRORE: ECU non risponde, retry tra 10s"));
+  if (found == 0) {
+    Serial.println(F("ERRORE: nessun ECU risponde, retry tra 10s"));
     showError("ECU non risp.", "Quadro acceso?");
     unsigned long retryAt = millis() + 10000;
     while (millis() < retryAt) {
       if (otaActive) httpServer.handleClient();
       yield();
     }
-    return;  // executeScanMode rientra dal loop e ritenta
+    return;  // rientra al loop e ritenta
   }
 
-  Serial.println(F("ECU connessa!"));
-  drawScanScreen("ECU connessa!", "");
+  Serial.print(F("ECU rilevati: "));
+  Serial.println(found);
+  ecuCount = found;
 
-  // Scansiona dinamicamente tutti i range Mode 01: 0x20, 0x40, ...
-  // fino a quando il bit di continuazione non si azzera oppure si arriva a 0xE0.
-  bool chainContinues = (data[6] & 0x01) != 0;
+  // Per ogni ECU completa lo scan della catena Mode 01
+  for (uint8_t e = 0; e < ecuCount; e++) {
+    ecuResults[e].ecuId = ids[e];
 
-  for (uint16_t rangePid = 0x20; rangePid <= 0xE0 && chainContinues; rangePid += 0x20) {
-    char progBuf[20];
-    snprintf(progBuf, sizeof(progBuf), "Range: 0x%02X", (uint8_t)rangePid);
-    drawScanScreen("ECU connessa!", progBuf);
+    char progBuf[24];
+    snprintf(progBuf, sizeof(progBuf), "ECU %03X scan...", ids[e] & 0xFFF);
+    drawScanScreen("ECU rilevati", progBuf);
 
-    Serial.print(F("Query PID 0x"));
-    if (rangePid < 0x10) Serial.print(F("0"));
-    Serial.print((uint8_t)rangePid, HEX);
-    Serial.print(F("... "));
+    Serial.print(F("Scan ECU 0x"));
+    Serial.println(ids[e], HEX);
 
-    if (queryPID((uint8_t)rangePid, data, &len)) {
-      storeSupportBitmask((uint8_t)rangePid, &data[3]);
-      Serial.print(F("OK ["));
-      for (int j = 3; j < 7; j++) {
-        if (data[j] < 0x10) Serial.print(F("0"));
-        Serial.print(data[j], HEX);
-        if (j < 6) Serial.print(F(" "));
-      }
-      Serial.println(F("]"));
-      chainContinues = (data[6] & 0x01) != 0;
-    } else {
-      Serial.println(F("Nessuna risposta"));
-      break;
-    }
-    delay(10);  // 10ms sufficiente tra query CAN (era 50ms)
+    scanMode01ForECU(ids[e], ecuResults[e].mode01);
+    ecuResults[e].pidCount = countSupportedPIDs(ecuResults[e].mode01);
   }
 
-  // Conta e stampa tutti i PID supportati trovati in tutta la bitmap Mode 01
-  int totalFound = 0;
-  Serial.println(F("\nPID supportati:"));
-  for (int p = 1; p <= 0xFF; p++) {
-    if (isPIDSupported(p)) {
-      Serial.print(F("  0x"));
-      if (p < 0x10) Serial.print(F("0"));
-      Serial.println(p, HEX);
-      totalFound++;
-    }
+  // Compatibilita' monitor mode: usa il bitmask del primo ECU (motore 0x7E8)
+  // come pidSupported[] storico. Se 0x7E8 non e' il primo, lo cerca.
+  int8_t engineIdx = -1;
+  for (uint8_t e = 0; e < ecuCount; e++) {
+    if (ecuResults[e].ecuId == 0x7E8) { engineIdx = e; break; }
   }
-  Serial.print(F("Totale: "));
-  Serial.println(totalFound);
+  if (engineIdx < 0) engineIdx = 0;  // fallback: primo ECU disponibile
+  memcpy(pidSupported, ecuResults[engineIdx].mode01, 32);
 
-  // Imposta flag per i PID di monitoraggio
-  mapSupported     = isPIDSupported(PID_MAP);
-  loadSupported    = isPIDSupported(PID_ENGINE_LOAD);
-  coolantSupported = isPIDSupported(PID_COOLANT_TEMP);
+  // Imposta flag per i PID di monitoraggio (ECU motore)
+  mapSupported       = isPIDSupported(PID_MAP);
+  loadSupported      = isPIDSupported(PID_ENGINE_LOAD);
+  coolantSupported   = isPIDSupported(PID_COOLANT_TEMP);
   egrSupported       = isPIDSupported(PID_EGR);
   egrErrorSupported  = isPIDSupported(PID_EGR_ERROR);
 
-  // Log disponibilita'
-  Serial.println(F("\nDisponibilita' PID monitor:"));
-  Serial.print(F("  MAP (0x0B):        "));
-  Serial.println(mapSupported ? "SI" : "NO");
-  Serial.print(F("  Load (0x04):       "));
-  Serial.println(loadSupported ? "SI" : "NO");
-  Serial.print(F("  Coolant (0x05):    "));
-  Serial.println(coolantSupported ? "SI" : "NO");
-  Serial.print(F("  EGR (0x2C):        "));
-  Serial.println(egrSupported ? "SI" : "NO");
-  Serial.print(F("  EGR Err (0x2D):    "));
-  Serial.println(egrErrorSupported ? "SI" : "NO");
+  // Report dettagliato su Serial + riepilogo OLED
+  printScanReportSerial();
 
-  // Mostra risultato su display
-  char countBuf[20];
-  snprintf(countBuf, sizeof(countBuf), "PID trovati: %d", totalFound);
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_5x7_tr);
-  drawStrCentered(0, "SCAN COMPLETA");
-  drawStrCentered(10, countBuf);
-  u8g2.drawStr(0, 24, mapSupported     ? "BOOST:  SI" : "BOOST:  NO");
-  u8g2.drawStr(0, 34, loadSupported    ? "COPPIA: SI" : "COPPIA: NO");
-  u8g2.drawStr(0, 44, coolantSupported ? "TEMP:   SI" : "TEMP:   NO");
-  u8g2.drawStr(0, 54, egrSupported     ? "EGR:    SI" : "EGR:    NO");
-  u8g2.sendBuffer();
+  Serial.println(F("Disponibilita' PID monitor (ECU motore):"));
+  Serial.print(F("  MAP (0x0B):       ")); Serial.println(mapSupported ? "SI" : "NO");
+  Serial.print(F("  Load (0x04):      ")); Serial.println(loadSupported ? "SI" : "NO");
+  Serial.print(F("  Coolant (0x05):   ")); Serial.println(coolantSupported ? "SI" : "NO");
+  Serial.print(F("  EGR (0x2C):       ")); Serial.println(egrSupported ? "SI" : "NO");
+  Serial.print(F("  EGR Err (0x2D):   ")); Serial.println(egrErrorSupported ? "SI" : "NO");
 
-  delay(2000);  // Mostra risultati scan (era 5000ms)
+  drawScanSummaryOLED();
+  delay(2500);
+
   // Reset stato display e scheduling per la nuova sessione monitor
   labelsDrawn = false;
   pidScheduleIdx = 0;

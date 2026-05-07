@@ -23,6 +23,7 @@
 #include <ESP8266WebServer.h>
 #include "dtc_descriptions.h"
 #include "light_sensor.h"
+#include "pid_descriptions.h"
 
 // ============================================================
 // HTML della dashboard (PROGMEM)
@@ -75,6 +76,19 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 #btnClr:hover{background:#cc3333;color:#fff}
 #btnClr:active{background:#881111}
 #btnClr:disabled{opacity:.5;cursor:wait}
+.tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #222}
+.tabBtn{flex:1;background:#1a1a2e;color:#888;border:1px solid #222;border-bottom:none;border-radius:6px 6px 0 0;padding:8px 12px;font-size:.85em;font-weight:600;cursor:pointer;font-family:inherit}
+.tabBtn.act{background:#0f1a30;color:#00d4ff;border-color:#1a3060}
+.tabC{display:none}
+.tabC.act{display:block}
+.ecu{background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:12px;border:1px solid #222}
+.eh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #222;padding-bottom:6px;margin-bottom:8px}
+.eid{color:#00d4ff;font-size:.95em;font-weight:600;letter-spacing:1px}
+.ecnt{color:#5588bb;font-size:.78em}
+.pl{display:flex;flex-wrap:wrap;gap:6px}
+.pl span{background:#0f1a30;border:1px solid #1a3060;border-radius:4px;padding:3px 8px;font-size:.78em;color:#cfe6f5}
+.empty{color:#888;font-style:italic;font-size:.85em}
+.fnote{color:#666;font-size:.72em;text-align:center;margin-top:14px}
 </style>
 </head>
 <body>
@@ -82,6 +96,11 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <p class="sub">Audi A5 B8 2.7 TDI CGKA</p>
 <div class="tg"><label>Diagnostica Serial</label><label class="sw"><input type="checkbox" id="dbgTgl" onchange="fetch('/debug?'+(this.checked?'on':'off'))"><span class="sl"></span></label></div>
 <p class="sub" id="dbgWarn" style="display:none;color:#ca4">Rallenta il refresh dei dati sul display</p>
+<div class="tabs">
+<button class="tabBtn act" id="tbD" onclick="swT('d')">Dashboard</button>
+<button class="tabBtn" id="tbS" onclick="swT('s')">PID supportati</button>
+</div>
+<div class="tabC act" id="tcD">
 <div class="s"><div class="st">Dati principali</div><div class="mg">
 <div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u">bar</div></div>
 <div class="mc"><div class="l">TEMP</div><div class="v" id="d_cool">--</div><div class="u">&deg;C</div></div>
@@ -147,7 +166,15 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Avviamenti</span><span class="v" id="d_st">--</span></div>
 </div></div>
 <div class="sb">Auto-refresh 500ms</div>
+</div>
+<div class="tabC" id="tcS">
+<div id="scR" class="empty">Carico elenco PID...</div>
+<p class="fnote">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
+</div>
 <script>
+var scLoaded=false;
+function swT(w){var d=document.getElementById('tcD'),s=document.getElementById('tcS'),bd=document.getElementById('tbD'),bs=document.getElementById('tbS');if(w==='s'){d.classList.remove('act');s.classList.add('act');bd.classList.remove('act');bs.classList.add('act');if(!scLoaded){loadScan();}}else{s.classList.remove('act');d.classList.add('act');bs.classList.remove('act');bd.classList.add('act');}}
+function loadScan(){fetch('/scan-data').then(r=>r.json()).then(d=>{var r=document.getElementById('scR');if(!d.ecus||d.ecus.length===0){r.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}var h='';d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';if(e.pids.length===0){h+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}else{h+='<div class="pl">';e.pids.forEach(function(p){h+='<span>'+p+'</span>';});h+='</div>';}h+='</div>';});r.innerHTML=h;scLoaded=true;}).catch(()=>{document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function u(){fetch('/data').then(r=>r.json()).then(d=>{
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
@@ -208,6 +235,126 @@ setInterval(u,500);u();
 </body>
 </html>
 )rawliteral";
+
+// ============================================================
+// HTML della pagina /scan (PROGMEM) — risultati dello scan multi-ECU
+// ============================================================
+static const char SCAN_HTML[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scan PID OBD2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#111;color:#e0e0e0;font-family:'Segoe UI',-apple-system,Arial,sans-serif;padding:12px;max-width:560px;margin:0 auto}
+h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
+.sub{text-align:center;color:#888;font-size:.78em;margin-bottom:14px}
+.sub a{color:#00d4ff;text-decoration:none}
+.ecu{background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:12px;border:1px solid #222}
+.eh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #222;padding-bottom:6px;margin-bottom:8px}
+.eid{color:#00d4ff;font-size:.95em;font-weight:600;letter-spacing:1px}
+.ecnt{color:#5588bb;font-size:.78em}
+.pl{display:flex;flex-wrap:wrap;gap:6px}
+.pl span{background:#0f1a30;border:1px solid #1a3060;border-radius:4px;padding:3px 8px;font-size:.78em;color:#cfe6f5}
+.empty{color:#888;font-style:italic;font-size:.85em}
+.note{color:#666;font-size:.72em;text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+<h1>Scan PID OBD2</h1>
+<p class="sub">PID standard SAE J1979 supportati dagli ECU del veicolo &middot; <a href="/dashboard">Dashboard</a></p>
+<div id="root">Caricamento...</div>
+<p class="note">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
+<script>
+fetch('/scan-data').then(r=>r.json()).then(d=>{
+  var root=document.getElementById('root');
+  if(!d.ecus||d.ecus.length===0){root.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}
+  var html='';
+  d.ecus.forEach(function(e){
+    html+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';
+    if(e.pids.length===0){html+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}
+    else{html+='<div class="pl">';e.pids.forEach(function(p){html+='<span>'+p+'</span>';});html+='</div>';}
+    html+='</div>';
+  });
+  root.innerHTML=html;
+}).catch(function(){document.getElementById('root').innerHTML='<p class="empty">Errore di rete.</p>';});
+</script>
+</body>
+</html>
+)rawliteral";
+
+// ============================================================
+// Handler /scan-data — JSON con i risultati dello scan multi-ECU
+// Mostra solo descrizioni testuali dei PID (senza indirizzi hex).
+// ============================================================
+
+#ifdef OBD_CONN_CAN
+struct ECUScanResult;
+extern ECUScanResult ecuResults[];
+extern uint8_t ecuCount;
+
+/**
+ * Scrive il JSON dei risultati dello scan multi-ECU su HTTP.
+ * Per ogni ECU: id (hex 3 char), totale PID grezzi, elenco descrizioni
+ * SAE dei soli PID documentati (i non documentati sono omessi).
+ *
+ * Layout struct ECUScanResult: { uint16_t ecuId; uint8_t mode01[32];
+ *   uint16_t pidCount; }. Per evitare include circolari ridichiariamo
+ *   solo l'estensione tramite extern e accediamo via offset memcpy:
+ *   in pratica usiamo direttamente i campi tramite forward decl.
+ *
+ * @since 07/05/26 Mattia Alesi
+ */
+static void handleScanData(ESP8266WebServer& server) {
+  // Accesso ai campi della struct definita in CANbus_conn.ino.
+  // Per evitare conflitti di include includiamo qui la stessa
+  // struttura come dichiarazione esterna (devono coincidere).
+  struct LocalECUScan {
+    uint16_t ecuId;
+    uint8_t  mode01[32];
+    uint16_t pidCount;
+  };
+  LocalECUScan* results = (LocalECUScan*)ecuResults;
+
+  String json = F("{\"ecus\":[");
+  for (uint8_t e = 0; e < ecuCount; e++) {
+    if (e > 0) json += ',';
+    char hdr[48];
+    snprintf(hdr, sizeof(hdr), "{\"id\":\"%03X\",\"totalRaw\":%u,\"pids\":[",
+             results[e].ecuId & 0xFFF, (unsigned)results[e].pidCount);
+    json += hdr;
+
+    bool firstPid = true;
+    for (int p = 1; p <= 0xFF; p++) {
+      uint8_t byteIdx = (p - 1) / 8;
+      uint8_t bitIdx  = 7 - ((p - 1) % 8);
+      if ((results[e].mode01[byteIdx] & (1 << bitIdx)) == 0) continue;
+
+      // Tutti i PID supportati vengono esposti. Se il database SAE
+      // non contiene una sigla, fallback a "PID 0xXX".
+      char buf[40];
+      const char* name = getPIDShortName((uint8_t)p);
+      if (name) {
+        strncpy_P(buf, name, sizeof(buf) - 1);
+        buf[sizeof(buf) - 1] = 0;
+      } else {
+        snprintf(buf, sizeof(buf), "PID 0x%02X", p);
+      }
+
+      if (!firstPid) json += ',';
+      json += '"';
+      json += buf;
+      json += '"';
+      firstPid = false;
+    }
+    json += F("]}");
+  }
+  json += F("]}");
+  server.send(200, "application/json", json);
+}
+#endif
 
 // ============================================================
 // Variabili statiche per derivate (accelerazione, variaz. boost)
@@ -465,6 +612,16 @@ void setupWebDashboard(ESP8266WebServer& server) {
   server.on("/data", HTTP_GET, [&server]() {
     handleData(server);
   });
+  // Pagina e dati scan multi-ECU (solo build CAN: gli ECU multipli sono
+  // raggiungibili solo via bus CAN diretto, non tramite ELM/WiFi)
+  #ifdef OBD_CONN_CAN
+    server.on("/scan", HTTP_GET, [&server]() {
+      server.send_P(200, "text/html", SCAN_HTML);
+    });
+    server.on("/scan-data", HTTP_GET, [&server]() {
+      handleScanData(server);
+    });
+  #endif
   // Toggle diagnostica seriale: /debug?on, /debug?off, /debug (stato)
   extern bool debugMode;
   server.on("/debug", HTTP_GET, [&server]() {

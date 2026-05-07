@@ -6,21 +6,29 @@ Dashboard motore in tempo reale per **Audi A5 B8 2.7 TDI (CGKA, 140 kW) Multitro
 > - 🖥️ Display OLED → [ui_preview.html (live)](https://raw.githack.com/alesimattia/OBD2-car_dashboard-OLED/main/ui_preview.html)
 > - 🌐 Dashboard web → [monitor_preview.html (live)](https://raw.githack.com/alesimattia/OBD2-car_dashboard-OLED/main/monitor_preview.html)
 >
-> Le stesse anteprime sono embeddate via `iframe` nelle §4.1 e §11.6, ma GitHub non renderizza gli iframe nei README per motivi di sicurezza: l'embed funziona solo se apri questo file in locale.
+> Le stesse anteprime sono embeddate via `iframe` nelle §3.1 e §11.6, ma GitHub non renderizza gli iframe nei README per motivi di sicurezza: l'embed funziona solo se apri questo file in locale.
 
 ---
 
 ## 📋 Indice
 
 1. [Panoramica](#1-panoramica)
-2. [Veicolo target](#2-veicolo-target)
-3. [Le due varianti — confronto rapido](#3-le-due-varianti--confronto-rapido)
-4. [Architettura](#4-architettura)
-   - [4.1 Anteprima offline del display OLED](#41-anteprima-offline-del-display-oled)
-5. [Hardware e cablaggio](#5-hardware-e-cablaggio)
-   - [5.1 Componenti comuni](#51-componenti-comuni)
-   - [5.2 Variante CANbus_conn](#52-variante-canbus_conn)
-   - [5.3 Variante WIFI_conn](#53-variante-wifi_conn)
+2. [Le due varianti — confronto rapido](#2-le-due-varianti--confronto-rapido)
+3. [Architettura](#3-architettura)
+   - [3.1 Anteprima offline del display OLED](#31-anteprima-offline-del-display-oled)
+4. [Hardware e cablaggio](#4-hardware-e-cablaggio)
+   - [4.1 Componenti comuni](#41-componenti-comuni)
+   - [4.2 Variante CANbus_conn](#42-variante-canbus_conn)
+   - [4.3 Variante WIFI_conn](#43-variante-wifi_conn)
+5. [Veicolo target](#5-veicolo-target)
+   - [5.1 PID supportati — variante WIFI_conn](#51-pid-supportati--variante-wifi_conn)
+   - [5.2 PID supportati — variante CANbus_conn](#52-pid-supportati--variante-canbus_conn)
+   - [5.3 Parametri monitorabili in più](#53-parametri-monitorabili-in-pi)
+     - [5.3.1 Parametri "letti diretti" potenzialmente nuovi (post scan multi-ECU)](#531-parametri-letti-diretti-potenzialmente-nuovi-post-scan-multi-ecu)
+     - [5.3.2 Parametri/calcoli ottenibili dai PID già letti](#532-parametricalcoli-ottenibili-dai-pid-gi-letti)
+   - [5.4 Mode OBD2 e UDS — riferimento](#54-mode-obd2-e-uds--riferimento)
+     - [5.4.1 Mode OBD2 standard (SAE J1979 / ISO 15031-5)](#541-mode-obd2-standard-sae-j1979--iso-15031-5)
+     - [5.4.2 Mode UDS (ISO 14229-1 / ISO 15765-3)](#542-mode-uds-iso-14229-1--iso-15765-3)
 6. [Software & build](#6-software--build)
 7. [Configurazione](#7-configurazione)
 8. [Round-robin PID schedule](#8-round-robin-pid-schedule)
@@ -49,23 +57,7 @@ Entrambi gli sketch:
 
 ---
 
-## 2. Veicolo target
-
-| Parametro | Valore |
-|---|---|
-| Modello | Audi A5 B8 (2008) |
-| Motore | 2.7 TDI Euro 5 — codice **CGKA** |
-| Potenza / Coppia | **140 kW (190 CV)** / **400 Nm** |
-| Cambio | Multitronic (CVT) |
-| Cilindrata | 2.698 L (`ENGINE_DISPLACEMENT_M3 = 0.002698`) |
-| Plateau coppia | 1400–3250 rpm |
-| Bus diagnostica | **CAN 11 bit a 500 kbps** (gruppo VAG / OBD2) |
-
-> ⚠️ VAG espone solo i PID Mode 01 minimi richiesti per le emissioni: PID specifici come `0x5C` (oil temp), `0x62/0x63` (torque), `0x2F` (fuel level) **non sono disponibili** sulla CGKA. Per ovviare il firmware usa **modelli di stima** basati su PID standard (vedi §9).
-
----
-
-## 3. Le due varianti — confronto rapido
+## 2. Le due varianti — confronto rapido
 
 | Caratteristica | [`CANbus_conn/`](CANbus_conn/) | [`WIFI_conn/`](WIFI_conn/) |
 |---|---|---|
@@ -84,7 +76,7 @@ Entrambi gli sketch:
 
 ---
 
-## 4. Architettura
+## 3. Architettura
 
 ```
                    ┌──────────────────────────────────┐
@@ -119,7 +111,7 @@ Entrambi gli sketch:
 
 Nello sketch **WIFI_conn** il blocco MCP2515 è sostituito da un `WiFiClient` TCP verso `192.168.0.10:35000` (porta dell'ELM327); l'ESP8266 lavora in `WIFI_AP_STA` (STA verso l'ELM327 + AP per l'OTA/dashboard).
 
-### 4.1 Anteprima offline del display OLED
+### 3.1 Anteprima offline del display OLED
 
 Per vedere come si presentano le schermate del display OLED senza ESP, apri [`ui_preview.html`](ui_preview.html) nel browser: simula a rotazione le pagine Monitor / DTC con valori realistici.
 
@@ -137,9 +129,9 @@ Per vedere come si presentano le schermate del display OLED senza ESP, apri [`ui
 
 ---
 
-## 5. Hardware e cablaggio
+## 4. Hardware e cablaggio
 
-### 5.1 Componenti comuni
+### 4.1 Componenti comuni
 
 | Componente | Note |
 |---|---|
@@ -148,7 +140,7 @@ Per vedere come si presentano le schermate del display OLED senza ESP, apri [`ui
 | Pulsante NA verso GND | Debounce software 50 ms |
 | Fotoresistore GL5528 + 10 kΩ pull-down | Voltage divider su `A0` per auto-brightness |
 
-### 5.2 Variante `CANbus_conn`
+### 4.2 Variante `CANbus_conn`
 
 Componenti aggiuntivi:
 - Modulo **MCP2515 + TJA1050** con cristallo 8 MHz (configurabile a 16 MHz via `#define MCP2515_CRYSTAL`)
@@ -180,7 +172,7 @@ Cablaggio:
 
 > Il fotoresistore è cablato come voltage divider: la luce alta riduce la resistenza dell'LDR, alza la tensione su A0 e quindi il valore ADC. Il D1 Mini integra già un partitore interno che riporta A0 al range 0–3.3 V.
 
-### 5.3 Variante `WIFI_conn`
+### 4.3 Variante `WIFI_conn`
 
 Componenti aggiuntivi:
 - Adattatore **ELM327 WiFi** generico (rete `WiFi_OBDII` aperta, IP `192.168.0.10:35000`)
@@ -200,6 +192,406 @@ Cablaggio (solo display + pulsante + LDR, niente CAN):
 > ⚠️ Il pulsante è su **D5 (GPIO14)** anziché D3 perché D3/D4 sono qui occupati dall'I²C dell'OLED.
 
 > La variante WiFi è progettata per girare anche su **ESP-01** (8 GPIO totali); su D1 Mini funziona identicamente ma con più pin liberi.
+
+---
+
+## 5. Veicolo target
+
+| Parametro | Valore |
+|---|---|
+| Modello | Audi A5 B8 (2008) |
+| Motore | 2.7 TDI Euro 5 — codice **CGKA** |
+| Potenza / Coppia | **140 kW (190 CV)** / **400 Nm** |
+| Cambio | Multitronic (CVT) |
+| Cilindrata | 2.698 L (`ENGINE_DISPLACEMENT_M3 = 0.002698`) |
+| Plateau coppia | 1400–3250 rpm |
+| Bus diagnostica | **CAN 11 bit a 500 kbps** (gruppo VAG / OBD2) |
+
+> ⚠️ VAG espone solo i PID Mode 01 minimi richiesti per le emissioni: PID specifici come `0x5C` (oil temp), `0x62/0x63` (torque), `0x2F` (fuel level) **non sono disponibili** sulla CGKA. Per ovviare il firmware usa **modelli di stima** basati su PID standard (vedi §9).
+
+#### Convenzione ECU ID OBD2
+
+Sul bus CAN 11-bit le richieste OBD2 vengono inviate al **broadcast** `0x7DF`; ogni controllore presente risponde con il proprio **ID di risposta** nell'intervallo `0x7E8`–`0x7EF`. Sull'A5 B8 i moduli rilevanti sono:
+
+| Response ID | Modulo | Ruolo |
+|---|---|---|
+| `0x7E8` | **ECU motore** (J623, ME17.5/EDC17 — TDI CGKA) | espone tutti i PID standard Mode 01 di motore, emissioni, EGR, turbo |
+| `0x7E9` | **ECU cambio** (J217 — Multitronic CVT) | sui VAG pre-2010 risponde *raramente* in OBD2 standard; eventuali PID esposti riguardano stato CVT/temperatura |
+| `0x7EA`–`0x7EF` | altri controllori (ABS, BCM, …) | tipicamente non rispondono al Mode 01 standard |
+
+Nelle tabelle che seguono ogni PID è etichettato con l'ECU di provenienza. Lo scan al boot (§ scan multi-ECU in [`CANbus_conn/CANbus_conn.ino`](CANbus_conn/CANbus_conn.ino)) rivela quali response ID sono effettivamente attivi sul tuo veicolo specifico.
+
+### 5.1 PID supportati — variante WIFI_conn
+
+Elenco completo dei PID Mode 01 esposti dall'ECU rilevati tramite l'adattatore ELM327 WiFi (vedi [`DOCS/supported_pid_WIFI audi_A5.md`](DOCS/supported_pid_WIFI%20audi_A5.md) per le formule complete di conversione).
+
+> 🔌 **Tutti i PID sotto sono esposti dall'ECU motore (`0x7E8`)**: l'ELM327 di default dialoga solo con il modulo motore (instaurato dal comando `ATSP6` in initialization), quindi questa tabella è limitata al *single-ECU view*.
+
+| ECU | PID | Descrizione | Formula | Unità |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x01` | Monitor status since DTCs cleared (MIL + #DTC) | bitmap | — |
+| `0x7E8` motore | `0x04` | Calculated engine load | `A × 100 / 255` | % |
+| `0x7E8` motore | `0x05` | Engine coolant temperature | `A − 40` | °C |
+| `0x7E8` motore | `0x0B` | Intake manifold absolute pressure (MAP) | `A` | kPa |
+| `0x7E8` motore | `0x0C` | Engine speed (RPM) | `(256 × A + B) / 4` | rpm |
+| `0x7E8` motore | `0x0D` | Vehicle speed | `A` | km/h |
+| `0x7E8` motore | `0x0F` | Intake air temperature (IAT) | `A − 40` | °C |
+| `0x7E8` motore | `0x10` | MAF air flow rate | `(256 × A + B) / 100` | g/s |
+| `0x7E8` motore | `0x13` | Oxygen sensors present (2 banks) | bitmap | — |
+| `0x7E8` motore | `0x1C` | OBD standards conformance | enum | — |
+| `0x7E8` motore | `0x1F` | Run time since engine start | `256 × A + B` | s |
+| `0x7E8` motore | `0x20` | PIDs supported `[0x21–0x40]` | bitmap | — |
+| `0x7E8` motore | `0x21` | Distance traveled with MIL on | `256 × A + B` | km |
+| `0x7E8` motore | `0x23` | Fuel rail gauge pressure | `10 × (256 × A + B)` | kPa |
+| `0x7E8` motore | `0x24` | Oxygen Sensor 1 — wide range (lambda + V) | `λ = 2 × (256·A+B)/65536`, `V = 8 × (256·C+D)/65536` | λ, V |
+| `0x7E8` motore | `0x2C` | Commanded EGR | `A × 100 / 255` | % |
+| `0x7E8` motore | `0x2D` | EGR error | `A × 100 / 128 − 100` | % |
+| `0x7E8` motore | `0x30` | Warm-ups since codes cleared | `A` | conteggio |
+| `0x7E8` motore | `0x31` | Distance traveled since codes cleared | `256 × A + B` | km |
+| `0x7E8` motore | `0x33` | Absolute barometric pressure | `A` | kPa |
+| `0x7E8` motore | `0x40` | PIDs supported `[0x41–0x60]` | bitmap | — |
+| `0x7E8` motore | `0x41` | Monitor status this drive cycle | bitmap | — |
+| `0x7E8` motore | `0x42` | Control module voltage | `(256 × A + B) / 1000` | V |
+| `0x7E8` motore | `0x46` | Ambient air temperature | `A − 40` | °C |
+| `0x7E8` motore | `0x49` | Accelerator pedal position D | `A × 100 / 255` | % |
+| `0x7E8` motore | `0x4A` | Accelerator pedal position E | `A × 100 / 255` | % |
+| `0x7E8` motore | `0x4C` | Commanded throttle actuator | `A × 100 / 255` | % |
+| `0x7E8` motore | `0x4F` | Maximum values for lambda / O2 / current / MAP | `A`, `B` (V), `C` (mA), `D × 10` (kPa) | — |
+
+> ℹ️ Non tutti questi PID vengono effettivamente letti a runtime: il round-robin (§8) interroga solo il sottoinsieme strettamente necessario per dashboard e modelli, lasciando gli altri come potenzialmente disponibili per estensioni future.
+
+### 5.2 PID supportati — variante CANbus_conn
+
+> 🚧 **Sezione da completare.** Questa tabella verrà popolata appena disponibile il dump dei PID supportati letti via MCP2515 (file atteso: `DOCS/supported_pid_CAN audi_A5.md`).
+>
+> In linea teorica, l'insieme dei PID esposti dall'ECU **non dipende dal transport** (CAN nativo vs. ELM327 WiFi): entrambi i percorsi parlano allo stesso modulo motore via OBD2 Mode 01. Possibili differenze attese:
+> - eventuali PID che l'ELM327 filtra o non espone correttamente nella sua interfaccia ASCII (e che invece sul CAN nativo arrivano puliti);
+> - eventuale jitter o frame mancanti su PID multi-byte ad alta frequenza, che l'ELM327 può mascherare.
+>
+> Una volta acquisito il file, replicare qui la stessa struttura tabellare di §5.1 e segnalare in nota le eventuali differenze rispetto alla variante WIFI.
+
+| PID | Descrizione | Formula | Unità |
+|---|---|---|---|
+| _da popolare_ | _da popolare_ | _da popolare_ | _da popolare_ |
+
+### 5.3 Parametri monitorabili in più
+
+Le due sotto-sezioni elencano parametri **non ancora attivi** nel monitor mode che però sono ragionevolmente abilitabili. Si distinguono per origine:
+
+- **§5.3.1** — *nuovi* parametri resi visibili dallo **scan multi-ECU** introdotto al boot (vedi `executeScanMode` e [`pid_descriptions.h`](pid_descriptions.h)): potenzialmente leggibili da PID standard SAE J1979 supportati dall'ECU motore o dal cambio. Sono *potenziali*: la lista effettiva dipende dai PID che lo scan rileva come supportati al boot.
+- **§5.3.2** — derivati dai **PID già letti** (lista §5.1) che il firmware potrebbe calcolare senza bisogno di nuove richieste OBD: il dato è già disponibile, manca solo il calcolo/visualizzazione.
+
+#### 5.3.1 Parametri "letti diretti" potenzialmente nuovi (post scan multi-ECU)
+
+> ⚠️ Questa lista è *potenziale*: la modifica ha aggiunto solo lo **scan diagnostico** — il monitor mode legge ancora gli stessi PID di prima. La lista qui sotto è quindi una mappa del *potenziale*: cosa potresti aggiungere al monitor in futuro, ovvero PID standard SAE che la A5 2.7 TDI CGKA potrebbe esporre. La risposta dello scan al boot dirà quali sono effettivamente supportati dall'ECU motore (e dal cambio se risponde).
+
+> 🔌 Salvo dove indicato altrimenti, tutti i PID nei sottoparagrafi seguenti si riferiscono all'**ECU motore (`0x7E8`)**.
+
+##### Motore — termici e lubrificazione
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x5C` | Temperatura olio motore | utile su CGKA, l'olio è il primo a soffrire |
+| `0x7E8` motore | `0x6B` | Temperatura EGR | gas che entrano in ricircolo |
+| `0x7E8` motore | `0x77` | Temperatura intercooler/CACT | aria sovralimentata dopo lo scambiatore |
+| `0x7E8` motore | `0x78` | Temperatura gas di scarico (EGT) Banco 1 | uscita turbina |
+| `0x7E8` motore | `0x7C` | Temperatura DPF | cruciale per stato rigenerazione |
+
+##### Iniezione e carburante
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x5D` | Anticipo iniezione | diagnostica strategie ECU sotto carico |
+| `0x7E8` motore | `0x5E` | Consumo carburante motore | l/h diretto dall'ECU, più accurato di MAF/AFR |
+| `0x7E8` motore | `0x22` | Pressione rail relativa al collettore | oggi leggi 0x23 assoluta |
+| `0x7E8` motore | `0x2F` | Livello serbatoio % | sostituisce stima con consumo |
+
+##### Coppia (potenzialmente molto utile su CGKA)
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x61` | Coppia richiesta dal pilota % | — |
+| `0x7E8` motore | `0x62` | Coppia effettiva motore % | oggi la **stimi** con `TorqueEstimator`; con questo è il valore *vero* dell'ECU |
+| `0x7E8` motore | `0x63` | Coppia di riferimento motore (Nm) | il "100%" dell'ECU; oggi assumi 400 Nm hardcoded |
+
+##### Turbo e scarico
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x70` | Boost pressure control | target ECU vs reale |
+| `0x7E8` motore | `0x71` | Controllo geometria variabile turbo (VGT) | apertura palette |
+| `0x7E8` motore | `0x73` | Pressione gas di scarico | a monte/valle DPF se ci sono due sensori |
+| `0x7E8` motore | `0x74` | Regime turbocompressore | RPM turbina, raro ma se c'è è oro |
+
+##### Farfalla / aspirazione
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x11` | Posizione farfalla | sui diesel comandata per ricircolo EGR e cut-off |
+| `0x7E8` motore | `0x45` | Posizione relativa farfalla | — |
+| `0x7E8` motore | `0x47` / `0x48` | Posizione assoluta farfalla B/C | — |
+
+##### Cambio Multitronic (esposti da `0x7E9` se risponde)
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E9` cambio | `0xA4` | Marcia attuale | su Multitronic = "rapporto" virtuale, da verificare |
+| `0x7E9` cambio | `0x05` | Temperatura liquido del cambio | Multitronic CGKA è famigerato per surriscaldamento — se esposto è il PID più importante |
+
+##### Contatori / diagnostica
+
+| ECU | PID | Parametro | Note |
+|---|---|---|---|
+| `0x7E8` motore | `0x4D` | Tempo motore con MIL accesa | in ore, oggi leggi solo i km |
+| `0x7E8` motore | `0x4E` | Tempo dal clear DTC | — |
+| `0x7E8` motore | `0x31` | Distanza percorsa dal clear DTC | — |
+| `0x7E8` motore | `0x43` | Carico assoluto | carico % normalizzato sul max teorico, diverso da `0x04` |
+| `0x7E8` motore | `0xA6` | Contachilometri | odometro totale, raramente esposto |
+
+##### Valori calcolati nuovi (derivati dai PID sopra)
+
+> Solo se i PID sorgente risultano supportati allo scan.
+
+###### Coppia / potenza più accurate
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Coppia reale (Nm) | `(0x62 / 100) × 0x63` | sostituisce `TorqueEstimator` con il valore ECU |
+| Potenza reale (kW) | `coppiaNm × RPM / 9549` | oggi calcoli con coppia stimata |
+| Δ coppia richiesta vs effettiva | `0x61 − 0x62` | mostra quando l'auto non riesce a soddisfare la domanda (limp mode, boost insufficiente, cut-off) |
+
+###### Salute turbo
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Rapporto VGT vs RPM | `0x71 / RPM` | curva di pilotaggio palette (utile per scoprire palette grippate) |
+| Pressione differenziale scarico | `0x73 − BARO` | carico sul DPF |
+| Backpressure ratio | `0x73 / MAP` | indicatore intasamento scarico |
+
+###### Salute intercooler (più accurato di quello attuale)
+
+Oggi calcoli `intercoolerEff` con `0x33 BARO`, `0x46 ambient`, `0x0F IAT`. Con `0x77 CACT` misuri direttamente la temperatura uscita intercooler invece che usare IAT (che è dopo l'intercooler ma prima del collettore):
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Efficienza intercooler reale | `(T_ambient − CACT) / (T_ambient − T_uscita_compressore)` | più accurato (richiede anche EGT) |
+
+###### Stato DPF
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Drift temperatura DPF | `d(0x7C)/dt` | durante una rigenerazione attiva sale rapidamente; permette di rilevare *automaticamente* quando l'auto sta rigenerando |
+| Temperatura DPF a regime | media mobile di `0x7C` sopra una soglia | indicatore catalizzatore funzionante |
+
+###### Iniezione / efficienza
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Consumo l/100km diretto | `0x5E × 100 / (velocità × densità diesel)` | oggi lo derivi da `MAF/lambda`, con `0x5E` è più preciso (specialmente in transitorio) |
+| Mappa anticipo vs RPM | `0x5D` graficato contro RPM | curva caratteristica della rimappatura |
+
+###### Cambio Multitronic (se `0x7E9` espone PID)
+
+| ECU sorgenti | Calcolo | Formula | Beneficio |
+|---|---|---|---|
+| `0x7E9` + `0x7E8` | Temperatura olio cambio vs tempo motore | `0x05@7E9` vs `0x1F@7E8` | pendenza di riscaldamento, utile per individuare surriscaldamento patologico |
+| `0x7E8` motore | Slip frizione virtuale | `RPM_motore × π × diam_ruota / (60 × velocità × rapporto_finale)` confrontato col rapporto attuale | indica usura/slittamento (calcolo già parziale presente come `gearRatio`) |
+
+##### Considerazioni pratiche
+
+- I PID `0x60–0x9F` sono "estensioni diesel/HD" SAE J1939/J1979-2: alcuni sono comuni su VAG diesel post-2008, **ma non garantiti**. Lo scan dirà quali sono effettivamente esposti.
+- I PID di **coppia reale (`0x62`, `0x63`)** sono i più impattanti se supportati: eliminerebbero l'incertezza dell'attuale `TorqueEstimator` e permetterebbero anche di rimuovere `BoostModel` per la stima di carico.
+- **Cambio Multitronic**: storicamente le centraline VAG pre-2010 espongono *poco* via OBD2 standard sull'ECU cambio (`0x7E9`). I dati ricchi (temperatura olio CVT, slittamento, conta cicli) vivono spesso solo su Mode 22 UDS con label files VAG.
+- Alcuni di questi PID (es. `0x70-0x74`) sono "container": i 4 byte di payload vanno decodificati in più sottocampi. Implementare la lettura richiede attenzione al data layout SAE J1979.
+
+---
+
+#### 5.3.2 Parametri/calcoli ottenibili dai PID già letti
+
+Lista filtrata sui soli PID che la A5 espone secondo §5.1. Tutti i dati sono *già in possesso* del firmware (round-robin o letture handler `/data`), manca solo il calcolo/esposizione.
+
+> 🔌 Tutti i PID e i calcoli di questa sotto-sezione si riferiscono all'**ECU motore (`0x7E8`)**, in coerenza con la lista di §5.1.
+
+##### PID supportati ma non ancora interrogati a runtime
+
+| ECU | PID | Parametro | Beneficio |
+|---|---|---|---|
+| `0x7E8` motore | `0x31` | Distanza percorsa dal clear DTC | odometro parziale dal reset, distinto da `0x21` (km con MIL) |
+| `0x7E8` motore | `0x41` | Monitor status drive cycle | bitmap dei monitor di emissioni completati nel ciclo corrente — **utile in pre-revisione** per sapere se l'auto è "Ready" |
+| `0x7E8` motore | `0x13` | Sonde lambda presenti (2 banchi) | informazione statica una tantum (configurazione veicolo) |
+| `0x7E8` motore | `0x1C` | Standard OBD del veicolo | informazione statica (tipo OBD: EOBD, OBD-II, ecc.) |
+| `0x7E8` motore | `0x4F` | Massimi calibrazione (lambda, V/I sonda, MAP) | informazione statica utile per validare letture nel range |
+
+##### Valori calcolati nuovi dai PID già letti
+
+###### Stile d'uso e percorrenze
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Km medi per warm-up | `0x31 / 0x30` | distingue uso urbano da lunga percorrenza |
+| % distanza con MIL on | `0x21 / 0x31 × 100` | frazione del totale percorso dal reset con guasto attivo |
+| Velocità media sessione | `(odometro accumulato) / 0x1F` | trip avg dall'avviamento (richiede integrazione di `0x0D` nel tempo) |
+| Carico medio sessione | media mobile di `0x04` | indicatore di stile guida (sportivo vs cruise) |
+| Peak hold sessione | max(`boostBar`), max(`RPM`), max(coppia stimata), max(`0x05`) | "watermark" della sessione corrente |
+
+###### Diagnostica passiva (su PID già letti)
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| Rampa riscaldamento liquido | `d(0x05)/dt` nei primi 5 min dopo avviamento | individua termostato bloccato aperto (rampa lenta < 2 °C/min) |
+| Pressione differenziale aspirazione @ idle | `0x33 − 0x0B` con RPM ≈ idle, pedale = 0 | indicatore filtro aria intasato (∆P > soglia tipica) |
+| Drift attuatore farfalla EGR | `0x4C − media(0x49, 0x49 + 0x4A)` | quando il pedale chiama coppia ma la farfalla EGR non risponde |
+| Drift pedale D vs E (già calcolato) | abs(`0x49 − 0x4A`) | già esposto come `driftPedal` in dashboard |
+| Cut-off iniezione (DFCO, già calcolato) | `0x04 < 1.0 %` | già esposto come `dfco` in dashboard |
+| Indicatore rigenerazione DPF attiva | EGR ≈ 0% + RPM stabile in cruise + IAT alta + boost stabile elevato | euristica per rilevare cicli di rigenerazione (richiede tracking temporale) |
+
+###### Efficienza e prestazioni (su dati già letti)
+
+| Calcolo | Formula | Beneficio |
+|---|---|---|
+| BSFC (già calcolato) | `(MAF × 3600) / powerKw` | grammi di gasolio per kWh; già esposto come `bsfc` |
+| Efficienza volumetrica (già calcolata) | `MAF × 120 / (cilindrata × RPM × ρ_aria)` | già esposto come `volEff` |
+| Potenza istantanea (già calcolata) | `coppia × RPM / 9549` | già esposto come `powerKw`/`powerCv` |
+| Consumo l/100km (già calcolato) | `(MAF / (14.5 × λ)) × 3600 / (835 × velocità) × 100` | già esposto come `fuelL100` |
+
+> ℹ️ Molti dei calcoli "Efficienza e prestazioni" sono già implementati in `handleData()` di [`web_dashboard.h`](web_dashboard.h) e visibili in dashboard quando `debug=true`. Sono qui per chiarezza che la lista è esaustiva.
+
+### 5.4 Mode OBD2 e UDS — riferimento
+
+Il **Mode** (o **Service ID**) è il "verbo" del protocollo diagnostico: dice all'ECU *cosa fare*. Il dato specifico (il "complemento oggetto") è un identificatore che si chiama **PID** sotto OBD2 standard e **DID** sotto UDS. Un frame CAN tipico:
+
+```
+OBD2:  [ length ] [ Mode ] [ PID ]              esempio: 02 01 0C        (leggi RPM)
+UDS:   [ length ] [ Mode ] [ DID hi ] [ DID lo ] esempio: 03 22 11 40    (leggi DID 0x1140)
+```
+
+Risposta = `Mode + 0x40`. Errore = `0x7F <Mode> <NRC>` (Negative Response Code).
+
+| Aspetto | OBD2 (Mode `0x01`-`0x0A`) | UDS (Mode `0x10`+) |
+|---|---|---|
+| **A chi parla** | broadcast `0x7DF`, *chiunque risponde* | indirizzato a *un* ECU specifico (es. `0x7E0` motore, `0x7E1` cambio) |
+| **Dati esposti** | solo PID standard SAE J1979 (~150 PID, definizione pubblica) | qualsiasi DID il costruttore decide di esporre (16 bit = 65k, definizioni *segrete* fuori dai label files VCDS/ODIS) |
+| **Scopo legale** | obbligo emissioni (revisione/MOT/EOBD) | diagnosi e manutenzione costruttore |
+| **Cosa puoi fare** | leggere | leggere, scrivere, comandare attuatori, flashare, configurare |
+
+#### 5.4.1 Mode OBD2 standard (SAE J1979 / ISO 15031-5)
+
+Convenzione **Monitored**:
+- ✅ **letto live** — interrogato nel round-robin del monitor o handler `/data`
+- 🔍 **scoperto** — rilevato dallo scan al boot ma non letto live
+- ➖ **non interrogato** — il firmware nemmeno lo richiede
+
+Convenzione **Standard**:
+- ✅ **standard** — definito in SAE J1979 / ISO 14229, decodifica pubblica
+- ⚠️ **reverse-engineering** — definito dal costruttore, serve label file VCDS o forum VAG
+
+| Mode | ECU | PID | Nome | Standard | Monitored |
+|---|---|---|---|---|---|
+| `0x01` | `0x7E8` motore | `0x00` | Bitmask PID supportati 01-20 | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x01` | Stato MIL + numero DTC | ✅ SAE J1979 | ✅ letto live (`checkMILStatus`) |
+| `0x01` | `0x7E8` motore | `0x04` | Carico motore calcolato | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x05` | Temperatura liquido raffreddamento | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x0B` | Pressione assoluta collettore (MAP) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x0C` | Regime motore (RPM) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x0D` | Velocità veicolo | ✅ SAE J1979 | ✅ letto live (debug `/data`) |
+| `0x01` | `0x7E8` motore | `0x0F` | Temperatura aria aspirata (IAT) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x10` | Portata massa aria (MAF) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x13` | Sonde lambda presenti (2 banchi) | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x1C` | Standard OBD del veicolo | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x1F` | Tempo motore dall'avviamento | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x20` | Bitmask PID supportati 21-40 | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x21` | Distanza percorsa con MIL accesa | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x23` | Pressione rail (gauge) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x24` | Sonda lambda 1 — wide range (λ + V) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x2C` | EGR comandato | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x2D` | Errore EGR | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x30` | Warm-up dal clear DTC | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x31` | Distanza dal clear DTC | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x33` | Pressione barometrica | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x40` | Bitmask PID supportati 41-60 | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x41` | Monitor status drive cycle | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x42` | Tensione modulo (batteria) | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x46` | Temperatura aria ambiente | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x49` | Pedale acceleratore D | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x4A` | Pedale acceleratore E | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x4C` | Attuatore farfalla comandato | ✅ SAE J1979 | ✅ letto live |
+| `0x01` | `0x7E8` motore | `0x4F` | Massimi calibrazione (λ/O2/MAP) | ✅ SAE J1979 | 🔍 scoperto |
+| `0x01` | `0x7E8` motore | `0x5C` | Temperatura olio motore | ✅ SAE J1979 | ➖ non interrogato (potenziale §5.3.1) |
+| `0x01` | `0x7E8` motore | `0x5D` | Anticipo iniezione | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x5E` | Consumo carburante motore (l/h) | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x62` | Coppia effettiva motore (%) | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x63` | Coppia di riferimento motore (Nm) | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x6B` | Temperatura EGR | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x70` | Boost pressure control | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x71` | Controllo VGT (geometria turbo) | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x77` | Temperatura intercooler (CACT) | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x78` | Temperatura gas scarico (EGT) B1 | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E8` motore | `0x7C` | Temperatura DPF | ✅ SAE J1979 | ➖ non interrogato (potenziale) |
+| `0x01` | `0x7E9` cambio | qualsiasi | (PID Mode 01 dal cambio Multitronic) | ✅ SAE J1979 | 🔍 scoperto al boot, mai letti live |
+| `0x02` | `0x7E8` motore | `0x02 [DTC]` | Freeze frame: snapshot al momento del DTC | ✅ SAE J1979 | ➖ non interrogato |
+| `0x03` | `0x7E8` motore | — | Lettura DTC stored (con MIL) | ✅ SAE J1979 | ✅ letto live (`readDTCCodes`, ogni 30 s) |
+| `0x04` | `0x7E8` motore | — | Cancellazione DTC + reset readiness | ✅ SAE J1979 | ✅ usato (`clearDTCsViaCAN`, on-demand) |
+| `0x05` | n/a | n/a CAN | O2 sensor monitoring (legacy non-CAN) | ✅ SAE J1979 | ➖ non applicabile (A5 è CAN) |
+| `0x06` | `0x7E8` motore | TID `0x01..0xFF` | Test results monitoring (catalizzatore, EGR, DPF) | ⚠️ TID definiti dal costruttore | ➖ non interrogato (TID opachi senza label) |
+| `0x07` | `0x7E8` motore | — | Pending DTC (in osservazione) | ✅ SAE J1979 | ➖ non interrogato |
+| `0x08` | `0x7E8` motore | TID | Control on-board (forza attuatori) | ⚠️ TID definiti dal costruttore | ➖ non interrogato (rischioso) |
+| `0x09` | `0x7E8` motore | `0x02` | VIN del veicolo | ✅ SAE J1979 | ➖ non interrogato (valutato non utile) |
+| `0x09` | `0x7E8` motore | `0x04` | Calibration ID (versione SW) | ✅ SAE J1979 | ➖ non interrogato (valutato non utile) |
+| `0x09` | `0x7E8` motore | `0x06` | Calibration Verification Number (CVN) | ✅ SAE J1979 | ➖ non interrogato (valutato non utile) |
+| `0x09` | `0x7E8` motore | `0x0A` | ECU Name | ✅ SAE J1979 | ➖ non interrogato (valutato non utile) |
+| `0x09` | `0x7E8` motore | `0x0B` | IPT diesel (counter readiness) | ✅ SAE J1979 | ➖ non interrogato (valutato non utile) |
+| `0x0A` | `0x7E8` motore | — | Permanent DTC (non cancellabili) | ✅ SAE J1979 | ➖ non interrogato |
+
+#### 5.4.2 Mode UDS (ISO 14229-1 / ISO 15765-3)
+
+I servizi diagnostici "estesi" usati dai costruttori (VAG VCDS, BMW INPA, Mercedes XENTRY, ecc.). Richiedono comunicazione **indirizzata** verso ID specifici per ECU. Non c'è "PID" ma **DID** (16 bit) o **Sub-funzione** (8 bit) a seconda del Mode.
+
+> ℹ️ Per moduli diversi da motore/cambio (ABS `0x740/0x748`, BCM `0x731/0x73B`, cruscotto `0x714/0x77E`, ecc.) lo stesso schema si replica cambiando solo la coppia di ID. La tabella usa motore (`0x7E0/0x7E8`) come riferimento.
+
+| Mode | ECU (req → resp) | DID / Sub | Nome | Standard | Monitored |
+|---|---|---|---|---|---|
+| `0x10` | `0x7E0` → `0x7E8` motore | sub `0x01` | Default Diagnostic Session | ✅ ISO 14229 | ➖ non interrogato |
+| `0x10` | `0x7E0` → `0x7E8` motore | sub `0x02` | Programming Session (per flash) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x10` | `0x7E0` → `0x7E8` motore | sub `0x03` | Extended Diagnostic Session | ✅ ISO 14229 | ➖ non interrogato |
+| `0x10` | `0x7E1` → `0x7E9` cambio | sub `0x03` | Extended Session sul Multitronic | ✅ ISO 14229 | ➖ non interrogato |
+| `0x11` | `0x7E0` → `0x7E8` motore | sub `0x01` | ECU Reset hard | ✅ ISO 14229 | ➖ non interrogato |
+| `0x11` | `0x7E0` → `0x7E8` motore | sub `0x03` | ECU Reset soft | ✅ ISO 14229 | ➖ non interrogato |
+| `0x14` | `0x7E0` → `0x7E8` motore | DTC mask | Clear Diagnostic Information (selettivo) | ✅ ISO 14229 | ➖ non interrogato (usiamo Mode 04 OBD2) |
+| `0x19` | `0x7E0` → `0x7E8` motore | sub `0x02` | Read DTC by status mask | ✅ ISO 14229 | ➖ non interrogato (usiamo Mode 03 OBD2) |
+| `0x19` | `0x7E0` → `0x7E8` motore | sub `0x06` | Read DTC extended data record | ✅ ISO 14229 | ➖ non interrogato |
+| `0x22` | `0x7E1` → `0x7E9` cambio | DID `0x1140` | Temperatura olio CVT (DID forum VAG, da verificare) | ⚠️ reverse-engineering VAG | ➖ non interrogato |
+| `0x22` | `0x7E0` → `0x7E8` motore | DID `0x028C` | DPF soot mass (esempio noto VAG) | ⚠️ reverse-engineering VAG | ➖ non interrogato |
+| `0x22` | `0x7E0` → `0x7E8` motore | DID `0xF190` | VIN via UDS | ✅ ISO 14229 (DID standard) | ➖ non interrogato |
+| `0x22` | `0x7E0` → `0x7E8` motore | DID `0xF18C` | ECU Serial Number | ✅ ISO 14229 (DID standard) | ➖ non interrogato |
+| `0x22` | `0x7E0` → `0x7E8` motore | DID `0xF187` | ECU Part Number | ✅ ISO 14229 (DID standard) | ➖ non interrogato |
+| `0x22` | `0x7E0` → `0x7E8` motore | DID arbitrario | Read Data By Identifier (caso generico) | ⚠️ DID applicativi proprietari | ➖ non interrogato |
+| `0x23` | `0x7E0` → `0x7E8` motore | indirizzo + lunghezza | Read Memory By Address (richiede `0x27`) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x24` | `0x7E0` → `0x7E8` motore | DID | Read Scaling Data (metadati DID) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x27` | `0x7E0` → `0x7E8` motore | sub `0x01` (req seed) | Security Access — request seed | ⚠️ algoritmo seed/key proprietario | ➖ non interrogato |
+| `0x27` | `0x7E0` → `0x7E8` motore | sub `0x02` (send key) | Security Access — send key | ⚠️ algoritmo seed/key proprietario | ➖ non interrogato |
+| `0x28` | `0x7E0` → `0x7E8` motore | sub `0x00`-`0x03` | Communication Control (silenzia rete) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x29` | `0x7E0` → `0x7E8` motore | sub vari | Authentication (UDS 2020+) | ✅ ISO 14229 | ➖ non interrogato (n/a CGKA) |
+| `0x2A` | `0x7E0` → `0x7E8` motore | DID + freq | Read Data By Periodic Identifier | ✅ ISO 14229 | ➖ non interrogato |
+| `0x2C` | `0x7E0` → `0x7E8` motore | DID dinamico | Dynamically Define DID | ✅ ISO 14229 | ➖ non interrogato |
+| `0x2E` | `0x7E0` → `0x7E8` motore | DID + payload | Write Data By Identifier (codifica) | ⚠️ DID applicativi proprietari | ➖ non interrogato |
+| `0x2F` | `0x7E0` → `0x7E8` motore | DID + control | Input/Output Control (test attuatore) | ⚠️ DID applicativi proprietari | ➖ non interrogato |
+| `0x31` | `0x7E0` → `0x7E8` motore | sub `0x01` + RID | Routine Control: rigenerazione DPF, reset adattamenti | ⚠️ RID proprietari | ➖ non interrogato |
+| `0x34` | `0x7E0` → `0x7E8` motore | indirizzo + lunghezza | Request Download (rimappatura) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x35` | `0x7E0` → `0x7E8` motore | indirizzo + lunghezza | Request Upload (backup ECU) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x36` | `0x7E0` → `0x7E8` motore | counter + dati | Transfer Data (durante 0x34/0x35) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x37` | `0x7E0` → `0x7E8` motore | — | Request Transfer Exit | ✅ ISO 14229 | ➖ non interrogato |
+| `0x38` | `0x7E0` → `0x7E8` motore | sub + filename | Request File Transfer (UDS 2013+) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x3D` | `0x7E0` → `0x7E8` motore | indirizzo + dati | Write Memory By Address (richiede `0x27`) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x3E` | `0x7E0` → `0x7E8` motore | sub `0x00` | Tester Present (keep-alive sessione) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x83` | `0x7E0` → `0x7E8` motore | sub | Access Timing Parameter | ✅ ISO 14229 | ➖ non interrogato |
+| `0x84` | `0x7E0` → `0x7E8` motore | sub | Secured Data Transmission | ✅ ISO 14229 | ➖ non interrogato (n/a CGKA) |
+| `0x85` | `0x7E0` → `0x7E8` motore | sub `0x01`/`0x02` | Control DTC Setting (on/off registrazione) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x86` | `0x7E0` → `0x7E8` motore | sub + DID | Response On Event (notifiche async) | ✅ ISO 14229 | ➖ non interrogato |
+| `0x87` | `0x7E0` → `0x7E8` motore | sub | Link Control (cambio velocità bus) | ✅ ISO 14229 | ➖ non interrogato |
+
+> ℹ️ Risposta a un Mode UDS = `Mode + 0x40` (es. `0x22` → `0x62`). Errore = frame `0x7F <Mode> <NRC>` con NRC notevoli: `0x11` Service Not Supported, `0x22` Conditions Not Correct, `0x31` Request Out Of Range, `0x33` Security Access Denied, `0x78` Response Pending (l'ECU sta lavorando — non considerare timeout).
+
+> ℹ️ **DID UDS sull'A5**: `0xF190` (VIN), `0xF18C` (Serial), `0xF187` (Part Number) sono **standard ISO 14229** e affidabili. I DID applicativi VAG come `0x028C` (DPF soot), `0x1140` (temp CVT) sono **non standard**: derivati da reverse engineering pubblicato sui forum VAG, vanno verificati per la specifica ECU. Senza i label files Ross-Tech la lista è incompleta.
 
 ---
 

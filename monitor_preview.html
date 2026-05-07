@@ -156,14 +156,45 @@
   #btnClr:hover { background: #cc3333; color: #fff; }
   #btnClr:active { background: #881111; }
   #btnClr:disabled { opacity: 0.5; cursor: wait; }
+
+  /* ---- Tab navigation ---- */
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid #222; }
+  .tab-btn { flex: 1; background: #1a1a2e; color: #888; border: 1px solid #222; border-bottom: none; border-radius: 6px 6px 0 0; padding: 8px 12px; font-size: 0.85em; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .tab-btn.active { background: #0f1a30; color: #00d4ff; border-color: #1a3060; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ---- Tab "PID supportati" ---- */
+  .banner { background: #2a2410; border: 1px solid #ca4; border-radius: 6px; color: #ca4; font-size: 0.72em; text-align: center; padding: 6px 8px; margin-bottom: 14px; }
+  .ecu { background: #1a1a2e; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #222; }
+  .eh { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #222; padding-bottom: 6px; margin-bottom: 8px; }
+  .eid { color: #00d4ff; font-size: 0.95em; font-weight: 600; letter-spacing: 1px; }
+  .ecnt { color: #5588bb; font-size: 0.78em; }
+  .pl { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pl span { background: #0f1a30; border: 1px solid #1a3060; border-radius: 4px; padding: 3px 8px; font-size: 0.78em; color: #cfe6f5; }
+  .empty { color: #888; font-style: italic; font-size: 0.85em; }
+  .footnote { color: #666; font-size: 0.72em; text-align: center; margin-top: 14px; }
 </style>
 </head>
 <body>
 
 <h1>OBD2 Dashboard Live</h1>
 <p class="subtitle">Audi A5 B8 2.7 TDI CGKA</p>
+
+<!-- Toggle e warning sopra le tab: validi per entrambe le viste -->
 <div class="tg"><label>Diagnostica Serial</label><label class="sw"><input type="checkbox" id="dbgTgl" checked onchange="toggleDebug()"><span class="sl"></span></label></div>
 <p class="subtitle" id="dbgWarn" style="color:#ca4">Rallenta il refresh dei dati sul display</p>
+
+<!-- Tab navigation -->
+<div class="tabs">
+  <button class="tab-btn active" id="tabBtnDashboard" onclick="switchTab('dashboard')">Dashboard</button>
+  <button class="tab-btn" id="tabBtnScan" onclick="switchTab('scan')">PID supportati</button>
+</div>
+
+<!-- ============================================================ -->
+<!-- Tab Dashboard                                                 -->
+<!-- ============================================================ -->
+<div class="tab-content active" id="tabDashboard">
 
 <!-- Dati principali -->
 <div class="section">
@@ -297,7 +328,88 @@
 
 <div class="status-bar" id="statusBar">Auto-refresh 500ms</div>
 
+</div><!-- /tabDashboard -->
+
+<!-- ============================================================ -->
+<!-- Tab PID supportati (mock dati scan multi-ECU)                 -->
+<!-- ============================================================ -->
+<div class="tab-content" id="tabScan">
+  <div class="banner">ANTEPRIMA OFFLINE — dati simulati realistici per Audi A5 2.7 TDI CGKA</div>
+  <div id="scanRoot">Caricamento...</div>
+  <p class="footnote">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
+</div><!-- /tabScan -->
+
 <script>
+/**
+ * Switch tra le tab "Dashboard" e "PID supportati".
+ * Le simulazioni della dashboard restano attive in background:
+ * cambiare tab non interrompe l'aggiornamento dati.
+ */
+function switchTab(name) {
+  var dash = document.getElementById('tabDashboard');
+  var scan = document.getElementById('tabScan');
+  var bD = document.getElementById('tabBtnDashboard');
+  var bS = document.getElementById('tabBtnScan');
+  if (name === 'scan') {
+    dash.classList.remove('active'); scan.classList.add('active');
+    bD.classList.remove('active');   bS.classList.add('active');
+  } else {
+    scan.classList.remove('active'); dash.classList.add('active');
+    bS.classList.remove('active');   bD.classList.add('active');
+  }
+}
+
+/**
+ * Mock di /scan-data per la tab "PID supportati".
+ * Riproduce uno scenario realistico per la A5 2.7 TDI CGKA:
+ *  - ECU motore (0x7E8) con ~28 PID totali, di cui ~19 documentati nel
+ *    database SAE locale (vedi pid_descriptions.h);
+ *  - ECU cambio Multitronic (0x7E9) ipotetico con pochi PID standard.
+ */
+var mockScanData = {
+  ecus: [
+    {
+      id: "7E8",
+      totalRaw: 28,
+      pids: [
+        "Carico motore", "Temp. liquido", "Press. collettore", "RPM",
+        "Velocita'", "Temp. aria aspirata", "MAF", "Tempo motore",
+        "Km con MIL", "Press. rail", "EGR comandato", "Errore EGR",
+        "Avviamenti", "Press. barometrica", "Tensione batteria",
+        "Temp. ambiente", "Pedale D", "Pedale E", "Attuatore farfalla"
+      ]
+    },
+    {
+      id: "7E9",
+      totalRaw: 4,
+      pids: ["Temp. liquido"]
+    }
+  ]
+};
+
+(function renderScan(d) {
+  var root = document.getElementById('scanRoot');
+  if (!d.ecus || d.ecus.length === 0) {
+    root.innerHTML = '<p class="empty">Nessun ECU rilevato.</p>';
+    return;
+  }
+  var html = '';
+  d.ecus.forEach(function(e) {
+    html += '<div class="ecu"><div class="eh"><span class="eid">ECU ' + e.id +
+            '</span><span class="ecnt">' + e.totalRaw +
+            ' PID totali (' + e.pids.length + ' documentati)</span></div>';
+    if (e.pids.length === 0) {
+      html += '<p class="empty">Nessun PID documentato per questo ECU.</p>';
+    } else {
+      html += '<div class="pl">';
+      e.pids.forEach(function(p) { html += '<span>' + p + '</span>'; });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  root.innerHTML = html;
+})(mockScanData);
+
 /**
  * Simulatore dati per monitor_preview.html
  * Genera valori casuali realistici per visualizzare il layout della dashboard.
