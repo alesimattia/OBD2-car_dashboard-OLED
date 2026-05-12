@@ -35,7 +35,7 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include "dtc_descriptions.h"
-#include "TorqueEstimator.h"
+#include "TorqueModel.h"
 #include "BoostModel.h"
 #include "button_handler.h"
 #include "light_sensor.h"
@@ -135,7 +135,7 @@ bool egrErrorSupported  = false;    // PID 0x2D
 // Valori correnti delle letture
 float boostBar  = 0.0f;
 int   loadPct   = 0;              // Carico motore (%)
-int   torqueNm  = 0;              // Coppia stimata (TorqueEstimator)
+int   torqueNm  = 0;              // Coppia stimata (TorqueModel)
 int   coolantC  = 0;              // Temperatura liquido (°C)
 int   egrPct    = 0;              // Apertura EGR (%)
 int   egrErrPct = 0;              // Errore EGR (%)
@@ -169,7 +169,7 @@ const uint8_t PID_SCHEDULE[] PROGMEM = { 0,1,2,3, 0,1,2,3, 0,1,2,3, 4,5,9,10, 6,
 const uint8_t PID_SCHEDULE_LEN = 19;
 uint8_t pidScheduleIdx = 0;
 
-// Cache PID condivisa per BoostModel e TorqueEstimator
+// Cache PID condivisa per BoostModel e TorqueModel
 // Ogni PID viene letto singolarmente nel round-robin e cachato qui;
 // boost e coppia vengono ricalcolati dopo ogni lettura.
 float cachedMap = NAN, cachedBaro = NAN, cachedMaf = NAN;
@@ -194,7 +194,7 @@ bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len);
 // Logger seriale: cattura Serial.* nel buffer circolare leggibile via /serial-data.
 // Va incluso DOPO tutti gli header di sistema (Arduino.h ecc.) per non
 // rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
-#include "serial_logger_macros.h"
+#include "serial_logger.h"
 
 // Dashboard web live (endpoint /dashboard, /data, /debug)
 #define OBD_CONN_CAN
@@ -268,8 +268,8 @@ void loop() {
   updateBrightness();  // sample LDR + state machine auto-brightness (non bloccante)
 
   /** OTA attivo finche' otaDeadline non scade E nessun client è connesso.
-  // Se un client si connette, il timeout si sospende.
-  // Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS.
+  * Se un client si connette, il timeout si sospende.
+  * Quando il client si disconnette, il timeout riparte da OTA_WINDOW_MS */
   if (otaActive) {
     httpServer.handleClient();
     bool clientNow = (WiFi.softAPgetStationNum() > 0);
@@ -1554,7 +1554,7 @@ void printAdvancedDiagnostics() {
     Serial.println(F(" bar  [aspira: <0, turbo: 0.3-1.5]"));
   } else { Serial.println(F("  24. Boost: N/D")); }
 
-  // 25-27. Coppia (TorqueEstimator), Potenza kW, Potenza CV, 47. Consumo specifico
+  // 25-27. Coppia (TorqueModel), Potenza kW, Potenza CV, 47. Consumo specifico
   if (hLoad) {
     float tRailKpa = hRail ? (float)railBar * 100.0f : NAN;
     float tVoltsV = hVolts ? volts : NAN;
@@ -1767,13 +1767,3 @@ void showError(const char* line1, const char* line2) {
   Serial.println(line1);
   Serial.println(line2);
 }
-
-// ============================================================
-// Logger seriale — definizione istanza globale
-// Il blocco #undef/#define e' richiesto perche' serial_logger_macros.h
-// in cima al file ha rimappato "Serial" in "logSerial": qui dobbiamo
-// passare la HardwareSerial reale al costruttore di TeeSerial.
-// ============================================================
-#undef Serial
-TeeSerial logSerial(Serial);
-#define Serial logSerial

@@ -24,7 +24,7 @@
 #include "dtc_descriptions.h"
 #include "light_sensor.h"
 #include "pid_descriptions.h"
-#include "serial_logger.h"  // per TeeSerial::logReadFrom() nell'handler /serial-data
+#include "serial_logger.h" // per WebSerial::logReadFrom() nell'handler /serial-data
 
 // ============================================================
 // HTML della dashboard (PROGMEM)
@@ -246,12 +246,12 @@ var db=document.getElementById('dtcBox');
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+(d.dtc[i].desc||'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(()=>{});}
 function clrDtc(){if(!confirm('Cancellare i codici DTC?\nSi perde lo storico errori e si resettano i monitor di readiness.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(r=>r.json()).then(d=>{alert(d.ok?'DTC cancellati. Re-check in corso.':'Cancellazione fallita.');}).catch(()=>alert('Errore di rete')).finally(()=>{b.disabled=false;b.textContent='CANCELLA';});}
-var logSeq=-1,logTimer=null,logStick=true,logErr=0;
+var logSeq=-1,logTimer=null,logErr=0;
 function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,250);}
 function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
-function logClr(){document.getElementById('smPre').textContent='';logStick=true;}
-function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;logStick=true;}
-function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd||logStick){p.scrollTop=p.scrollHeight;logStick=true;}else{logStick=false;}st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
+function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
+function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
 setInterval(u,500);u();
 </script>
 </body>
@@ -291,16 +291,16 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <p class="note">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
 <script>
 fetch('/scan-data').then(r=>r.json()).then(d=>{
-  var root=document.getElementById('root');
-  if(!d.ecus||d.ecus.length===0){root.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}
-  var html='';
-  d.ecus.forEach(function(e){
-    html+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';
-    if(e.pids.length===0){html+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}
-    else{html+='<div class="pl">';e.pids.forEach(function(p){html+='<span>'+p+'</span>';});html+='</div>';}
-    html+='</div>';
-  });
-  root.innerHTML=html;
+	var root=document.getElementById('root');
+	if(!d.ecus||d.ecus.length===0){root.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}
+	var html='';
+	d.ecus.forEach(function(e){
+		html+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';
+		if(e.pids.length===0){html+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}
+		else{html+='<div class="pl">';e.pids.forEach(function(p){html+='<span>'+p+'</span>';});html+='</div>';}
+		html+='</div>';
+	});
+	root.innerHTML=html;
 }).catch(function(){document.getElementById('root').innerHTML='<p class="empty">Errore di rete.</p>';});
 </script>
 </body>
@@ -329,52 +329,62 @@ extern uint8_t ecuCount;
  *
  * @since 07/05/26 Mattia Alesi
  */
-static void handleScanData(ESP8266WebServer& server) {
-  // Accesso ai campi della struct definita in CANbus_conn.ino.
-  // Per evitare conflitti di include includiamo qui la stessa
-  // struttura come dichiarazione esterna (devono coincidere).
-  struct LocalECUScan {
-    uint16_t ecuId;
-    uint8_t  mode01[32];
-    uint16_t pidCount;
-  };
-  LocalECUScan* results = (LocalECUScan*)ecuResults;
+static void handleScanData(ESP8266WebServer &server)
+{
+	// Accesso ai campi della struct definita in CANbus_conn.ino.
+	// Per evitare conflitti di include includiamo qui la stessa
+	// struttura come dichiarazione esterna (devono coincidere).
+	struct LocalECUScan
+	{
+		uint16_t ecuId;
+		uint8_t mode01[32];
+		uint16_t pidCount;
+	};
+	LocalECUScan *results = (LocalECUScan *)ecuResults;
 
-  String json = F("{\"ecus\":[");
-  for (uint8_t e = 0; e < ecuCount; e++) {
-    if (e > 0) json += ',';
-    char hdr[48];
-    snprintf(hdr, sizeof(hdr), "{\"id\":\"%03X\",\"totalRaw\":%u,\"pids\":[",
-             results[e].ecuId & 0xFFF, (unsigned)results[e].pidCount);
-    json += hdr;
+	String json = F("{\"ecus\":[");
+	for (uint8_t e = 0; e < ecuCount; e++)
+	{
+		if (e > 0)
+			json += ',';
+		char hdr[48];
+		snprintf(hdr, sizeof(hdr), "{\"id\":\"%03X\",\"totalRaw\":%u,\"pids\":[",
+				 results[e].ecuId & 0xFFF, (unsigned)results[e].pidCount);
+		json += hdr;
 
-    bool firstPid = true;
-    for (int p = 1; p <= 0xFF; p++) {
-      uint8_t byteIdx = (p - 1) / 8;
-      uint8_t bitIdx  = 7 - ((p - 1) % 8);
-      if ((results[e].mode01[byteIdx] & (1 << bitIdx)) == 0) continue;
+		bool firstPid = true;
+		for (int p = 1; p <= 0xFF; p++)
+		{
+			uint8_t byteIdx = (p - 1) / 8;
+			uint8_t bitIdx = 7 - ((p - 1) % 8);
+			if ((results[e].mode01[byteIdx] & (1 << bitIdx)) == 0)
+				continue;
 
-      // Tutti i PID supportati vengono esposti. Se il database SAE
-      // non contiene una sigla, fallback a "PID 0xXX".
-      char buf[40];
-      const char* name = getPIDShortName((uint8_t)p);
-      if (name) {
-        strncpy_P(buf, name, sizeof(buf) - 1);
-        buf[sizeof(buf) - 1] = 0;
-      } else {
-        snprintf(buf, sizeof(buf), "PID 0x%02X", p);
-      }
+			// Tutti i PID supportati vengono esposti. Se il database SAE
+			// non contiene una sigla, fallback a "PID 0xXX".
+			char buf[40];
+			const char *name = getPIDShortName((uint8_t)p);
+			if (name)
+			{
+				strncpy_P(buf, name, sizeof(buf) - 1);
+				buf[sizeof(buf) - 1] = 0;
+			}
+			else
+			{
+				snprintf(buf, sizeof(buf), "PID 0x%02X", p);
+			}
 
-      if (!firstPid) json += ',';
-      json += '"';
-      json += buf;
-      json += '"';
-      firstPid = false;
-    }
-    json += F("]}");
-  }
-  json += F("]}");
-  server.send(200, "application/json", json);
+			if (!firstPid)
+				json += ',';
+			json += '"';
+			json += buf;
+			json += '"';
+			firstPid = false;
+		}
+		json += F("]}");
+	}
+	json += F("]}");
+	server.send(200, "application/json", json);
 }
 #endif
 
@@ -392,8 +402,9 @@ static unsigned long _prevDataMs = 0;
 
 #ifdef OBD_CONN_WIFI
 // WiFi: usa queryOBDPID(pid, dataBytes, maxBytes, &actualBytes)
-static bool _readPid(uint8_t pid, uint8_t* buf, uint8_t maxBytes, uint8_t* actual) {
-  return queryOBDPID(pid, buf, maxBytes, actual);
+static bool _readPid(uint8_t pid, uint8_t *buf, uint8_t maxBytes, uint8_t *actual)
+{
+	return queryOBDPID(pid, buf, maxBytes, actual);
 }
 #endif
 
@@ -401,8 +412,9 @@ static bool _readPid(uint8_t pid, uint8_t* buf, uint8_t maxBytes, uint8_t* actua
 // CAN: usa queryPID(pid, data[8], &len) — dati in buf[3..7]
 static uint8_t _canBuf[8];
 static uint8_t _canLen;
-static bool _readPidCan(uint8_t pid) {
-  return queryPID(pid, _canBuf, &_canLen);
+static bool _readPidCan(uint8_t pid)
+{
+	return queryPID(pid, _canBuf, &_canLen);
 }
 #endif
 
@@ -410,209 +422,395 @@ static bool _readPidCan(uint8_t pid) {
 // Handler /data — genera JSON con tutti i 47 parametri
 // ============================================================
 
-static void handleData(ESP8266WebServer& server) {
-  extern bool debugMode;
+static void handleData(ESP8266WebServer &server)
+{
+	extern bool debugMode;
 
-  // Variabili globali dal round-robin (sempre disponibili, zero query OBD)
-  extern float boostBar;
-  extern int coolantC, torqueNm, egrPct, egrErrPct;
-  extern bool mapAvailable, coolantAvailable, loadAvailable, egrAvailable;
-  extern bool milOn;
-  extern uint8_t dtcCount;
-  extern uint16_t dtcCodes[];
+	// Variabili globali dal round-robin (sempre disponibili, zero query OBD)
+	extern float boostBar;
+	extern int coolantC, torqueNm, egrPct, egrErrPct;
+	extern bool mapAvailable, coolantAvailable, loadAvailable, egrAvailable;
+	extern bool milOn;
+	extern uint8_t dtcCount;
+	extern uint16_t dtcCodes[];
 
-  if (!debugMode) {
-    // --- JSON ridotto: solo 4 valori principali + DTC ---
-    char json[384];
-    int p = 0;
-    int bc = (int)(boostBar * 100.0f);
-    const char* brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
-    p += snprintf(json + p, sizeof(json) - p,
-      "{\"boost\":%.2f,\"coolant\":%d,\"torque\":%d,"
-      "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,"
-      "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\","
-      "\"debug\":false,\"dtc\":[",
-      boostBar, coolantC, torqueNm,
-      egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount,
-      (int)br.ldrEma, br.currentContrast, brm);
-    for (int i = 0; i < dtcCount && i < 6; i++) {
-      char code[6];
-      decodeDTC(dtcCodes[i], code);
-      const char* desc = getDTCDescription(dtcCodes[i]);
-      char descBuf[22] = "";
-      if (desc) { strncpy_P(descBuf, desc, 21); descBuf[21] = 0; }
-      p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
-        i > 0 ? "," : "", code, descBuf);
-    }
-    p += snprintf(json + p, sizeof(json) - p, "]}");
-    server.send(200, "application/json", json);
-    return;
-  }
+	if (!debugMode)
+	{
+		// --- JSON ridotto: solo 4 valori principali + DTC ---
+		char json[384];
+		int p = 0;
+		int bc = (int)(boostBar * 100.0f);
+		const char *brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
+																			 : "fading";
+		p += snprintf(json + p, sizeof(json) - p,
+					  "{\"boost\":%.2f,\"coolant\":%d,\"torque\":%d,"
+					  "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,"
+					  "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\","
+					  "\"debug\":false,\"dtc\":[",
+					  boostBar, coolantC, torqueNm,
+					  egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount,
+					  (int)br.ldrEma, br.currentContrast, brm);
+		for (int i = 0; i < dtcCount && i < 6; i++)
+		{
+			char code[6];
+			decodeDTC(dtcCodes[i], code);
+			const char *desc = getDTCDescription(dtcCodes[i]);
+			char descBuf[22] = "";
+			if (desc)
+			{
+				strncpy_P(descBuf, desc, 21);
+				descBuf[21] = 0;
+			}
+			p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
+						  i > 0 ? "," : "", code, descBuf);
+		}
+		p += snprintf(json + p, sizeof(json) - p, "]}");
+		server.send(200, "application/json", json);
+		return;
+	}
 
-  // --- JSON completo: legge TUTTI i PID internamente ---
-  uint8_t d[4];
-  uint8_t n;
+	// --- JSON completo: legge TUTTI i PID internamente ---
+	uint8_t d[4];
+	uint8_t n;
 
-  float loadPct = 0, mapKpa = 0, baroKpa = 0, mafGs = 0, lambdaVal = 1.0f;
-  float iatC = 0, ambC = 0, coolC = 0, voltsV = 0, o2v = 0;
-  int rpm = 0, speedKmh = 0, pedalD = 0, pedalE = 0, throttle = 0;
-  int egrCmd = 0, egrErr = 0, railBar = 0;
-  unsigned long runtimeS = 0;
-  int kmMil = 0, starts = 0;
-  bool mil = false;
-  int dtcN = 0;
+	float loadPct = 0, mapKpa = 0, baroKpa = 0, mafGs = 0, lambdaVal = 1.0f;
+	float iatC = 0, ambC = 0, coolC = 0, voltsV = 0, o2v = 0;
+	int rpm = 0, speedKmh = 0, pedalD = 0, pedalE = 0, throttle = 0;
+	int egrCmd = 0, egrErr = 0, railBar = 0;
+	unsigned long runtimeS = 0;
+	int kmMil = 0, starts = 0;
+	bool mil = false;
+	int dtcN = 0;
 
-  bool hLoad=0,hMap=0,hBaro=0,hMaf=0,hLam=0,hIat=0,hAmb=0,hCool=0;
-  bool hRpm=0,hSpd=0,hPD=0,hPE=0,hThr=0,hEgr=0,hEgrE=0,hRail=0,hV=0,hRt=0;
+	bool hLoad = 0, hMap = 0, hBaro = 0, hMaf = 0, hLam = 0, hIat = 0, hAmb = 0, hCool = 0;
+	bool hRpm = 0, hSpd = 0, hPD = 0, hPE = 0, hThr = 0, hEgr = 0, hEgrE = 0, hRail = 0, hV = 0, hRt = 0;
 
-  // ---- Lettura PID ----
+	// ---- Lettura PID ----
 #ifdef OBD_CONN_WIFI
-  if (_readPid(0x04,d,1,&n)&&n>=1) { loadPct=((float)d[0]*100.0f)/255.0f; hLoad=1; }
-  if (_readPid(0x05,d,1,&n)&&n>=1) { coolC=(float)d[0]-40.0f; hCool=1; }
-  if (_readPid(0x0B,d,1,&n)&&n>=1) { mapKpa=(float)d[0]; hMap=1; }
-  if (_readPid(0x0C,d,2,&n)&&n>=2) { rpm=((d[0]<<8)|d[1])/4; hRpm=1; }
-  if (_readPid(0x0D,d,1,&n)&&n>=1) { speedKmh=d[0]; hSpd=1; }
-  if (_readPid(0x0F,d,1,&n)&&n>=1) { iatC=(float)d[0]-40.0f; hIat=1; }
-  if (_readPid(0x10,d,2,&n)&&n>=2) { mafGs=((float)((d[0]<<8)|d[1]))/100.0f; hMaf=1; }
-  if (_readPid(0x23,d,2,&n)&&n>=2) { railBar=((d[0]<<8)|d[1])*10/100; hRail=1; }
-  if (_readPid(0x24,d,4,&n)&&n>=2) { lambdaVal=((float)((d[0]<<8)|d[1]))/32768.0f; hLam=1; if(n>=4) o2v=((float)((d[2]<<8)|d[3]))/8192.0f; }
-  if (_readPid(0x2C,d,1,&n)&&n>=1) { egrCmd=((int)d[0]*100)/255; hEgr=1; }
-  if (_readPid(0x2D,d,1,&n)&&n>=1) { egrErr=((int)d[0]-128)*100/128; hEgrE=1; }
-  if (_readPid(0x33,d,1,&n)&&n>=1) { baroKpa=(float)d[0]; hBaro=1; }
-  if (_readPid(0x42,d,2,&n)&&n>=2) { voltsV=((float)((d[0]<<8)|d[1]))/1000.0f; hV=1; }
-  if (_readPid(0x46,d,1,&n)&&n>=1) { ambC=(float)d[0]-40.0f; hAmb=1; }
-  if (_readPid(0x49,d,1,&n)&&n>=1) { pedalD=((int)d[0]*100)/255; hPD=1; }
-  if (_readPid(0x4A,d,1,&n)&&n>=1) { pedalE=((int)d[0]*100)/255; hPE=1; }
-  if (_readPid(0x4C,d,1,&n)&&n>=1) { throttle=((int)d[0]*100)/255; hThr=1; }
-  if (_readPid(0x01,d,4,&n)&&n>=1) { mil=(d[0]&0x80)!=0; dtcN=d[0]&0x7F; }
-  if (_readPid(0x1F,d,2,&n)&&n>=2) { runtimeS=(d[0]<<8)|d[1]; hRt=1; }
-  if (_readPid(0x21,d,2,&n)&&n>=2) { kmMil=(d[0]<<8)|d[1]; }
-  if (_readPid(0x30,d,1,&n)&&n>=1) { starts=d[0]; }
+	if (_readPid(0x04, d, 1, &n) && n >= 1)
+	{
+		loadPct = ((float)d[0] * 100.0f) / 255.0f;
+		hLoad = 1;
+	}
+	if (_readPid(0x05, d, 1, &n) && n >= 1)
+	{
+		coolC = (float)d[0] - 40.0f;
+		hCool = 1;
+	}
+	if (_readPid(0x0B, d, 1, &n) && n >= 1)
+	{
+		mapKpa = (float)d[0];
+		hMap = 1;
+	}
+	if (_readPid(0x0C, d, 2, &n) && n >= 2)
+	{
+		rpm = ((d[0] << 8) | d[1]) / 4;
+		hRpm = 1;
+	}
+	if (_readPid(0x0D, d, 1, &n) && n >= 1)
+	{
+		speedKmh = d[0];
+		hSpd = 1;
+	}
+	if (_readPid(0x0F, d, 1, &n) && n >= 1)
+	{
+		iatC = (float)d[0] - 40.0f;
+		hIat = 1;
+	}
+	if (_readPid(0x10, d, 2, &n) && n >= 2)
+	{
+		mafGs = ((float)((d[0] << 8) | d[1])) / 100.0f;
+		hMaf = 1;
+	}
+	if (_readPid(0x23, d, 2, &n) && n >= 2)
+	{
+		railBar = ((d[0] << 8) | d[1]) * 10 / 100;
+		hRail = 1;
+	}
+	if (_readPid(0x24, d, 4, &n) && n >= 2)
+	{
+		lambdaVal = ((float)((d[0] << 8) | d[1])) / 32768.0f;
+		hLam = 1;
+		if (n >= 4)
+			o2v = ((float)((d[2] << 8) | d[3])) / 8192.0f;
+	}
+	if (_readPid(0x2C, d, 1, &n) && n >= 1)
+	{
+		egrCmd = ((int)d[0] * 100) / 255;
+		hEgr = 1;
+	}
+	if (_readPid(0x2D, d, 1, &n) && n >= 1)
+	{
+		egrErr = ((int)d[0] - 128) * 100 / 128;
+		hEgrE = 1;
+	}
+	if (_readPid(0x33, d, 1, &n) && n >= 1)
+	{
+		baroKpa = (float)d[0];
+		hBaro = 1;
+	}
+	if (_readPid(0x42, d, 2, &n) && n >= 2)
+	{
+		voltsV = ((float)((d[0] << 8) | d[1])) / 1000.0f;
+		hV = 1;
+	}
+	if (_readPid(0x46, d, 1, &n) && n >= 1)
+	{
+		ambC = (float)d[0] - 40.0f;
+		hAmb = 1;
+	}
+	if (_readPid(0x49, d, 1, &n) && n >= 1)
+	{
+		pedalD = ((int)d[0] * 100) / 255;
+		hPD = 1;
+	}
+	if (_readPid(0x4A, d, 1, &n) && n >= 1)
+	{
+		pedalE = ((int)d[0] * 100) / 255;
+		hPE = 1;
+	}
+	if (_readPid(0x4C, d, 1, &n) && n >= 1)
+	{
+		throttle = ((int)d[0] * 100) / 255;
+		hThr = 1;
+	}
+	if (_readPid(0x01, d, 4, &n) && n >= 1)
+	{
+		mil = (d[0] & 0x80) != 0;
+		dtcN = d[0] & 0x7F;
+	}
+	if (_readPid(0x1F, d, 2, &n) && n >= 2)
+	{
+		runtimeS = (d[0] << 8) | d[1];
+		hRt = 1;
+	}
+	if (_readPid(0x21, d, 2, &n) && n >= 2)
+	{
+		kmMil = (d[0] << 8) | d[1];
+	}
+	if (_readPid(0x30, d, 1, &n) && n >= 1)
+	{
+		starts = d[0];
+	}
 #endif
 
 #ifdef OBD_CONN_CAN
-  if (_readPidCan(0x04)) { loadPct=((float)_canBuf[3]*100.0f)/255.0f; hLoad=1; }
-  if (_readPidCan(0x05)) { coolC=(float)_canBuf[3]-40.0f; hCool=1; }
-  if (_readPidCan(0x0B)) { mapKpa=(float)_canBuf[3]; hMap=1; }
-  if (_readPidCan(0x0C)) { rpm=((_canBuf[3]<<8)|_canBuf[4])/4; hRpm=1; }
-  if (_readPidCan(0x0D)) { speedKmh=_canBuf[3]; hSpd=1; }
-  if (_readPidCan(0x0F)) { iatC=(float)_canBuf[3]-40.0f; hIat=1; }
-  if (_readPidCan(0x10)) { mafGs=((float)((_canBuf[3]<<8)|_canBuf[4]))/100.0f; hMaf=1; }
-  if (_readPidCan(0x23)) { railBar=((_canBuf[3]<<8)|_canBuf[4])*10/100; hRail=1; }
-  if (_readPidCan(0x24)) { lambdaVal=((float)((_canBuf[3]<<8)|_canBuf[4]))/32768.0f; hLam=1; o2v=((float)((_canBuf[5]<<8)|_canBuf[6]))/8192.0f; }
-  if (_readPidCan(0x2C)) { egrCmd=((int)_canBuf[3]*100)/255; hEgr=1; }
-  if (_readPidCan(0x2D)) { egrErr=((int)_canBuf[3]-128)*100/128; hEgrE=1; }
-  if (_readPidCan(0x33)) { baroKpa=(float)_canBuf[3]; hBaro=1; }
-  if (_readPidCan(0x42)) { voltsV=((float)((_canBuf[3]<<8)|_canBuf[4]))/1000.0f; hV=1; }
-  if (_readPidCan(0x46)) { ambC=(float)_canBuf[3]-40.0f; hAmb=1; }
-  if (_readPidCan(0x49)) { pedalD=((int)_canBuf[3]*100)/255; hPD=1; }
-  if (_readPidCan(0x4A)) { pedalE=((int)_canBuf[3]*100)/255; hPE=1; }
-  if (_readPidCan(0x4C)) { throttle=((int)_canBuf[3]*100)/255; hThr=1; }
-  if (_readPidCan(0x01)) { mil=(_canBuf[3]&0x80)!=0; dtcN=_canBuf[3]&0x7F; }
-  if (_readPidCan(0x1F)) { runtimeS=(_canBuf[3]<<8)|_canBuf[4]; hRt=1; }
-  if (_readPidCan(0x21)) { kmMil=(_canBuf[3]<<8)|_canBuf[4]; }
-  if (_readPidCan(0x30)) { starts=_canBuf[3]; }
+	if (_readPidCan(0x04))
+	{
+		loadPct = ((float)_canBuf[3] * 100.0f) / 255.0f;
+		hLoad = 1;
+	}
+	if (_readPidCan(0x05))
+	{
+		coolC = (float)_canBuf[3] - 40.0f;
+		hCool = 1;
+	}
+	if (_readPidCan(0x0B))
+	{
+		mapKpa = (float)_canBuf[3];
+		hMap = 1;
+	}
+	if (_readPidCan(0x0C))
+	{
+		rpm = ((_canBuf[3] << 8) | _canBuf[4]) / 4;
+		hRpm = 1;
+	}
+	if (_readPidCan(0x0D))
+	{
+		speedKmh = _canBuf[3];
+		hSpd = 1;
+	}
+	if (_readPidCan(0x0F))
+	{
+		iatC = (float)_canBuf[3] - 40.0f;
+		hIat = 1;
+	}
+	if (_readPidCan(0x10))
+	{
+		mafGs = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 100.0f;
+		hMaf = 1;
+	}
+	if (_readPidCan(0x23))
+	{
+		railBar = ((_canBuf[3] << 8) | _canBuf[4]) * 10 / 100;
+		hRail = 1;
+	}
+	if (_readPidCan(0x24))
+	{
+		lambdaVal = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 32768.0f;
+		hLam = 1;
+		o2v = ((float)((_canBuf[5] << 8) | _canBuf[6])) / 8192.0f;
+	}
+	if (_readPidCan(0x2C))
+	{
+		egrCmd = ((int)_canBuf[3] * 100) / 255;
+		hEgr = 1;
+	}
+	if (_readPidCan(0x2D))
+	{
+		egrErr = ((int)_canBuf[3] - 128) * 100 / 128;
+		hEgrE = 1;
+	}
+	if (_readPidCan(0x33))
+	{
+		baroKpa = (float)_canBuf[3];
+		hBaro = 1;
+	}
+	if (_readPidCan(0x42))
+	{
+		voltsV = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 1000.0f;
+		hV = 1;
+	}
+	if (_readPidCan(0x46))
+	{
+		ambC = (float)_canBuf[3] - 40.0f;
+		hAmb = 1;
+	}
+	if (_readPidCan(0x49))
+	{
+		pedalD = ((int)_canBuf[3] * 100) / 255;
+		hPD = 1;
+	}
+	if (_readPidCan(0x4A))
+	{
+		pedalE = ((int)_canBuf[3] * 100) / 255;
+		hPE = 1;
+	}
+	if (_readPidCan(0x4C))
+	{
+		throttle = ((int)_canBuf[3] * 100) / 255;
+		hThr = 1;
+	}
+	if (_readPidCan(0x01))
+	{
+		mil = (_canBuf[3] & 0x80) != 0;
+		dtcN = _canBuf[3] & 0x7F;
+	}
+	if (_readPidCan(0x1F))
+	{
+		runtimeS = (_canBuf[3] << 8) | _canBuf[4];
+		hRt = 1;
+	}
+	if (_readPidCan(0x21))
+	{
+		kmMil = (_canBuf[3] << 8) | _canBuf[4];
+	}
+	if (_readPidCan(0x30))
+	{
+		starts = _canBuf[3];
+	}
 #endif
 
-  // ---- Calcoli derivati ----
-  float boost = (hMap && hBaro) ? (mapKpa - baroKpa) / 100.0f : 0;
-  int torque = hLoad ? (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
-    loadPct, (float)rpm, mafGs, mapKpa, iatC,
-    hRail ? (float)railBar * 100.0f : NAN,
-    hV ? voltsV : NAN,
-    hBaro ? baroKpa : NAN, false) : 0;
-  float powerKw = (hLoad && hRpm && rpm > 0) ? (float)torque * (float)rpm / 9549.0f : 0;
-  float powerCv = powerKw * 1.36f;
-  float afr = hLam ? lambdaVal * 14.5f : 0;
-  float lam = (hLam && lambdaVal > 0.5f) ? lambdaVal : 1.0f;
-  float fuelGs = hMaf ? mafGs / (14.5f * lam) : 0;
-  float fuelLh = hMaf ? (fuelGs * 3600.0f) / 835.0f : 0;
-  float fuelL100 = (hMaf && hSpd && speedKmh > 3) ? (fuelLh / (float)speedKmh) * 100.0f : 0;
-  int altitude = (hBaro && baroKpa > 0) ? (int)(44330.0f * (1.0f - pow(baroKpa / 101.325f, 0.1903f))) : 0;
-  float airDens = (hMap && hIat) ? (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f)) : 0;
-  float pr = (hMap && hBaro && baroKpa > 0) ? mapKpa / baroKpa : 0;
-  int volEff = (hMaf && hRpm && hMap && hIat && rpm > 0 && airDens > 0) ? (int)((mafGs * 120.0f) / (2.698f * (float)rpm * airDens / 1000.0f)) : -1;
-  int driftPedal = (hPD && hPE) ? abs(pedalD - pedalE) : 0;
-  int deltaTP = (hThr && hPD) ? throttle - pedalD : 0;
-  bool dfco = hLoad && (loadPct < 1.0f);
-  float gearRatio = (hRpm && hSpd && speedKmh > 5 && rpm > 0) ? (float)rpm / ((float)speedKmh * 7.9f) : 0;
-  int bsfc = (powerKw > 1.0f && hMaf) ? (int)((fuelGs * 3600.0f) / powerKw) : 0;
+	// ---- Calcoli derivati ----
+	float boost = (hMap && hBaro) ? (mapKpa - baroKpa) / 100.0f : 0;
+	int torque = hLoad ? (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
+							 loadPct, (float)rpm, mafGs, mapKpa, iatC,
+							 hRail ? (float)railBar * 100.0f : NAN,
+							 hV ? voltsV : NAN,
+							 hBaro ? baroKpa : NAN, false)
+					   : 0;
+	float powerKw = (hLoad && hRpm && rpm > 0) ? (float)torque * (float)rpm / 9549.0f : 0;
+	float powerCv = powerKw * 1.36f;
+	float afr = hLam ? lambdaVal * 14.5f : 0;
+	float lam = (hLam && lambdaVal > 0.5f) ? lambdaVal : 1.0f;
+	float fuelGs = hMaf ? mafGs / (14.5f * lam) : 0;
+	float fuelLh = hMaf ? (fuelGs * 3600.0f) / 835.0f : 0;
+	float fuelL100 = (hMaf && hSpd && speedKmh > 3) ? (fuelLh / (float)speedKmh) * 100.0f : 0;
+	int altitude = (hBaro && baroKpa > 0) ? (int)(44330.0f * (1.0f - pow(baroKpa / 101.325f, 0.1903f))) : 0;
+	float airDens = (hMap && hIat) ? (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f)) : 0;
+	float pr = (hMap && hBaro && baroKpa > 0) ? mapKpa / baroKpa : 0;
+	int volEff = (hMaf && hRpm && hMap && hIat && rpm > 0 && airDens > 0) ? (int)((mafGs * 120.0f) / (2.698f * (float)rpm * airDens / 1000.0f)) : -1;
+	int driftPedal = (hPD && hPE) ? abs(pedalD - pedalE) : 0;
+	int deltaTP = (hThr && hPD) ? throttle - pedalD : 0;
+	bool dfco = hLoad && (loadPct < 1.0f);
+	float gearRatio = (hRpm && hSpd && speedKmh > 5 && rpm > 0) ? (float)rpm / ((float)speedKmh * 7.9f) : 0;
+	int bsfc = (powerKw > 1.0f && hMaf) ? (int)((fuelGs * 3600.0f) / powerKw) : 0;
 
-  // Intercooler
-  int icEff = -1;
-  if (hMap && hBaro && hIat && hAmb && mapKpa > baroKpa) {
-    float tTeor = (ambC + 273.15f) * pow(mapKpa / baroKpa, 0.286f) - 273.15f;
-    float den = tTeor - ambC;
-    if (den > 1.0f) icEff = (int)(((tTeor - iatC) / den) * 100.0f);
-  }
+	// Intercooler
+	int icEff = -1;
+	if (hMap && hBaro && hIat && hAmb && mapKpa > baroKpa)
+	{
+		float tTeor = (ambC + 273.15f) * pow(mapKpa / baroKpa, 0.286f) - 273.15f;
+		float den = tTeor - ambC;
+		if (den > 1.0f)
+			icEff = (int)(((tTeor - iatC) / den) * 100.0f);
+	}
 
-  // Accelerazione e variazione boost
-  unsigned long nowMs = millis();
-  float accel = 0, boostRate = 0;
-  if (_prevDataMs > 0) {
-    float dt = (float)(nowMs - _prevDataMs) / 1000.0f;
-    if (dt > 0.05f) {
-      accel = ((float)(speedKmh - _prevSpeedKmh) / 3.6f) / dt;
-      boostRate = (boost - _prevBoostBar) / dt;
-    }
-  }
-  _prevSpeedKmh = speedKmh;
-  _prevBoostBar = boost;
-  _prevDataMs = nowMs;
+	// Accelerazione e variazione boost
+	unsigned long nowMs = millis();
+	float accel = 0, boostRate = 0;
+	if (_prevDataMs > 0)
+	{
+		float dt = (float)(nowMs - _prevDataMs) / 1000.0f;
+		if (dt > 0.05f)
+		{
+			accel = ((float)(speedKmh - _prevSpeedKmh) / 3.6f) / dt;
+			boostRate = (boost - _prevBoostBar) / dt;
+		}
+	}
+	_prevSpeedKmh = speedKmh;
+	_prevBoostBar = boost;
+	_prevDataMs = nowMs;
 
-  // ---- Genera JSON ----
-  // Uso snprintf a blocchi per limitare l'uso di RAM
-  char json[768];
-  int p = 0;
-  p += snprintf(json + p, sizeof(json) - p,
-    "{\"load\":%.1f,\"coolant\":%d,\"map\":%d,\"rpm\":%d,\"speed\":%d,"
-    "\"iat\":%d,\"maf\":%.1f,\"railBar\":%d,\"lambda\":%.3f,\"o2v\":%.3f,"
-    "\"egr\":%d,\"egrErr\":%d,\"baro\":%d,\"volts\":%.1f,"
-    "\"ambient\":%d,\"pedalD\":%d,\"pedalE\":%d,\"throttle\":%d,",
-    loadPct, (int)coolC, (int)mapKpa, rpm, speedKmh,
-    (int)iatC, mafGs, railBar, lambdaVal, o2v,
-    egrCmd, egrErr, (int)baroKpa, voltsV,
-    (int)ambC, pedalD, pedalE, throttle);
+	// ---- Genera JSON ----
+	// Uso snprintf a blocchi per limitare l'uso di RAM
+	char json[768];
+	int p = 0;
+	p += snprintf(json + p, sizeof(json) - p,
+				  "{\"load\":%.1f,\"coolant\":%d,\"map\":%d,\"rpm\":%d,\"speed\":%d,"
+				  "\"iat\":%d,\"maf\":%.1f,\"railBar\":%d,\"lambda\":%.3f,\"o2v\":%.3f,"
+				  "\"egr\":%d,\"egrErr\":%d,\"baro\":%d,\"volts\":%.1f,"
+				  "\"ambient\":%d,\"pedalD\":%d,\"pedalE\":%d,\"throttle\":%d,",
+				  loadPct, (int)coolC, (int)mapKpa, rpm, speedKmh,
+				  (int)iatC, mafGs, railBar, lambdaVal, o2v,
+				  egrCmd, egrErr, (int)baroKpa, voltsV,
+				  (int)ambC, pedalD, pedalE, throttle);
 
-  p += snprintf(json + p, sizeof(json) - p,
-    "\"mil\":%s,\"dtcCount\":%d,\"runtime\":%lu,"
-    "\"kmMil\":%d,\"starts\":%d,"
-    "\"boost\":%.2f,\"torque\":%d,\"powerKw\":%.1f,\"powerCv\":%.1f,"
-    "\"afr\":%.1f,\"fuelL100\":%.1f,\"altitude\":%d,",
-    mil ? "true" : "false", dtcN, runtimeS,
-    kmMil, starts,
-    boost, torque, powerKw, powerCv,
-    afr, fuelL100, altitude);
+	p += snprintf(json + p, sizeof(json) - p,
+				  "\"mil\":%s,\"dtcCount\":%d,\"runtime\":%lu,"
+				  "\"kmMil\":%d,\"starts\":%d,"
+				  "\"boost\":%.2f,\"torque\":%d,\"powerKw\":%.1f,\"powerCv\":%.1f,"
+				  "\"afr\":%.1f,\"fuelL100\":%.1f,\"altitude\":%d,",
+				  mil ? "true" : "false", dtcN, runtimeS,
+				  kmMil, starts,
+				  boost, torque, powerKw, powerCv,
+				  afr, fuelL100, altitude);
 
-  p += snprintf(json + p, sizeof(json) - p,
-    "\"airDensity\":%.3f,\"intercoolerEff\":%d,\"pressureRatio\":%.2f,"
-    "\"volEff\":%d,\"driftPedal\":%d,"
-    "\"deltaThrottlePedal\":%d,\"dfco\":%s,\"gearRatio\":%.2f,"
-    "\"accel\":%.2f,\"boostRate\":%.2f,"
-    "\"bsfc\":%d,",
-    airDens, icEff, pr,
-    volEff, driftPedal,
-    deltaTP, dfco ? "true" : "false", gearRatio,
-    accel, boostRate,
-    bsfc);
+	p += snprintf(json + p, sizeof(json) - p,
+				  "\"airDensity\":%.3f,\"intercoolerEff\":%d,\"pressureRatio\":%.2f,"
+				  "\"volEff\":%d,\"driftPedal\":%d,"
+				  "\"deltaThrottlePedal\":%d,\"dfco\":%s,\"gearRatio\":%.2f,"
+				  "\"accel\":%.2f,\"boostRate\":%.2f,"
+				  "\"bsfc\":%d,",
+				  airDens, icEff, pr,
+				  volEff, driftPedal,
+				  deltaTP, dfco ? "true" : "false", gearRatio,
+				  accel, boostRate,
+				  bsfc);
 
-  // Brightness state + DTC array
-  const char* brmDbg = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
-  p += snprintf(json + p, sizeof(json) - p,
-    "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\",\"debug\":true,\"dtc\":[",
-    (int)br.ldrEma, br.currentContrast, brmDbg);
-  for (int i = 0; i < dtcCount && i < 6; i++) {
-    char code[6];
-    decodeDTC(dtcCodes[i], code);
-    const char* desc = getDTCDescription(dtcCodes[i]);
-    char descBuf[22] = "";
-    if (desc) { strncpy_P(descBuf, desc, 21); descBuf[21] = 0; }
-    p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
-      i > 0 ? "," : "", code, descBuf);
-  }
-  p += snprintf(json + p, sizeof(json) - p, "]}");
+	// Brightness state + DTC array
+	const char *brmDbg = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
+																			: "fading";
+	p += snprintf(json + p, sizeof(json) - p,
+				  "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\",\"debug\":true,\"dtc\":[",
+				  (int)br.ldrEma, br.currentContrast, brmDbg);
+	for (int i = 0; i < dtcCount && i < 6; i++)
+	{
+		char code[6];
+		decodeDTC(dtcCodes[i], code);
+		const char *desc = getDTCDescription(dtcCodes[i]);
+		char descBuf[22] = "";
+		if (desc)
+		{
+			strncpy_P(descBuf, desc, 21);
+			descBuf[21] = 0;
+		}
+		p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
+					  i > 0 ? "," : "", code, descBuf);
+	}
+	p += snprintf(json + p, sizeof(json) - p, "]}");
 
-  server.send(200, "application/json", json);
+	server.send(200, "application/json", json);
 }
 
 // ============================================================
@@ -627,106 +825,103 @@ static void handleData(ESP8266WebServer& server) {
  * @see WIFI_conn.ino, CANbus_conn.ino — setup()
  * @since 01/04/26 Mattia Alesi
  */
-void setupWebDashboard(ESP8266WebServer& server) {
-  server.on("/dashboard", HTTP_GET, [&server]() {
-    server.send_P(200, "text/html", DASHBOARD_HTML);
-  });
-  server.on("/data", HTTP_GET, [&server]() {
-    handleData(server);
-  });
-  // Serial monitor live: ritorna i byte da ?since=N (cursor del client)
-  // fino al piu' recente disponibile nel buffer circolare di TeeSerial.
-  // Usa text/plain con header X-Seq (nuovo cursor) e X-Dropped (1 se il
-  // client ha perso byte per overflow del buffer).
-  server.on("/serial-data", HTTP_GET, [&server]() {
-    uint32_t since = 0;
-    bool firstFetch = !server.hasArg("since");
-    if (!firstFetch) {
-      since = (uint32_t)strtoul(server.arg("since").c_str(), nullptr, 10);
-    } else {
-      // Primo fetch: parto dal piu' vecchio byte ancora in buffer per
-      // mostrare lo storico recente, non l'intera sequenza dall'avvio.
-      uint32_t head = TeeSerial::logHeadSeq();
-      size_t bs = TeeSerial::logBufferSize();
-      since = head > bs ? head - bs : 0;
-    }
-    static uint8_t chunk[1024];
-    uint32_t nextSeq;
-    bool dropped = false;
-    size_t n = TeeSerial::logReadFrom(since, chunk, sizeof(chunk),
-                                      &nextSeq, &dropped);
+void setupWebDashboard(ESP8266WebServer &server)
+{
+	server.on("/dashboard", HTTP_GET, [&server]()
+			  { server.send_P(200, "text/html", DASHBOARD_HTML); });
+	server.on("/data", HTTP_GET, [&server]()
+			  { handleData(server); });
+	// Serial monitor live: ritorna i byte da ?since=N (cursor del client)
+	// fino al piu' recente disponibile nel buffer circolare di WebSerial.
+	// Usa text/plain con header X-Seq (nuovo cursor) e X-Dropped (1 se il
+	// client ha perso byte per overflow del buffer).
+	server.on("/serial-data", HTTP_GET, [&server]()
+			  {
+		uint32_t since = 0;
+		bool firstFetch = !server.hasArg("since");
+		if (!firstFetch) {
+			since = (uint32_t)strtoul(server.arg("since").c_str(), nullptr, 10);
+		} else {
+			// Primo fetch: parto dal piu' vecchio byte ancora in buffer per
+			// mostrare lo storico recente, non l'intera sequenza dall'avvio.
+			uint32_t head = WebSerial::logHeadSeq();
+			size_t bs = WebSerial::logBufferSize();
+			since = head > bs ? head - bs : 0;
+		}
+		static uint8_t chunk[1024];
+		uint32_t nextSeq;
+		bool dropped = false;
+		size_t n = WebSerial::logReadFrom(since, chunk, sizeof(chunk),
+																			&nextSeq, &dropped);
 
-    server.sendHeader(F("X-Seq"), String((unsigned long)nextSeq));
-    server.sendHeader(F("X-Dropped"), dropped ? "1" : "0");
-    server.sendHeader(F("Cache-Control"), F("no-store"));
-    // String((const char*)chunk, n) non esiste in Arduino String: copio
-    // byte-a-byte. n e' al massimo 1024, costo trascurabile.
-    String body;
-    body.reserve(n);
-    for (size_t i = 0; i < n; i++) body += (char)chunk[i];
-    server.send(200, "text/plain", body);
-  });
-  // Pagina e dati scan multi-ECU (solo build CAN: gli ECU multipli sono
-  // raggiungibili solo via bus CAN diretto, non tramite ELM/WiFi)
-  #ifdef OBD_CONN_CAN
-    server.on("/scan", HTTP_GET, [&server]() {
-      server.send_P(200, "text/html", SCAN_HTML);
-    });
-    server.on("/scan-data", HTTP_GET, [&server]() {
-      handleScanData(server);
-    });
-  #endif
-  // Toggle diagnostica seriale: /debug?on, /debug?off, /debug (stato)
-  extern bool debugMode;
-  server.on("/debug", HTTP_GET, [&server]() {
-    extern bool debugMode;
-    if (server.hasArg("on")) { debugMode = true; }
-    else if (server.hasArg("off")) { debugMode = false; }
-    char json[20];
-    snprintf(json, sizeof(json), "{\"debug\":%s}", debugMode ? "true" : "false");
-    server.send(200, "application/json", json);
-  });
-  // Brightness: stato + slider override (?set=N) + reset auto (?auto)
-  server.on("/brightness", HTTP_GET, [&server]() {
-    if (server.hasArg("set")) {
-      int v = server.arg("set").toInt();
-      if (v < 0) v = 0;
-      if (v > 255) v = 255;
-      br.manualContrast  = (uint8_t)v;
-      br.currentContrast = (uint8_t)v;
-      br.ldrAtOverride   = (int)br.ldrEma;
-      br.mode            = BR_MANUAL;
-      u8g2.setContrast((uint8_t)v);
-    } else if (server.hasArg("auto")) {
-      br.targetContrast = adcToContrast((int)br.ldrEma);
-      br.mode = BR_FADING;
-    }
-    const char* m = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
-    char j[140];
-    snprintf(j, sizeof(j),
-      "{\"ldr\":%d,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
-      (int)br.ldrEma, br.currentContrast, m, br.ldrAtOverride);
-    server.send(200, "application/json", j);
-  });
-  // Cancellazione DTC (OBD2 Mode 04). Implementata in CANbus_conn.ino o WIFI_conn.ino.
-  server.on("/clear-dtc", HTTP_GET, [&server]() {
-    bool ok = false;
-    #ifdef OBD_CONN_CAN
-      extern bool clearDTCsViaCAN();
-      ok = clearDTCsViaCAN();
-    #endif
-    #ifdef OBD_CONN_WIFI
-      extern bool clearDTCsViaELM();
-      ok = clearDTCsViaELM();
-    #endif
-    if (ok) {
-      extern unsigned long lastDtcCheck;
-      lastDtcCheck = 0;  // forza re-check immediato al prossimo monitor cycle
-    }
-    char json[24];
-    snprintf(json, sizeof(json), "{\"ok\":%s}", ok ? "true" : "false");
-    server.send(200, "application/json", json);
-  });
+		server.sendHeader(F("X-Seq"), String((unsigned long)nextSeq));
+		server.sendHeader(F("X-Dropped"), dropped ? "1" : "0");
+		server.sendHeader(F("Cache-Control"), F("no-store"));
+		// String((const char*)chunk, n) non esiste in Arduino String: copio
+		// byte-a-byte. n e' al massimo 1024, costo trascurabile.
+		String body;
+		body.reserve(n);
+		for (size_t i = 0; i < n; i++) body += (char)chunk[i];
+		server.send(200, "text/plain", body); });
+// Pagina e dati scan multi-ECU (solo build CAN: gli ECU multipli sono
+// raggiungibili solo via bus CAN diretto, non tramite ELM/WiFi)
+#ifdef OBD_CONN_CAN
+	server.on("/scan", HTTP_GET, [&server]()
+			  { server.send_P(200, "text/html", SCAN_HTML); });
+	server.on("/scan-data", HTTP_GET, [&server]()
+			  { handleScanData(server); });
+#endif
+	// Toggle diagnostica seriale: /debug?on, /debug?off, /debug (stato)
+	extern bool debugMode;
+	server.on("/debug", HTTP_GET, [&server]()
+			  {
+		extern bool debugMode;
+		if (server.hasArg("on")) { debugMode = true; }
+		else if (server.hasArg("off")) { debugMode = false; }
+		char json[20];
+		snprintf(json, sizeof(json), "{\"debug\":%s}", debugMode ? "true" : "false");
+		server.send(200, "application/json", json); });
+	// Brightness: stato + slider override (?set=N) + reset auto (?auto)
+	server.on("/brightness", HTTP_GET, [&server]()
+			  {
+		if (server.hasArg("set")) {
+			int v = server.arg("set").toInt();
+			if (v < 0) v = 0;
+			if (v > 255) v = 255;
+			br.manualContrast  = (uint8_t)v;
+			br.currentContrast = (uint8_t)v;
+			br.ldrAtOverride   = (int)br.ldrEma;
+			br.mode            = BR_MANUAL;
+			u8g2.setContrast((uint8_t)v);
+		} else if (server.hasArg("auto")) {
+			br.targetContrast = adcToContrast((int)br.ldrEma);
+			br.mode = BR_FADING;
+		}
+		const char* m = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
+		char j[140];
+		snprintf(j, sizeof(j),
+			"{\"ldr\":%d,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
+			(int)br.ldrEma, br.currentContrast, m, br.ldrAtOverride);
+		server.send(200, "application/json", j); });
+	// Cancellazione DTC (OBD2 Mode 04). Implementata in CANbus_conn.ino o WIFI_conn.ino.
+	server.on("/clear-dtc", HTTP_GET, [&server]()
+			  {
+		bool ok = false;
+#ifdef OBD_CONN_CAN
+			extern bool clearDTCsViaCAN();
+			ok = clearDTCsViaCAN();
+#endif
+#ifdef OBD_CONN_WIFI
+			extern bool clearDTCsViaELM();
+			ok = clearDTCsViaELM();
+#endif
+		if (ok) {
+			extern unsigned long lastDtcCheck;
+			lastDtcCheck = 0;  // forza re-check immediato al prossimo monitor cycle
+		}
+		char json[24];
+		snprintf(json, sizeof(json), "{\"ok\":%s}", ok ? "true" : "false");
+		server.send(200, "application/json", json); });
 }
 
 #endif

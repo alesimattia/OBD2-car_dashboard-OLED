@@ -6,10 +6,7 @@
  *
  * Le stringhe sono salvate in PROGMEM per non occupare la SRAM.
  *
- * Usato da: CANbus_conn.ino (printScanReportSerial), web_dashboard.h
- *           (handleScanData).
- *
- * @since 07/05/26 Mattia Alesi
+ * Usato da: CANbus_conn.ino (printScanReportSerial), web_dashboard.h (handleScanData).
  */
 
 #ifndef PID_DESCRIPTIONS_H
@@ -19,10 +16,11 @@
 #include <pgmspace.h>
 
 /** Singola riga della tabella descrittiva. */
-struct PIDDescription {
-  uint8_t pid;
-  const char* shortName;  // Sigla compatta (es. "RPM", "MAF", "IAT")
-  const char* fullName;   // Descrizione estesa in italiano
+struct PIDDescription
+{
+	uint8_t pid;
+	const char *shortName; // Sigla compatta (es. "RPM", "MAF", "IAT")
+	const char *fullName;  // Descrizione estesa in italiano
 };
 
 // Stringhe singole in PROGMEM per ridurre frammentazione flash
@@ -333,85 +331,84 @@ static const char PD_N_C0[] PROGMEM = "PIDs C1-E0";
 // Tabella indicizzata: index = PID. Slot vuoti = nullptr (PID non documentato).
 // NB: usiamo array di puntatori PROGMEM per accesso O(1) in lookup.
 // Layout speculare a PID_FULL_NAMES per coerenza.
-static const char* const PID_SHORT_NAMES[256] PROGMEM = {
-  /* 0x00 */ PD_N_00, PD_N_01, PD_N_02, PD_N_03, PD_N_04, PD_N_05, PD_N_06, PD_N_07,
-  /* 0x08 */ PD_N_08, PD_N_09, PD_N_0A, PD_N_0B, PD_N_0C, PD_N_0D, PD_N_0E, PD_N_0F,
-  /* 0x10 */ PD_N_10, PD_N_11, PD_N_12, PD_N_13, PD_N_14, PD_N_15, PD_N_16, PD_N_17,
-  /* 0x18 */ PD_N_18, PD_N_19, PD_N_1A, PD_N_1B, PD_N_1C, PD_N_1D, PD_N_1E, PD_N_1F,
-  /* 0x20 */ PD_N_20, PD_N_21, PD_N_22, PD_N_23, PD_N_24, PD_N_25, PD_N_26, PD_N_27,
-  /* 0x28 */ PD_N_28, PD_N_29, PD_N_2A, PD_N_2B, PD_N_2C, PD_N_2D, PD_N_2E, PD_N_2F,
-  /* 0x30 */ PD_N_30, PD_N_31, PD_N_32, PD_N_33, PD_N_34, PD_N_35, PD_N_36, PD_N_37,
-  /* 0x38 */ PD_N_38, PD_N_39, PD_N_3A, PD_N_3B, PD_N_3C, PD_N_3D, PD_N_3E, PD_N_3F,
-  /* 0x40 */ PD_N_40, PD_N_41, PD_N_42, PD_N_43, PD_N_44, PD_N_45, PD_N_46, PD_N_47,
-  /* 0x48 */ PD_N_48, PD_N_49, PD_N_4A, PD_N_4B, PD_N_4C, PD_N_4D, PD_N_4E, PD_N_4F,
-  /* 0x50 */ PD_N_50, PD_N_51, PD_N_52, PD_N_53, PD_N_54, PD_N_55, PD_N_56, PD_N_57,
-  /* 0x58 */ PD_N_58, PD_N_59, PD_N_5A, PD_N_5B, PD_N_5C, PD_N_5D, PD_N_5E, PD_N_5F,
-  /* 0x60 */ PD_N_60, PD_N_61, PD_N_62, PD_N_63, PD_N_64, PD_N_65, PD_N_66, PD_N_67,
-  /* 0x68 */ PD_N_68, PD_N_69, PD_N_6A, PD_N_6B, PD_N_6C, PD_N_6D, PD_N_6E, PD_N_6F,
-  /* 0x70 */ PD_N_70, PD_N_71, PD_N_72, PD_N_73, PD_N_74, PD_N_75, PD_N_76, PD_N_77,
-  /* 0x78 */ PD_N_78, PD_N_79, PD_N_7A, PD_N_7B, PD_N_7C, PD_N_7D, PD_N_7E, PD_N_7F,
-  /* 0x80 */ PD_N_80, PD_N_81, PD_N_82, PD_N_83, PD_N_84, PD_N_85, PD_N_86, PD_N_87,
-  /* 0x88 */ PD_N_88, nullptr, nullptr, PD_N_8B, nullptr, PD_N_8D, PD_N_8E, PD_N_8F,
-  /* 0x90 */ nullptr, nullptr, PD_N_92, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0x98 */ nullptr, nullptr, PD_N_9A, PD_N_9B, nullptr, PD_N_9D, nullptr, nullptr,
-  /* 0xA0 */ PD_N_A0, nullptr, PD_N_A2, nullptr, PD_N_A4, nullptr, PD_N_A6, nullptr,
-  /* 0xA8-0xBF tutti nullptr */
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0xC0 */ PD_N_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0xC8-0xFF tutti nullptr */
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-};
+static const char *const PID_SHORT_NAMES[256] PROGMEM = {
+		/* 0x00 */ PD_N_00, PD_N_01, PD_N_02, PD_N_03, PD_N_04, PD_N_05, PD_N_06, PD_N_07,
+		/* 0x08 */ PD_N_08, PD_N_09, PD_N_0A, PD_N_0B, PD_N_0C, PD_N_0D, PD_N_0E, PD_N_0F,
+		/* 0x10 */ PD_N_10, PD_N_11, PD_N_12, PD_N_13, PD_N_14, PD_N_15, PD_N_16, PD_N_17,
+		/* 0x18 */ PD_N_18, PD_N_19, PD_N_1A, PD_N_1B, PD_N_1C, PD_N_1D, PD_N_1E, PD_N_1F,
+		/* 0x20 */ PD_N_20, PD_N_21, PD_N_22, PD_N_23, PD_N_24, PD_N_25, PD_N_26, PD_N_27,
+		/* 0x28 */ PD_N_28, PD_N_29, PD_N_2A, PD_N_2B, PD_N_2C, PD_N_2D, PD_N_2E, PD_N_2F,
+		/* 0x30 */ PD_N_30, PD_N_31, PD_N_32, PD_N_33, PD_N_34, PD_N_35, PD_N_36, PD_N_37,
+		/* 0x38 */ PD_N_38, PD_N_39, PD_N_3A, PD_N_3B, PD_N_3C, PD_N_3D, PD_N_3E, PD_N_3F,
+		/* 0x40 */ PD_N_40, PD_N_41, PD_N_42, PD_N_43, PD_N_44, PD_N_45, PD_N_46, PD_N_47,
+		/* 0x48 */ PD_N_48, PD_N_49, PD_N_4A, PD_N_4B, PD_N_4C, PD_N_4D, PD_N_4E, PD_N_4F,
+		/* 0x50 */ PD_N_50, PD_N_51, PD_N_52, PD_N_53, PD_N_54, PD_N_55, PD_N_56, PD_N_57,
+		/* 0x58 */ PD_N_58, PD_N_59, PD_N_5A, PD_N_5B, PD_N_5C, PD_N_5D, PD_N_5E, PD_N_5F,
+		/* 0x60 */ PD_N_60, PD_N_61, PD_N_62, PD_N_63, PD_N_64, PD_N_65, PD_N_66, PD_N_67,
+		/* 0x68 */ PD_N_68, PD_N_69, PD_N_6A, PD_N_6B, PD_N_6C, PD_N_6D, PD_N_6E, PD_N_6F,
+		/* 0x70 */ PD_N_70, PD_N_71, PD_N_72, PD_N_73, PD_N_74, PD_N_75, PD_N_76, PD_N_77,
+		/* 0x78 */ PD_N_78, PD_N_79, PD_N_7A, PD_N_7B, PD_N_7C, PD_N_7D, PD_N_7E, PD_N_7F,
+		/* 0x80 */ PD_N_80, PD_N_81, PD_N_82, PD_N_83, PD_N_84, PD_N_85, PD_N_86, PD_N_87,
+		/* 0x88 */ PD_N_88, nullptr, nullptr, PD_N_8B, nullptr, PD_N_8D, PD_N_8E, PD_N_8F,
+		/* 0x90 */ nullptr, nullptr, PD_N_92, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0x98 */ nullptr, nullptr, PD_N_9A, PD_N_9B, nullptr, PD_N_9D, nullptr, nullptr,
+		/* 0xA0 */ PD_N_A0, nullptr, PD_N_A2, nullptr, PD_N_A4, nullptr, PD_N_A6, nullptr,
+		/* 0xA8-0xBF tutti nullptr */
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC0 */ PD_N_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC8-0xFF tutti nullptr */
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
-static const char* const PID_FULL_NAMES[256] PROGMEM = {
-  /* 0x00 */ PD_S_00, PD_S_01, PD_S_02, PD_S_03, PD_S_04, PD_S_05, PD_S_06, PD_S_07,
-  /* 0x08 */ PD_S_08, PD_S_09, PD_S_0A, PD_S_0B, PD_S_0C, PD_S_0D, PD_S_0E, PD_S_0F,
-  /* 0x10 */ PD_S_10, PD_S_11, PD_S_12, PD_S_13, PD_S_14, PD_S_15, PD_S_16, PD_S_17,
-  /* 0x18 */ PD_S_18, PD_S_19, PD_S_1A, PD_S_1B, PD_S_1C, PD_S_1D, PD_S_1E, PD_S_1F,
-  /* 0x20 */ PD_S_20, PD_S_21, PD_S_22, PD_S_23, PD_S_24, PD_S_25, PD_S_26, PD_S_27,
-  /* 0x28 */ PD_S_28, PD_S_29, PD_S_2A, PD_S_2B, PD_S_2C, PD_S_2D, PD_S_2E, PD_S_2F,
-  /* 0x30 */ PD_S_30, PD_S_31, PD_S_32, PD_S_33, PD_S_34, PD_S_35, PD_S_36, PD_S_37,
-  /* 0x38 */ PD_S_38, PD_S_39, PD_S_3A, PD_S_3B, PD_S_3C, PD_S_3D, PD_S_3E, PD_S_3F,
-  /* 0x40 */ PD_S_40, PD_S_41, PD_S_42, PD_S_43, PD_S_44, PD_S_45, PD_S_46, PD_S_47,
-  /* 0x48 */ PD_S_48, PD_S_49, PD_S_4A, PD_S_4B, PD_S_4C, PD_S_4D, PD_S_4E, PD_S_4F,
-  /* 0x50 */ PD_S_50, PD_S_51, PD_S_52, PD_S_53, PD_S_54, PD_S_55, PD_S_56, PD_S_57,
-  /* 0x58 */ PD_S_58, PD_S_59, PD_S_5A, PD_S_5B, PD_S_5C, PD_S_5D, PD_S_5E, PD_S_5F,
-  /* 0x60 */ PD_S_60, PD_S_61, PD_S_62, PD_S_63, PD_S_64, PD_S_65, PD_S_66, PD_S_67,
-  /* 0x68 */ PD_S_68, PD_S_69, PD_S_6A, PD_S_6B, PD_S_6C, PD_S_6D, PD_S_6E, PD_S_6F,
-  /* 0x70 */ PD_S_70, PD_S_71, PD_S_72, PD_S_73, PD_S_74, PD_S_75, PD_S_76, PD_S_77,
-  /* 0x78 */ PD_S_78, PD_S_79, PD_S_7A, PD_S_7B, PD_S_7C, PD_S_7D, PD_S_7E, PD_S_7F,
-  /* 0x80 */ PD_S_80, PD_S_81, PD_S_82, PD_S_83, PD_S_84, PD_S_85, PD_S_86, PD_S_87,
-  /* 0x88 */ PD_S_88, nullptr, nullptr, PD_S_8B, nullptr, PD_S_8D, PD_S_8E, PD_S_8F,
-  /* 0x90 */ nullptr, nullptr, PD_S_92, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0x98 */ nullptr, nullptr, PD_S_9A, PD_S_9B, nullptr, PD_S_9D, nullptr, nullptr,
-  /* 0xA0 */ PD_S_A0, nullptr, PD_S_A2, nullptr, PD_S_A4, nullptr, PD_S_A6, nullptr,
-  /* 0xA8-0xBF tutti nullptr */
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0xC0 */ PD_S_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  /* 0xC8-0xFF tutti nullptr */
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-};
+static const char *const PID_FULL_NAMES[256] PROGMEM = {
+		/* 0x00 */ PD_S_00, PD_S_01, PD_S_02, PD_S_03, PD_S_04, PD_S_05, PD_S_06, PD_S_07,
+		/* 0x08 */ PD_S_08, PD_S_09, PD_S_0A, PD_S_0B, PD_S_0C, PD_S_0D, PD_S_0E, PD_S_0F,
+		/* 0x10 */ PD_S_10, PD_S_11, PD_S_12, PD_S_13, PD_S_14, PD_S_15, PD_S_16, PD_S_17,
+		/* 0x18 */ PD_S_18, PD_S_19, PD_S_1A, PD_S_1B, PD_S_1C, PD_S_1D, PD_S_1E, PD_S_1F,
+		/* 0x20 */ PD_S_20, PD_S_21, PD_S_22, PD_S_23, PD_S_24, PD_S_25, PD_S_26, PD_S_27,
+		/* 0x28 */ PD_S_28, PD_S_29, PD_S_2A, PD_S_2B, PD_S_2C, PD_S_2D, PD_S_2E, PD_S_2F,
+		/* 0x30 */ PD_S_30, PD_S_31, PD_S_32, PD_S_33, PD_S_34, PD_S_35, PD_S_36, PD_S_37,
+		/* 0x38 */ PD_S_38, PD_S_39, PD_S_3A, PD_S_3B, PD_S_3C, PD_S_3D, PD_S_3E, PD_S_3F,
+		/* 0x40 */ PD_S_40, PD_S_41, PD_S_42, PD_S_43, PD_S_44, PD_S_45, PD_S_46, PD_S_47,
+		/* 0x48 */ PD_S_48, PD_S_49, PD_S_4A, PD_S_4B, PD_S_4C, PD_S_4D, PD_S_4E, PD_S_4F,
+		/* 0x50 */ PD_S_50, PD_S_51, PD_S_52, PD_S_53, PD_S_54, PD_S_55, PD_S_56, PD_S_57,
+		/* 0x58 */ PD_S_58, PD_S_59, PD_S_5A, PD_S_5B, PD_S_5C, PD_S_5D, PD_S_5E, PD_S_5F,
+		/* 0x60 */ PD_S_60, PD_S_61, PD_S_62, PD_S_63, PD_S_64, PD_S_65, PD_S_66, PD_S_67,
+		/* 0x68 */ PD_S_68, PD_S_69, PD_S_6A, PD_S_6B, PD_S_6C, PD_S_6D, PD_S_6E, PD_S_6F,
+		/* 0x70 */ PD_S_70, PD_S_71, PD_S_72, PD_S_73, PD_S_74, PD_S_75, PD_S_76, PD_S_77,
+		/* 0x78 */ PD_S_78, PD_S_79, PD_S_7A, PD_S_7B, PD_S_7C, PD_S_7D, PD_S_7E, PD_S_7F,
+		/* 0x80 */ PD_S_80, PD_S_81, PD_S_82, PD_S_83, PD_S_84, PD_S_85, PD_S_86, PD_S_87,
+		/* 0x88 */ PD_S_88, nullptr, nullptr, PD_S_8B, nullptr, PD_S_8D, PD_S_8E, PD_S_8F,
+		/* 0x90 */ nullptr, nullptr, PD_S_92, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0x98 */ nullptr, nullptr, PD_S_9A, PD_S_9B, nullptr, PD_S_9D, nullptr, nullptr,
+		/* 0xA0 */ PD_S_A0, nullptr, PD_S_A2, nullptr, PD_S_A4, nullptr, PD_S_A6, nullptr,
+		/* 0xA8-0xBF tutti nullptr */
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC0 */ PD_S_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC8-0xFF tutti nullptr */
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
 
 /**
  * Restituisce la sigla compatta del PID (es. "RPM", "MAF") in PROGMEM.
  * Ritorna nullptr se il PID non e' documentato.
  * Pensata per uso in dashboard web (descrizioni concise).
  */
-inline const char* getPIDShortName(uint8_t pid) {
-  return (const char*)pgm_read_ptr(&PID_SHORT_NAMES[pid]);
+inline const char *getPIDShortName(uint8_t pid)
+{
+	return (const char *)pgm_read_ptr(&PID_SHORT_NAMES[pid]);
 }
 
 /**
@@ -419,8 +416,9 @@ inline const char* getPIDShortName(uint8_t pid) {
  * Ritorna nullptr se il PID non e' documentato.
  * Pensata per uso in output Serial.
  */
-inline const char* getPIDFullName(uint8_t pid) {
-  return (const char*)pgm_read_ptr(&PID_FULL_NAMES[pid]);
+inline const char *getPIDFullName(uint8_t pid)
+{
+	return (const char *)pgm_read_ptr(&PID_FULL_NAMES[pid]);
 }
 
 #endif

@@ -311,7 +311,7 @@ Le due sotto-sezioni elencano parametri **non ancora attivi** nel monitor mode c
 | ECU | PID | Parametro | Note |
 |---|---|---|---|
 | `0x7E8` motore | `0x61` | Coppia richiesta dal pilota % | — |
-| `0x7E8` motore | `0x62` | Coppia effettiva motore % | oggi la **stimi** con `TorqueEstimator`; con questo è il valore *vero* dell'ECU |
+| `0x7E8` motore | `0x62` | Coppia effettiva motore % | oggi la **stimi** con `TorqueModel`; con questo è il valore *vero* dell'ECU |
 | `0x7E8` motore | `0x63` | Coppia di riferimento motore (Nm) | il "100%" dell'ECU; oggi assumi 400 Nm hardcoded |
 
 ##### Turbo e scarico
@@ -356,7 +356,7 @@ Le due sotto-sezioni elencano parametri **non ancora attivi** nel monitor mode c
 
 | Calcolo | Formula | Beneficio |
 |---|---|---|
-| Coppia reale (Nm) | `(0x62 / 100) × 0x63` | sostituisce `TorqueEstimator` con il valore ECU |
+| Coppia reale (Nm) | `(0x62 / 100) × 0x63` | sostituisce `TorqueModel` con il valore ECU |
 | Potenza reale (kW) | `coppiaNm × RPM / 9549` | oggi calcoli con coppia stimata |
 | Δ coppia richiesta vs effettiva | `0x61 − 0x62` | mostra quando l'auto non riesce a soddisfare la domanda (limp mode, boost insufficiente, cut-off) |
 
@@ -400,7 +400,7 @@ Oggi calcoli `intercoolerEff` con `0x33 BARO`, `0x46 ambient`, `0x0F IAT`. Con `
 ##### Considerazioni pratiche
 
 - I PID `0x60–0x9F` sono "estensioni diesel/HD" SAE J1939/J1979-2: alcuni sono comuni su VAG diesel post-2008, **ma non garantiti**. Lo scan dirà quali sono effettivamente esposti.
-- I PID di **coppia reale (`0x62`, `0x63`)** sono i più impattanti se supportati: eliminerebbero l'incertezza dell'attuale `TorqueEstimator` e permetterebbero anche di rimuovere `BoostModel` per la stima di carico.
+- I PID di **coppia reale (`0x62`, `0x63`)** sono i più impattanti se supportati: eliminerebbero l'incertezza dell'attuale `TorqueModel` e permetterebbero anche di rimuovere `BoostModel` per la stima di carico.
 - **Cambio Multitronic**: storicamente le centraline VAG pre-2010 espongono *poco* via OBD2 standard sull'ECU cambio (`0x7E9`). I dati ricchi (temperatura olio CVT, slittamento, conta cicli) vivono spesso solo su Mode 22 UDS con label files VAG.
 - Alcuni di questi PID (es. `0x70-0x74`) sono "container": i 4 byte di payload vanno decodificati in più sottocampi. Implementare la lettura richiede attenzione al data layout SAE J1979.
 
@@ -618,7 +618,7 @@ Solo per `CANbus_conn`:
 
 ### Build & flash
 
-Il progetto è strutturato come **due sketch fratelli** in sottocartelle, con header condivisi nella root del repo. Per Arduino IDE / `arduino-cli` ogni sketch deve poter trovare gli `.h` condivisi: il workspace usa `["build.extra_flags", "-I<absolute-project-root>"]` in `arduino.json` (vedi `.vscode/`). Gli `#include` di `EngineConstants.h` in `BoostModel.h` e `TorqueEstimator.h` sono volutamente **path assoluti** perché Arduino IDE non risolve i path relativi fra header e sketch in cartelle diverse.
+Il progetto è strutturato come **due sketch fratelli** in sottocartelle, con header condivisi nella root del repo. Per Arduino IDE / `arduino-cli` ogni sketch deve poter trovare gli `.h` condivisi: il workspace usa `["build.extra_flags", "-I<absolute-project-root>"]` in `arduino.json` (vedi `.vscode/`). Gli `#include` di `EngineConstants.h` in `BoostModel.h` e `TorqueModel.h` sono volutamente **path assoluti** perché Arduino IDE non risolve i path relativi fra header e sketch in cartelle diverse.
 
 Comando indicativo con `arduino-cli` (variante CAN):
 
@@ -715,7 +715,7 @@ boost = (MAP - BARO) + ΔP_charge_path
 
 dove `ΔP_charge_path` stima la perdita di carico fra compressore e collettore in funzione di `MAF`, `RPM`, `IAT`, `LOAD` e dell'efficienza volumetrica apparente. Filtro EMA opzionale su MAP/BARO/MAF/LOAD (`BOOST_EMA_ALPHA_*`). Quando il motore è in vera depressione a basso carico, la perdita di carico aggiunta viene proporzionalmente ridotta per non falsare il segno.
 
-### `TorqueEstimator.h` — stima coppia motore
+### `TorqueModel.h` — stima coppia motore
 
 Output: **coppia in Nm** (clamp `0..420`).
 
@@ -795,13 +795,18 @@ L'AP resta attivo per `OTA_WINDOW_MS` (3 min) dal boot. Se un client si collega 
 | `/debug` | GET | `{"debug":bool}` | toggle runtime modalità debug, query `?on` / `?off` |
 | `/brightness` | GET | `{"ldr":N,"contrast":N,"mode":"auto\|manual\|fading","ldrAtOverride":N}` | stato luminosità; `?set=N` (0–255) attiva override manuale, `?auto` rientra in automatico con fade |
 | `/clear-dtc` | GET | `{"ok":bool}` | invia OBD2 Mode 04 e forza re-check immediato |
+| `/serial-data` | GET | `text/plain` | byte da `?since=N` (cursor del client) fino al più recente nel buffer circolare di `WebSerial`; header `X-Seq:<n>` (nuovo cursor) e `X-Dropped:0\|1` (overflow). Polling consigliato a 250 ms dalla tab "Serial monitor" |
+| `/scan` (solo CAN) | GET | HTML | pagina di riepilogo scan multi-ECU (mirror della tab "PID supportati") |
+| `/scan-data` (solo CAN) | GET | JSON | `{ecus:[{id,totalRaw,pids:[]}…]}` — alimenta la tab "PID supportati" |
 | `/update` (CAN) `/ota` (WiFi) | GET / POST | upload firmware | servito da `ESP8266HTTPUpdateServer` |
 
 > ⚠️ Nessuna autenticazione, CORS o rate limiting: il modello di minaccia è la sola rete locale del SoftAP / dell'ELM327.
 
 ### 11.3 Layout della dashboard
 
-La pagina è suddivisa in sezioni (mobile-first, larghezza max 480 px):
+La pagina è suddivisa in **3 tab** (mobile-first, larghezza max 480 px):
+
+#### Tab 1 — **Dashboard** (default)
 
 1. **Toggle "Diagnostica Serial"** — attiva/disattiva la modalità debug (vedi §11.5).
 2. **Dati principali** — sempre visibili: BOOST, TEMP, COPPIA, EGR (4 box grandi, valori a colori).
@@ -816,6 +821,14 @@ La pagina è suddivisa in sezioni (mobile-first, larghezza max 480 px):
 4. **Box DTC** (visibile solo se `dtcCount > 0`) — riquadro rosso con MIL badge e lista codici/descrizioni.
 5. **Card "Luce ambiente"** — valore LDR live, contrasto applicato, modalità (`auto`/`manual`/`fading`), slider 0–255 e bottone "Reset auto".
 6. **Bottone "Cancella DTC"** — invia `/clear-dtc` (con conferma).
+
+#### Tab 2 — **PID supportati**
+
+Risultato dello scan multi-ECU: per ogni ECU rilevata sul bus mostra l'identificativo (es. `7E8`, `7E9`), il totale dei PID supportati e l'elenco con descrizioni SAE. Dati da `/scan-data`. Sul build WiFi è single-ECU (ELM327 inoltra solo l'ECU motore).
+
+#### Tab 3 — **Serial monitor**
+
+Specchio web del Serial monitor di Arduino IDE. Mostra tutto ciò che il firmware scrive su `Serial.*`, inclusi i blocchi `=== DIAGNOSTICA COMPLETA ===` periodici quando `debugMode=true`. Cattura tramite il wrapper `WebSerial` (vedi [`serial_logger.h`](serial_logger.h)) che inoltra ogni byte sia alla UART USB sia a un buffer circolare in RAM da 4 KB. Polling client a 250 ms su `/serial-data` con cursor `since=N`; se il buffer va in overflow tra due fetch viene segnalato `X-Dropped:1` e mostrato un banner nella tab. Auto-scroll che si sospende se l'utente scrolla in alto, con stato `[scroll bloccato]` in basso a destra. Pulsanti "A fine" e "Pulisci" (clear locale del `<pre>`, non del buffer firmware).
 
 I valori vengono colorati di **rosso** (allarme) o **giallo** (warning) quando fuori range:
 
@@ -977,13 +990,15 @@ Con α = 0.15 il fattore `ln(0.05) / ln(0.85) ≈ 18.4`, quindi `t_95% ≈ 18 / 
 │   └── CANbus_conn.ino       sketch ESP8266 + MCP2515
 ├── WIFI_conn/
 │   └── WIFI_conn.ino         sketch ESP8266 + ELM327 WiFi
-├── web_dashboard.h           server HTTP + JSON, condiviso (gating via #define OBD_CONN_*)
+├── web_dashboard.h           server HTTP + JSON + 3 tab, condiviso (gating via #define OBD_CONN_*)
+├── serial_logger.h           wrapper WebSerial: cattura Serial.* in buffer circolare per /serial-data
 ├── BoostModel.h              modello pressione turbo (namespace Audi27TDI140kW::Boost)
-├── TorqueEstimator.h         modello coppia (namespace Audi27TDI140kW::Torque)
+├── TorqueModel.h             modello coppia (namespace Audi27TDI140kW::Torque)
 ├── EngineConstants.h         tutti i parametri motore (namespace Audi27TDI140kW)
 ├── button_handler.h          debounce + state machine pulsante (BTN_NONE/SHORT/LONG)
 ├── light_sensor.h            auto-brightness OLED (LDR su A0, state machine sticky+fade)
 ├── dtc_descriptions.h        tabella DTC PROGMEM + decodeDTC() / getDTCDescription()
+├── pid_descriptions.h        tabella PID SAE J1979 PROGMEM + getPIDShortName() / getPIDFullName()
 ├── ui_preview.html           preview offline delle schermate OLED
 ├── monitor_preview.html      preview offline della dashboard web /dashboard
 ├── DOCS/                     datasheet MCP2515, lista PID supportati Audi A5, output seriali
