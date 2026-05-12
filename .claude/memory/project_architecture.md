@@ -15,14 +15,18 @@ Slot 0 e 1 sono lenti (~400-800ms WiFi) perche' leggono molti PID per i modelli.
 
 **Helper header-only condivisi (root progetto):**
 - `dtc_descriptions.h` — tabella ~45 codici DTC con descrizione italiana in PROGMEM, ricerca binaria
-- `TorqueEstimator.h` — namespace `Audi27TDI140kW::Torque` per stima coppia precisa
+- `TorqueModel.h` — namespace `Audi27TDI140kW::Torque` per stima coppia precisa
 - `BoostModel.h` — namespace `Audi27TDI140kW` per stima boost in bar
 - `web_dashboard.h` — serve endpoint /dashboard /data /debug. Richiede #define OBD_CONN_WIFI o OBD_CONN_CAN prima dell'include
 
 **Web endpoint disponibili (solo durante finestra OTA):**
-- `/dashboard` — pagina HTML con auto-refresh 500ms
+- `/dashboard` — pagina HTML con 3 tab (Dashboard, PID supportati, Serial monitor), auto-refresh 500ms
 - `/data` — JSON. Quando debugMode=false invia solo i 4 valori principali + DTC (zero query OBD aggiuntive, usa variabili globali). Quando true legge tutti i PID internamente.
 - `/debug?on` `/debug?off` — toggle diagnostica
+- `/brightness` — stato luminosità (`?set=N` override manuale, `?auto` rientro automatico)
+- `/clear-dtc` — invia OBD2 Mode 04
+- `/serial-data?since=N` — buffer circolare WebSerial (4 KB) come text/plain con cursor `X-Seq` e `X-Dropped`; alimenta la tab "Serial monitor", polling 250 ms
+- `/scan` `/scan-data` — solo build CAN (multi-ECU); alimentano la tab "PID supportati"
 - `/ota` (WiFi) o `/update` (CAN) — upload firmware
 - SSID SoftAP: `OBD2_UPDATE`, password `alesimattia`, IP `192.168.4.1`
 

@@ -28,7 +28,7 @@ namespace Audi27TDI140kW
     static constexpr float MAX_VALID_MAF_GPS = 400.0f;
 
     // =========================
-    // Parametri filtro EMA - TorqueEstimator
+    // Parametri filtro EMA - TorqueModel
     // =========================
     // Load più lento, MAF/MAP un po' più reattivi
     static constexpr float TORQUE_EMA_ALPHA_LOAD = 0.12f;

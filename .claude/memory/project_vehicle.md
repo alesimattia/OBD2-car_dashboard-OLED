@@ -11,16 +11,16 @@ type: project
 
 **PID NON supportati** (richiedevano fallback nel codice):
 - 0x5C (oil temp) → sostituito con 0x05 (coolant)
-- 0x62/0x63 (torque %, torque ref) → sostituiti con TorqueEstimator basato su load×400Nm
+- 0x62/0x63 (torque %, torque ref) → sostituiti con TorqueModel basato su load×400Nm
 - 0x2F (fuel level) → sostituito con calcolo L/100km da MAF + lambda
 
 **Parametri specifici CGKA:**
 - Coppia massima: 400 Nm
 - Potenza massima: 140 kW (190 CV)
-- Cilindrata: 2.698 L (usata in TorqueEstimator e BoostModel)
+- Cilindrata: 2.698 L (usata in TorqueModel e BoostModel)
 - Pressione rail tipica: 250-400 bar idle, 800-1800 bar carico
 - Multitronic CVT: costante K=7.9 per stimare il rapporto (RPM / (speed × K))
 
 **Why:** VAG limita i PID standard OBD2 a quelli minimi richiesti per emissioni. Tutto il resto è proprietario VAG-COM/VCDS. Molti PID tipici di altri veicoli non funzionano qui.
 
-**How to apply:** Prima di proporre PID nuovi, verificare che siano nella lista dei 28 supportati. Per dati non disponibili via OBD2 standard suggerire VCDS/OBDeleven o helper di stima (TorqueEstimator, BoostModel).
+**How to apply:** Prima di proporre PID nuovi, verificare che siano nella lista dei 28 supportati. Per dati non disponibili via OBD2 standard suggerire VCDS/OBDeleven o helper di stima (TorqueModel, BoostModel).

@@ -641,7 +641,6 @@ simulateData();
 /* eventi sporadici (DTC, brightness, errori CAN/WiFi).          */
 /* ============================================================ */
 var logTimer = null;
-var logStick = true;
 var logSeq = 0;
 var logTick = 0;
 
@@ -654,13 +653,13 @@ function logStop() {
   if (logTimer) { clearInterval(logTimer); logTimer = null; }
 }
 function logClr() {
-  document.getElementById('smPre').textContent = '';
-  logStick = true;
+  var p = document.getElementById('smPre');
+  p.textContent = '';
+  p.scrollTop = p.scrollHeight;
 }
 function logScrollEnd() {
   var p = document.getElementById('smPre');
   p.scrollTop = p.scrollHeight;
-  logStick = true;
 }
 
 // Header di benvenuto, mostrato solo al primo apertura della tab.
@@ -677,40 +676,28 @@ function logAppendBoot() {
 }
 
 // Genera periodicamente nuove righe e le accoda al <pre>.
+// L'auto-scroll si attiva solo se l'utente era gia' in fondo; se ha
+// scrollato in alto con la rotella, la posizione viene preservata.
 function logFetch() {
   logTick++;
-  var dropped = false;
+  var dropped = (logTick % 80 === 0);
 
-  // Ogni ~30 cicli (~7.5 s) emetto un blocco "diagnostica avanzata".
-  if (logTick % 30 === 1) {
-    logEmit(buildDiagBlock());
-  } else {
-    // Tra un blocco e l'altro emetto poche righe sparse simili al
-    // monitor periodico del firmware (PID round-robin, eventi).
-    logEmit(buildTickLines());
-  }
-
-  // Drop simulato: ogni ~80 cicli forzo un overflow per mostrare il banner.
-  if (logTick % 80 === 0) dropped = true;
-
-  var pre = document.getElementById('smPre');
-  var st = document.getElementById('smStat');
-  if (dropped) pre.textContent += '\n[--- byte persi: buffer pieno ---]\n';
-  if (logStick) pre.scrollTop = pre.scrollHeight;
-  st.className = 'smStat' + (dropped ? ' drp' : '');
-  st.textContent = 'cursor ' + logSeq + (dropped ? ' (overflow simulato)' : '');
-}
-
-// Append testo + aggiornamento sequence number, con tetto sui 200 KB
-// nel DOM per non rallentare il browser quando la tab e' lasciata aperta.
-function logEmit(text) {
   var pre = document.getElementById('smPre');
   var atEnd = (pre.scrollHeight - pre.scrollTop - pre.clientHeight) < 30;
+
+  var text = (logTick % 30 === 1) ? buildDiagBlock() : buildTickLines();
+  if (dropped) text += '\n[--- byte persi: buffer pieno ---]\n';
   pre.textContent += text;
   if (pre.textContent.length > 200000) pre.textContent = pre.textContent.slice(-200000);
-  if (atEnd || logStick) { pre.scrollTop = pre.scrollHeight; logStick = true; }
-  else logStick = false;
   logSeq += text.length;
+
+  if (atEnd) pre.scrollTop = pre.scrollHeight;
+
+  var st = document.getElementById('smStat');
+  st.className = 'smStat' + (dropped ? ' drp' : '');
+  st.textContent = 'cursor ' + logSeq
+                   + (dropped ? ' (overflow simulato)' : '')
+                   + (atEnd ? '' : ' [scroll bloccato]');
 }
 
 // Singole righe periodiche che simulano output del round-robin PID
