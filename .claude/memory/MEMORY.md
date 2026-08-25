@@ -9,3 +9,4 @@
 - [Non configurare la macchina di sviluppo](feedback_no_machine_config.md) — niente install/config di tool sulla workstation, build manuale a carico dell'utente
 - [Endpoint e credenziali](reference_endpoints.md) — URL dashboard, OTA, WiFi ELM327
 - [Riferimenti documentali OBD2](reference_obd2_docs.md) — README §5, pid_descriptions.h, DOCS/supported_pid_WIFI per la verità su PID/Mode
+- [Come si compila su pc-030](reference_build.md) — build.ps1 di verifica (nessun binario esportato), board e opzioni ESP8266, il -I per gli header condivisi, precondizioni non ancora soddisfatte (core esp8266 e librerie mcp_can/U8g2), include del Mac reso portabile
