@@ -618,9 +618,11 @@ Solo per `CANbus_conn`:
 
 ### Build & flash
 
-Il progetto è strutturato come **due sketch fratelli** in sottocartelle, con header condivisi nella root del repo. Per Arduino IDE / `arduino-cli` ogni sketch deve poter trovare gli `.h` condivisi: il workspace usa `["build.extra_flags", "-I<absolute-project-root>"]` in `arduino.json` (vedi `.vscode/`). Gli `#include` di `EngineConstants.h` in `BoostModel.h` e `TorqueModel.h` sono volutamente **path assoluti** perché Arduino IDE non risolve i path relativi fra header e sketch in cartelle diverse.
+Il progetto è strutturato come **due sketch fratelli** in sottocartelle, con header condivisi nella root del repo. Per Arduino IDE / `arduino-cli` ogni sketch deve poter trovare gli `.h` condivisi: il workspace usa `["build.extra_flags", "-I<absolute-project-root>"]` in `arduino.json` (vedi `.vscode/`). Gli `#include` di `EngineConstants.h` in `BoostModel.h` e `TorqueModel.h` sono per nome secco (`#include "EngineConstants.h"`): a risolverli è proprio quel `-I`, e così valgono identici su macOS e su Windows. Erano path assoluti del Mac, che su un'altra macchina impedivano ogni compilazione.
 
-Comando indicativo con `arduino-cli` (variante CAN):
+Su `pc-030` (Windows) c'è `A:\obd\build.ps1`, che passa lo stesso flag con il path locale e serve solo a verificare che il codice compili: non esporta binari e non carica niente sulla board. Dettagli nella memoria di progetto `reference_build`.
+
+Comando indicativo con `arduino-cli` sul Mac (variante CAN):
 
 ```bash
 arduino-cli compile \

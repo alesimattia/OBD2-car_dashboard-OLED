@@ -1,10 +1,20 @@
 ---
 name: Veicolo target
-description: Audi A5 B8 2.7 TDI CGKA Multitronic — PID supportati, parametri motore/trasmissione, range tipici
+description: Audi A5 B8 2.7 TDI CGKA Multitronic — bus CAN, ECU che rispondono, PID supportati, parametri motore/trasmissione, range tipici
 type: project
 ---
 
-**Veicolo:** Audi A5 B8 2.7 TDI Euro5, motore codice **CGKA** (140kW), cambio automatico **Multitronic** (CVT).
+**Veicolo:** Audi A5 B8 (2008) 2.7 TDI **Euro 5**, motore codice **CGKA** (140 kW / 400 Nm), cambio automatico
+**Multitronic** (CVT), bus **CAN 11-bit 500 kbps**.
+
+**ECU che rispondono sul bus OBD2 standard:**
+- `0x7E8` motore — risponde sempre, espone i ~28 PID Mode 01 elencati sotto
+- `0x7E9` cambio Multitronic J217 — sui VAG pre-2010 raramente risponde a Mode 01 standard; i dati ricchi
+  vivono solo via UDS Mode `0x22` con label files VCDS proprietari
+- `0x7EA`-`0x7EF` (ABS, BCM, ecc.) — praticamente mai rispondono a Mode 01
+
+Essendo **pre-Euro 6** non ci sono SCR/AdBlue né sensori NOx: è il vincolo principale di scope
+(vedi [[project_scope_obd2]]).
 
 **PID OBD2 supportati (28 totali, da scan reale):**
 0x01, 0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x0F, 0x10, 0x13, 0x1C, 0x1F, 0x20, 0x21, 0x23, 0x24, 0x2C, 0x2D, 0x30, 0x31, 0x33, 0x40, 0x41, 0x42, 0x46, 0x49, 0x4A, 0x4C, 0x4F.
@@ -13,6 +23,7 @@ type: project
 - 0x5C (oil temp) → sostituito con 0x05 (coolant)
 - 0x62/0x63 (torque %, torque ref) → sostituiti con TorqueModel basato su load×400Nm
 - 0x2F (fuel level) → sostituito con calcolo L/100km da MAF + lambda
+- 0x5E (consumo l/h diretto) → non esposto dalla CGKA
 
 **Parametri specifici CGKA:**
 - Coppia massima: 400 Nm

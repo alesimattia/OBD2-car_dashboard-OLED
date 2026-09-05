@@ -1,6 +1,6 @@
 #pragma once
 #include <math.h>
-#include "/Users/alesimattia/Documents/OBD2-car_dashboard-OLED/EngineConstants.h"  //unluckily no relative path in Arduino IDE so defined in main project file
+#include "EngineConstants.h" // risolto da build.extra_flags = -I<radice del progetto>, cosi' vale su macOS e su Windows
 
 /*
   TorqueModel.h
