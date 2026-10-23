@@ -2,13 +2,13 @@
  * OBD2 Monitor per ESP8266 D1 Mini
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
- * - Pressione boost (bar)
- * - Coppia motore stimata (Nm) — da carico motore (PID 0x04) * 400 Nm
+ * - Pressione boost (bar), letta dalla centralina (PID 0x70) o stimata da BoostModel
+ * - Coppia motore all'albero (Nm), letta dalla centralina (PID 0x62, 0x8E, 0x63) o stimata da TorqueModel
  * - Temperatura liquido raffreddamento (C)
- * - Apertura valvola EGR (%)
+ * - Carica batteria ibrida (%, PID 0x5B se la vettura lo espone)
  *
- * All'avvio esegue una scansione dei PID OBD2 supportati dall'ECU
- * e mostra i risultati su Serial Monitor e OLED.
+ * All'avvio scopre tutte le centraline OBD e i PID Mode 01 e InfoType Mode 09 che dichiarano
+ * (report su Serial e pagina /scan); la scansione approfondita si avvia dalla pagina web.
  *
  * Hardware:
  *   ESP8266 D1 Mini + MCP2515/TJA1050 CAN (modulo integrato, SPI) + OLED SH1106 1.3" (I2C)
@@ -20,9 +20,10 @@
  *   Pulsante: NA tra D3 (GPIO0) e GND. Click breve = scorri schermate;
  *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04).
  *
- * Velocità di acquisizione dati OBD ~8-10Hz (round-robin PID + aggiornamento parziale display)
+ * Acquisizione: una richiesta multi-PID al motore per ciclo (fino a 6 PID), con ripiego automatico
+ * a un PID per ciclo se la centralina non accetta le richieste multiple; aggiornamento parziale del display.
  *
- * Veicolo: Audi A5 B8 2.7 TDI (CGKA) Multitronic
+ * Veicolo: Audi A5 F5 (B9.5) 40 TFSI 150 kW mild hybrid, motore DMSA, cambio S tronic 0CK
  *
  * @since 2026-03-19 mattia.Alesi
  */
@@ -54,18 +55,12 @@
 // Velocita' bus CAN OBD2
 #define CAN_SPEED CAN_500KBPS
 
-// Protocollo OBD2
-#define OBD2_REQUEST_ID 0x7DF   // Broadcast richiesta
-#define OBD2_RESPONSE_ID 0x7E8  // Risposta ECU motore
-#define OBD2_TIMEOUT_MS 100     // Timeout risposta (ms)
-#define MAX_RETRIES 3           // Tentativi connessione iniziale
-
-// PID OBD2 per i dati di monitoraggio
-#define PID_MAP 0x0B           // Pressione assoluta collettore (kPa)
-#define PID_ENGINE_LOAD 0x04   // Carico motore calcolato (%)
-#define PID_COOLANT_TEMP 0x05  // Temperatura liquido raffreddamento (°C)
-#define PID_EGR 0x2C           // Apertura valvola EGR comandata (%)
-#define PID_EGR_ERROR 0x2D    // Errore EGR (%)
+// Attesa massima fra due consecutive frame ISO-TP (N_Cr di ISO 15765-4 = 150 ms)
+#define ISOTP_CONSECUTIVE_TIMEOUT_MS 150
+// Attesa estesa dopo una risposta 7F xx 78 (P2*CAN di ISO 15765-4)
+#define RESPONSE_PENDING_TIMEOUT_MS 5000
+// Cicli consecutivi senza risposta dal motore prima del ripristino (bus-off o nuovo scan)
+#define SILENT_CYCLES_BEFORE_RECOVERY 10
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/update)
 #define OTA_SSID    "OBD2_UPDATE"   // SSID del SoftAP per OTA
@@ -75,18 +70,16 @@
 
 // Diagnostica avanzata su Serial: attivabile runtime da /dashboard
 bool debugMode = false;
+#define DIAG_PRINT_INTERVAL_MS 5000  // Intervallo minimo fra due stampe della diagnostica
 
 // Layout display landscape 128x64 (font 7x14B, 7px wide)
 // Colonna DX: "100%" = 4 chars × 7px = 28px → 128-28 = 100
-// Valori piu' larghi (TEMP, EGR con errore) traslano a sinistra dinamicamente.
+// I valori della temperatura più larghi traslano a sinistra dinamicamente.
 #define RIGHT_COL_X 100
 #define TEMP_EXTENDED_X 93    // Min x TEMP: "-40 C"/"215 C" = 35px → 128-35
-#define EGR_EXTENDED_X 58     // Min x EGR: "100%(-100)" = 70px → 128-70
 
 // DTC (Diagnostic Trouble Codes)
-#define MAX_DTC 6                 // Max DTC gestibili (multi-frame CAN)
 #define DTC_PER_PAGE      2       // DTC per pagina display
-#define DTC_CHECK_INTERVAL 30000  // Intervallo controllo MIL (ms)
 #define SCREEN_SWITCH_MS 5000     // Alternanza schermate dati/errori (ms)
 
 // ============================================================
@@ -108,79 +101,18 @@ enum AppMode { MODE_SCAN,
                MODE_MONITOR };
 AppMode currentMode = MODE_SCAN;
 
-// Bitmask PID supportati dall'ECU (256 bit = 32 byte)
-uint8_t pidSupported[32];
-
-// ============================================================
-// Scan multi-ECU: risultati per ogni ECU rispondente sul bus.
-// I PID Mode 01 sono standard SAE J1979, quindi ogni bit corrisponde
-// a un PID dal significato definito (vedi pid_descriptions.h).
-// ============================================================
-#define MAX_ECUS 4
-struct ECUScanResult {
-  uint16_t ecuId;        // 0x7E8..0x7EF (0 = slot vuoto)
-  uint8_t  mode01[32];   // bitmask Mode 01 dell'ECU
-  uint16_t pidCount;     // PID supportati totali (bit a 1)
-};
-ECUScanResult ecuResults[MAX_ECUS];
-uint8_t ecuCount = 0;
-
-// Flag: PID specifici supportati (determinati dalla scansione)
-bool mapSupported     = false;
-bool loadSupported    = false;    // PID 0x04
-bool coolantSupported = false;    // PID 0x05
-bool egrSupported       = false;    // PID 0x2C
-bool egrErrorSupported  = false;    // PID 0x2D
-
-// Valori correnti delle letture
-float boostBar  = 0.0f;
-int   loadPct   = 0;              // Carico motore (%)
-int   torqueNm  = 0;              // Coppia stimata (TorqueModel)
-int   coolantC  = 0;              // Temperatura liquido (°C)
-int   egrPct    = 0;              // Apertura EGR (%)
-int   egrErrPct = 0;              // Errore EGR (%)
-
-// Flag disponibilita' runtime (false se PID va in timeout)
-bool mapAvailable     = false;
-bool loadAvailable    = false;
-bool coolantAvailable = false;
-bool egrAvailable     = false;
-bool egrErrAvailable  = false;
-
-// DTC — codici errore e stato MIL
-uint8_t dtcCount = 0;
-bool milOn = false;
-uint16_t dtcCodes[MAX_DTC];
-unsigned long lastDtcCheck = 0;
 unsigned long lastScreenSwitch = 0;
 // Schermata corrente: 0 = dati, 1 = pagina DTC 1, 2 = pagina DTC 2, etc.
 uint8_t currentScreen = 0;
 uint8_t totalScreens = 1;  // Calcolato in base a dtcCount
-
-// ============================================================
-// Round-robin: lettura un PID alla volta per ciclo (massimizza refresh display)
-// Indici: 0=MAP, 1=LOAD, 2=RPM, 3=MAF, 4=IAT, 5=BARO,
-//         6=COOLANT, 7=EGR, 8=EGR_ERR, 9=RAIL, 10=VOLTS
-// MAP/LOAD/RPM/MAF pesati 3x (core per boost+coppia, massima reattivita')
-// IAT/BARO/RAIL/VOLTS 1x (correzioni lente, cambiano poco)
-// COOLANT/EGR/EGR_ERR 1x (solo display, in coda)
-// ============================================================
-const uint8_t PID_SCHEDULE[] PROGMEM = { 0,1,2,3, 0,1,2,3, 0,1,2,3, 4,5,9,10, 6,7,8 };
-const uint8_t PID_SCHEDULE_LEN = 19;
-uint8_t pidScheduleIdx = 0;
-
-// Cache PID condivisa per BoostModel e TorqueModel
-// Ogni PID viene letto singolarmente nel round-robin e cachato qui;
-// boost e coppia vengono ricalcolati dopo ogni lettura.
-float cachedMap = NAN, cachedBaro = NAN, cachedMaf = NAN;
-float cachedRpm = NAN, cachedIat = NAN, cachedLoad = NAN;
-float cachedRail = NAN, cachedVolts = NAN;
+// Ultima pagina DTC disegnata: la pagina si ridisegna solo quando cambia (0xFF = forza ridisegno)
+uint8_t lastDrawnDtcScreen = 0xFF;
 
 // Dirty tracking: valori precedenti per aggiornamento parziale display
 int prevBoostInt = -99999;   // (int)(boostBar * 100) per confronto senza errori float
-int prevTorqueNm = -999;
-int prevCoolantC = -999;
-int prevEgrPct = -999;
+int prevTorqueNm = -99999;
+int prevCoolantC = -99999;
+int prevHybBattPct = -99999;
 bool labelsDrawn = false;    // Etichette statiche gia' disegnate nel buffer
 
 // OTA: true finche' la finestra di aggiornamento è attiva
@@ -188,15 +120,21 @@ bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;
 bool otaClientWasConnected = false;
 
-// Forward decl per web_dashboard.h (vede queryPID prima della sua definizione)
-bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len);
+// Invii CAN falliti di fila: con TXREQ bloccato nel MCP2515 serve una reinizializzazione
+uint8_t canTxFailures = 0;
+unsigned long lastDiagPrint = 0;
 
 // Logger seriale: cattura Serial.* nel buffer circolare leggibile via /serial-data.
 // Va incluso DOPO tutti gli header di sistema (Arduino.h ecc.) per non
 // rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
 #include "serial_logger.h"
 
-// Dashboard web live (endpoint /dashboard, /data, /debug)
+// Discovery e lettura OBD condivise con la build WiFi; il trasporto è obdTransact() più sotto
+#include "obd_proto.h"
+#include "obd_scan.h"
+#include "obd_live.h"
+
+// Dashboard web live (endpoint /dashboard, /data, /scan, /probe, /debug)
 #define OBD_CONN_CAN
 #include "web_dashboard.h"
 
@@ -207,7 +145,7 @@ bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len);
 void setup() {
   Serial.begin(115200);
   Serial.println(F("\n=== OBD2 Monitor ==="));
-  Serial.println(F("Audi A5 B8 2.7 TDI CGKA"));
+  Serial.println(F("Audi A5 F5 (B9.5) 40 TFSI DMSA S tronic"));
 
   // I2C su pin ESP8266: SDA=GPIO4(D2), SCL=GPIO5(D1)
   // (sono i default del core ESP8266, ma li dichiariamo per chiarezza)
@@ -231,7 +169,7 @@ void setup() {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
   u8g2.drawStr(28, 11, "OBD2 MONITOR");
-  u8g2.drawStr(7, 27, "A5 B8 2.7 TDI CGKA");
+  u8g2.drawStr(19, 27, "A5 B9.5 40 TFSI");
   u8g2.drawStr(16, 54, "OTA: 192.168.4.1");
   u8g2.sendBuffer();
   delay(2000);
@@ -243,20 +181,16 @@ void setup() {
   u8g2.sendBuffer();
   Serial.println(F("Inizializzazione MCP2515..."));
 
-  if (CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL) != CAN_OK) {
+  if (!canInit()) {
     Serial.println(F("ERRORE: MCP2515 init fallito!"));
     showError("CAN init fail", "Controlla SPI");
     while (true) { yield(); }
   }
-
-  CAN.setMode(MCP_NORMAL);
   Serial.println(F("MCP2515 OK - CAN 500kbps"));
 
   // Pulsante fisico (clear DTC + cycle schermate)
   buttonInit();
 
-  // Prepara scansione PID
-  memset(pidSupported, 0, sizeof(pidSupported));
   currentMode = MODE_SCAN;
 }
 
@@ -293,14 +227,29 @@ void loop() {
       executeScanMode();
       break;
     case MODE_MONITOR:
-      executeMonitorMode();
+      if (obdProbeRunning()) {
+        executeProbeStep();
+      } else {
+        executeMonitorMode();
+      }
       break;
   }
 }
 
 // ============================================================
-// COMUNICAZIONE CAN / OBD2
+// TRASPORTO CAN / OBD2 (ISO 15765-4)
 // ============================================================
+
+/**
+ * Inizializza il MCP2515 a 500 kbps accettando tutti gli ID: con MCP_ANY maschere e filtri non hanno
+ * effetto e begin() lascia il chip in loopback, quindi il modo normale va impostato esplicitamente.
+ * @since 23/10/26 Mattia Alesi
+ */
+bool canInit() {
+  if (CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL) != CAN_OK) return false;
+  CAN.setMode(MCP_NORMAL);
+  return true;
+}
 
 /** Svuota il buffer di ricezione CAN da messaggi pendenti */
 void flushCANBuffer() {
@@ -314,284 +263,100 @@ void flushCANBuffer() {
 }
 
 /**
- * Invia una richiesta OBD2 Service 01 per il PID specificato.
- * Frame CAN: [0x02, 0x01, pid, 0, 0, 0, 0, 0] su ID 0x7DF
+ * Invia un frame a 11 bit con DLC 8, come richiede ISO 15765-4. Dopo tre invii falliti di fila
+ * (buffer di trasmissione bloccati con TXREQ attivo) reinizializza il MCP2515.
  */
-bool sendOBD2Request(uint8_t pid) {
-  uint8_t data[8] = { 0x02, 0x01, pid, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  return (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) == CAN_OK);
-}
-
-/**
- * Invia OBD2 Service 04 (Clear Diagnostic Trouble Codes).
- * Frame: PCI=0x01 (single frame, 1 byte payload), service 0x04, no PID.
- * La centralina cancella DTC e resetta i monitor di readiness.
- */
-bool clearDTCsViaCAN() {
-  flushCANBuffer();
-  uint8_t data[8] = { 0x01, 0x04, 0, 0, 0, 0, 0, 0 };
-  if (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) != CAN_OK) return false;
-  // Verifica risposta positiva (Service ID + 0x40 = 0x44)
-  unsigned long start = millis();
-  unsigned long rxId; uint8_t len; uint8_t buf[8];
-  while ((millis() - start) < OBD2_TIMEOUT_MS) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-      if (rxId == OBD2_RESPONSE_ID && buf[1] == 0x44) return true;
-    }
-    yield();
+bool canSendFrame(uint16_t id, const uint8_t* frame) {
+  uint8_t data[8];
+  memcpy(data, frame, 8);
+  if (CAN.sendMsgBuf(id, 0, 8, data) == CAN_OK) {
+    canTxFailures = 0;
+    return true;
+  }
+  if (++canTxFailures >= 3) {
+    Serial.println(F("CAN: trasmissione bloccata, re-init MCP2515"));
+    canInit();
+    canTxFailures = 0;
   }
   return false;
 }
 
 /**
- * Attende una risposta OBD2 dall'ECU motore (ID 0x7E8) per il PID atteso.
- * Restituisce true se la risposta arriva entro OBD2_TIMEOUT_MS.
- * I dati grezzi del frame CAN vengono copiati in responseData.
+ * Trasporto OBD su CAN nativo: invia la richiesta single frame e riassembla le risposte di ogni
+ * centralina. Al first frame di un messaggio multi-frame invia il flow control 30 00 00 all'ID fisico
+ * della centralina (risposta - 8) ed estende l'attesa di N_Cr; una risposta 7F xx 78 estende l'attesa
+ * a P2*CAN. Legge i frame a raffica e cede la CPU solo a coda vuota, perchè il MCP2515 ha due buffer.
+ * @see obd_scan.h obdTransact()
  */
-bool readOBD2Response(uint8_t expectedPid, uint8_t* responseData, uint8_t* responseLen) {
-  unsigned long start = millis();
-  unsigned long rxId;
-  uint8_t len;
-  uint8_t buf[8];
-
-  while ((millis() - start) < OBD2_TIMEOUT_MS) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-
-      // Filtra: ID ECU motore, risposta Service 01 (0x41), PID corretto
-      if (rxId == OBD2_RESPONSE_ID && buf[1] == 0x41 && buf[2] == expectedPid) {
-        memcpy(responseData, buf, 8);
-        *responseLen = len;
-        return true;
-      }
-    }
-    yield();
-  }
-  return false;
-}
-
-/**
- * Interroga un PID OBD2: svuota il buffer, invia la richiesta e attende la risposta.
- * Restituisce true se la risposta viene ricevuta correttamente.
- */
-bool queryPID(uint8_t pid, uint8_t* data, uint8_t* len) {
+uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
+                    uint16_t waitForEcuId) {
+  obdCollectorReset(obdCollector);
+  if (requestLen == 0 || requestLen > 7) return 0;
   flushCANBuffer();
-  if (!sendOBD2Request(pid)) {
-    return false;
-  }
-  return readOBD2Response(pid, data, len);
-}
+  uint8_t frame[8] = { 0 };
+  frame[0] = requestLen;
+  memcpy(frame + 1, request, requestLen);
+  if (!canSendFrame(requestId, frame)) return 0;
 
-// ============================================================
-// FUNZIONI DEDICATE ALLA SCANSIONE MULTI-ECU
-// (separate da queryPID/readOBD2Response per non interferire con
-//  monitor mode e gestione DTC, che restano filtrate su 0x7E8)
-// ============================================================
-
-/**
- * Invia una richiesta OBD2 generica per un dato Service ID e PID.
- * Wrapper analogo a sendOBD2Request ma con serviceId parametrico,
- * predisposto per future estensioni (Mode 09, Mode 22, ecc.).
- * @since 07/05/26 Mattia Alesi
- */
-bool sendServiceRequest(uint8_t serviceId, uint8_t pid) {
-  uint8_t data[8] = { 0x02, serviceId, pid, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  return (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, data) == CAN_OK);
-}
-
-/**
- * Accumula tutte le risposte OBD2 da qualsiasi ECU del range 0x7E8-0x7EF
- * per la finestra di tempo windowMs. Filtra il Service di risposta
- * (serviceId + 0x40) e il PID atteso. De-duplica per ecuId.
- *
- * @param expectedSvcResp Service response atteso (es. 0x41 per Mode 01)
- * @param expectedPid     PID atteso nella risposta
- * @param outIds          buffer per gli ECU ID rispondenti (max maxEcus)
- * @param out4Bytes       buffer per i 4 byte di payload (data[3..6]) di
- *                        ogni ECU (allineato a outIds)
- * @param maxEcus         dimensione massima di outIds/out4Bytes
- * @param windowMs        finestra di ascolto in millisecondi
- * @return numero di ECU univoci rispondenti
- * @since 07/05/26 Mattia Alesi
- */
-uint8_t collectMultiECUResponses(uint8_t expectedSvcResp, uint8_t expectedPid,
-                                 uint16_t* outIds, uint8_t out4Bytes[][4],
-                                 uint8_t maxEcus, unsigned long windowMs) {
-  uint8_t found = 0;
-  unsigned long start = millis();
-  unsigned long rxId;
-  uint8_t len;
-  uint8_t buf[8];
-
-  while ((millis() - start) < windowMs) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-      // Solo risposte ECU motore/cambio/altri controllori
-      if (rxId < 0x7E8 || rxId > 0x7EF) { yield(); continue; }
-      if (buf[1] != expectedSvcResp || buf[2] != expectedPid) { yield(); continue; }
-
-      // Dedup: ignora se l'ECU ha gia' risposto in questa finestra
-      bool already = false;
-      for (uint8_t i = 0; i < found; i++) {
-        if (outIds[i] == (uint16_t)rxId) { already = true; break; }
-      }
-      if (already) { yield(); continue; }
-
-      if (found < maxEcus) {
-        outIds[found] = (uint16_t)rxId;
-        out4Bytes[found][0] = buf[3];
-        out4Bytes[found][1] = buf[4];
-        out4Bytes[found][2] = buf[5];
-        out4Bytes[found][3] = buf[6];
-        found++;
-      }
+  unsigned long deadline = millis() + windowMs;
+  while ((long)(millis() - deadline) < 0) {
+    if (CAN.checkReceive() != CAN_MSGAVAIL) {
+      yield();
+      continue;
     }
+    unsigned long rxId;
+    uint8_t len;
+    uint8_t buf[8];
+    CAN.readMsgBuf(&rxId, &len, buf);
+    if ((rxId & 0x80000000UL) || !obdIsResponseId(rxId)) continue;
+    ObdIsoTpRx* slot = obdCollectorSlot(obdCollector, (uint16_t)rxId);
+    if (!slot) continue;
+
+    if (obdIsoTpFeed(*slot, buf, len)) {
+      uint8_t flowControl[8] = { 0x30, 0x00, 0x00, 0, 0, 0, 0, 0 };
+      canSendFrame(obdPhysicalRequestId((uint16_t)rxId), flowControl);
+    }
+    if (slot->state == OBD_ISOTP_RECEIVING) {
+      unsigned long frameDeadline = millis() + ISOTP_CONSECUTIVE_TIMEOUT_MS;
+      if ((long)(frameDeadline - deadline) > 0) deadline = frameDeadline;
+      continue;
+    }
+    if (slot->state != OBD_ISOTP_COMPLETE) continue;
+
+    uint8_t service, nrc;
+    if (obdIsNegativeResponse(slot->data, slot->receivedLen, &service, &nrc) && nrc == OBD_NRC_RESPONSE_PENDING) {
+      obdIsoTpReset(*slot, (uint16_t)rxId);
+      deadline = millis() + RESPONSE_PENDING_TIMEOUT_MS;
+      continue;
+    }
+    if (waitForEcuId != 0 && rxId == waitForEcuId) break;
+  }
+  return obdCollectorCompleteCount(obdCollector);
+}
+
+// ============================================================
+// MODALITÀ SCANSIONE
+// ============================================================
+
+/**
+ * Mostra l'avanzamento dello scan sul display.
+ * @see obd_scan.h obdShowScanProgress()
+ */
+void obdShowScanProgress(const char* status, const char* detail) {
+  drawScanScreen(status, detail);
+}
+
+/** Attende ms millisecondi continuando a servire il web server (OTA e dashboard). */
+void waitServingHttp(unsigned long ms) {
+  unsigned long until = millis() + ms;
+  while ((long)(millis() - until) < 0) {
+    if (otaActive) httpServer.handleClient();
     yield();
   }
-  return found;
 }
 
 /**
- * Esegue lo scan completo della catena bitmask Mode 01 (PID 0x00, 0x20,
- * 0x40, ..., 0xE0) per uno specifico ECU. Aggiorna dest32[32] con il
- * bitmask completo dei PID supportati.
- *
- * Riusa il broadcast su 0x7DF (l'OBD2 non supporta richieste indirizzate
- * al singolo ECU senza UDS), filtrando le risposte tramite
- * collectMultiECUResponses ed estraendo solo l'ECU richiesto.
- *
- * @param ecuId   ID risposta ECU target (0x7E8..0x7EF)
- * @param dest32  bitmask di destinazione (32 byte)
- * @return true se almeno il primo range (PID 0x00) e' stato letto
- * @since 07/05/26 Mattia Alesi
- */
-bool scanMode01ForECU(uint16_t ecuId, uint8_t* dest32) {
-  memset(dest32, 0, 32);
-  uint16_t ids[MAX_ECUS];
-  uint8_t  payload[MAX_ECUS][4];
-  bool gotFirst = false;
-  bool chainContinues = true;
-
-  for (uint16_t basePid = 0x00; basePid <= 0xE0 && chainContinues; basePid += 0x20) {
-    flushCANBuffer();
-    if (!sendServiceRequest(0x01, (uint8_t)basePid)) return gotFirst;
-
-    uint8_t n = collectMultiECUResponses(0x41, (uint8_t)basePid, ids, payload,
-                                         MAX_ECUS, OBD2_TIMEOUT_MS);
-    // Trova la risposta dell'ECU richiesto
-    int8_t idx = -1;
-    for (uint8_t i = 0; i < n; i++) {
-      if (ids[i] == ecuId) { idx = i; break; }
-    }
-    if (idx < 0) {
-      // L'ECU non ha risposto a questo range: catena interrotta
-      break;
-    }
-
-    // Memorizza i 4 byte nel bitmask globale
-    uint8_t offset = (uint8_t)basePid / 8;
-    dest32[offset]     = payload[idx][0];
-    dest32[offset + 1] = payload[idx][1];
-    dest32[offset + 2] = payload[idx][2];
-    dest32[offset + 3] = payload[idx][3];
-    gotFirst = true;
-
-    // Bit di continuazione: 4° byte bit 0 = 1 -> esiste il range successivo
-    chainContinues = (payload[idx][3] & 0x01) != 0;
-    delay(10);
-  }
-  return gotFirst;
-}
-
-/**
- * Conta i bit a 1 nel bitmask 32 byte (= numero di PID supportati).
- * @since 07/05/26 Mattia Alesi
- */
-uint16_t countSupportedPIDs(const uint8_t* bitmask32) {
-  uint16_t cnt = 0;
-  for (uint8_t b = 0; b < 32; b++) {
-    uint8_t v = bitmask32[b];
-    while (v) { cnt += (v & 1); v >>= 1; }
-  }
-  return cnt;
-}
-
-// ============================================================
-// GESTIONE BITMASK PID SUPPORTATI
-// ============================================================
-
-/**
- * Memorizza i 4 byte di risposta alla query di supporto PID
- * nel bitmask globale pidSupported[].
- * basePid: 0x00, 0x20, 0x40, 0x60
- * fourBytes: i 4 byte dati della risposta (data[3..6])
- */
-void storeSupportBitmask(uint8_t basePid, uint8_t* fourBytes) {
-  uint8_t offset = basePid / 8;
-  pidSupported[offset] = fourBytes[0];
-  pidSupported[offset + 1] = fourBytes[1];
-  pidSupported[offset + 2] = fourBytes[2];
-  pidSupported[offset + 3] = fourBytes[3];
-}
-
-/**
- * Verifica se un PID specifico è supportato dall'ECU.
- * Controlla il bit corrispondente nel bitmask pidSupported[].
- */
-bool isPIDSupported(uint8_t pid) {
-  if (pid == 0) return true;
-  uint8_t byteIndex = (pid - 1) / 8;
-  uint8_t bitIndex = 7 - ((pid - 1) % 8);
-  return (pidSupported[byteIndex] & (1 << bitIndex)) != 0;
-}
-
-// ============================================================
-// MODALITA' SCANSIONE
-// ============================================================
-
-/**
- * Stampa su Serial il report dettagliato dello scan multi-ECU,
- * con la descrizione SAE J1979 (italiano) per ogni PID supportato.
- * @since 07/05/26 Mattia Alesi
- */
-void printScanReportSerial() {
-  Serial.println(F("\n=== SCAN MULTI-ECU ==="));
-  for (uint8_t e = 0; e < ecuCount; e++) {
-    Serial.print(F("ECU 0x"));
-    Serial.print(ecuResults[e].ecuId, HEX);
-    Serial.print(F(": "));
-    Serial.print(ecuResults[e].pidCount);
-    Serial.println(F(" PID supportati"));
-
-    // Elenca tutti i PID supportati con descrizione SAE
-    for (int p = 1; p <= 0xFF; p++) {
-      uint8_t byteIdx = (p - 1) / 8;
-      uint8_t bitIdx  = 7 - ((p - 1) % 8);
-      if ((ecuResults[e].mode01[byteIdx] & (1 << bitIdx)) == 0) continue;
-
-      Serial.print(F("  0x"));
-      if (p < 0x10) Serial.print(F("0"));
-      Serial.print((uint8_t)p, HEX);
-      Serial.print(F("  "));
-
-      const char* desc = getPIDFullName((uint8_t)p);
-      if (desc) {
-        char buf[64];
-        strncpy_P(buf, desc, sizeof(buf) - 1);
-        buf[sizeof(buf) - 1] = 0;
-        Serial.println(buf);
-      } else {
-        Serial.println(F("(PID non documentato)"));
-      }
-    }
-  }
-  Serial.println();
-}
-
-/**
- * Mostra su OLED il riepilogo dello scan multi-ECU per ~2.5s.
- * Layout: titolo, conteggio ECU, una riga per ogni ECU (max 2 visibili).
+ * Mostra su OLED il riepilogo dello scan: numero di centraline e PID dichiarati dalle prime due.
  * @since 07/05/26 Mattia Alesi
  */
 void drawScanSummaryOLED() {
@@ -599,309 +364,73 @@ void drawScanSummaryOLED() {
   u8g2.setFont(u8g2_font_6x10_tr);
   drawStrCentered(0, "SCAN COMPLETA");
 
-  char buf[24];
-  snprintf(buf, sizeof(buf), "ECU rilevati: %u", (unsigned)ecuCount);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "Centraline: %u", (unsigned)ecuCount);
   u8g2.drawStr(0, 16, buf);
 
-  // Una riga per ECU, max 2 (le restanti sono solo su Serial)
+  // Una riga per centralina, max 2 (le restanti sono solo su Serial)
   uint8_t shown = ecuCount > 2 ? 2 : ecuCount;
   for (uint8_t e = 0; e < shown; e++) {
-    snprintf(buf, sizeof(buf), "ECU %03X: %u PID",
-             ecuResults[e].ecuId & 0xFFF, (unsigned)ecuResults[e].pidCount);
+    char name[16];
+    obdEcuShortName(e, name, sizeof(name));
+    snprintf(buf, sizeof(buf), "%s: %u PID", name, (unsigned)obdCountDataIds(ecuResults[e].mode01, 0xFF));
     u8g2.drawStr(0, 32 + 12 * e, buf);
   }
   if (ecuCount > 2) {
-    snprintf(buf, sizeof(buf), "+%u altri (Serial)", (unsigned)(ecuCount - 2));
+    snprintf(buf, sizeof(buf), "+%u altre (Serial)", (unsigned)(ecuCount - 2));
     u8g2.drawStr(0, 56, buf);
   }
   u8g2.sendBuffer();
 }
 
 /**
- * Esegue la scansione iniziale dei PID OBD2 supportati su tutti gli ECU
- * rispondenti sul bus (range 0x7E8-0x7EF).
- *
- * Strategia:
- *  1. Broadcast PID 0x00 + finestra di raccolta multi-ECU per scoprire
- *     quali ECU sono presenti sul bus.
- *  2. Per ogni ECU rilevato, completa la catena bitmask Mode 01.
- *  3. Copia il bitmask del primo ECU (motore) in pidSupported[] per
- *     compatibilita' col monitor mode esistente.
- *  4. Stampa report descrittivo su Serial e riepilogo su OLED.
- *
- * @see executeMonitorMode (avviato dopo lo scan)
- * @since 07/05/26 Mattia Alesi
+ * Esegue lo scan delle centraline e dei PID (obd_scan.h), stampa il report e prepara la lettura live.
+ * Se nessuno risponde o manca il motore 0x7E8 riprova dopo 10 s, servendo comunque il web server.
  */
 void executeScanMode() {
-  drawScanScreen("Connessione...", "");
-
-  // Reset risultati precedenti
-  ecuCount = 0;
-  for (uint8_t i = 0; i < MAX_ECUS; i++) {
-    ecuResults[i].ecuId = 0;
-    ecuResults[i].pidCount = 0;
-    memset(ecuResults[i].mode01, 0, 32);
-  }
-
-  // Discovery ECU: broadcast PID 0x00 e raccolta finestra 200ms
-  uint16_t ids[MAX_ECUS];
-  uint8_t  payload[MAX_ECUS][4];
-  uint8_t  found = 0;
-
-  for (int attempt = 1; attempt <= MAX_RETRIES && found == 0; attempt++) {
-    Serial.print(F("Discovery ECU, tentativo "));
-    Serial.print(attempt);
-    Serial.print(F("/"));
-    Serial.println(MAX_RETRIES);
-
-    char attBuf[24];
-    snprintf(attBuf, sizeof(attBuf), "Discovery %d/%d", attempt, MAX_RETRIES);
-    drawScanScreen("Connessione...", attBuf);
-
-    flushCANBuffer();
-    if (sendServiceRequest(0x01, 0x00)) {
-      found = collectMultiECUResponses(0x41, 0x00, ids, payload, MAX_ECUS, 200);
-    }
-    if (found == 0) delay(500);
-  }
-
-  if (found == 0) {
-    Serial.println(F("ERRORE: nessun ECU risponde, retry tra 10s"));
-    showError("ECU non risp.", "Quadro acceso?");
-    unsigned long retryAt = millis() + 10000;
-    while (millis() < retryAt) {
-      if (otaActive) httpServer.handleClient();
-      yield();
-    }
-    return;  // rientra al loop e ritenta
-  }
-
-  Serial.print(F("ECU rilevati: "));
-  Serial.println(found);
-  ecuCount = found;
-
-  // Per ogni ECU completa lo scan della catena Mode 01
-  for (uint8_t e = 0; e < ecuCount; e++) {
-    ecuResults[e].ecuId = ids[e];
-
-    char progBuf[24];
-    snprintf(progBuf, sizeof(progBuf), "ECU %03X scan...", ids[e] & 0xFFF);
-    drawScanScreen("ECU rilevati", progBuf);
-
-    Serial.print(F("Scan ECU 0x"));
-    Serial.println(ids[e], HEX);
-
-    scanMode01ForECU(ids[e], ecuResults[e].mode01);
-    ecuResults[e].pidCount = countSupportedPIDs(ecuResults[e].mode01);
-  }
-
-  // Compatibilita' monitor mode: usa il bitmask del primo ECU (motore 0x7E8)
-  // come pidSupported[] storico. Se 0x7E8 non e' il primo, lo cerca.
-  int8_t engineIdx = -1;
-  for (uint8_t e = 0; e < ecuCount; e++) {
-    if (ecuResults[e].ecuId == 0x7E8) { engineIdx = e; break; }
-  }
-  if (engineIdx < 0) engineIdx = 0;  // fallback: primo ECU disponibile
-  memcpy(pidSupported, ecuResults[engineIdx].mode01, 32);
-
-  // Imposta flag per i PID di monitoraggio (ECU motore)
-  mapSupported       = isPIDSupported(PID_MAP);
-  loadSupported      = isPIDSupported(PID_ENGINE_LOAD);
-  coolantSupported   = isPIDSupported(PID_COOLANT_TEMP);
-  egrSupported       = isPIDSupported(PID_EGR);
-  egrErrorSupported  = isPIDSupported(PID_EGR_ERROR);
-
-  // Report dettagliato su Serial + riepilogo OLED
-  printScanReportSerial();
-
-  Serial.println(F("Disponibilita' PID monitor (ECU motore):"));
-  Serial.print(F("  MAP (0x0B):       ")); Serial.println(mapSupported ? "SI" : "NO");
-  Serial.print(F("  Load (0x04):      ")); Serial.println(loadSupported ? "SI" : "NO");
-  Serial.print(F("  Coolant (0x05):   ")); Serial.println(coolantSupported ? "SI" : "NO");
-  Serial.print(F("  EGR (0x2C):       ")); Serial.println(egrSupported ? "SI" : "NO");
-  Serial.print(F("  EGR Err (0x2D):   ")); Serial.println(egrErrorSupported ? "SI" : "NO");
-
-  drawScanSummaryOLED();
-  delay(2500);
-
-  // Reset stato display e scheduling per la nuova sessione monitor
-  labelsDrawn = false;
-  pidScheduleIdx = 0;
-  currentMode = MODE_MONITOR;
-}
-
-// ============================================================
-// LETTURA DATI OBD2
-// ============================================================
-
-/**
- * Legge il carico motore calcolato.
- * @see PID 0x04: 1 byte, formula = A * 100 / 255, range 0..100 %
- */
-bool readEngineLoad(int* load) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_ENGINE_LOAD, data, &len)) {
-    *load = ((int)data[3] * 100) / 255;
-    return true;
-  }
-  return false;
-}
-
-/**
- * Legge la temperatura del liquido di raffreddamento.
- * @see PID 0x05: 1 byte, formula = A - 40, range -40..215 C
- */
-bool readCoolantTemp(int* temp) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_COOLANT_TEMP, data, &len)) {
-    *temp = (int)data[3] - 40;
-    return true;
-  }
-  return false;
-}
-
-/**
- * Legge l'apertura comandata della valvola EGR.
- * @see PID 0x2C: 1 byte, formula = A * 100 / 255, range 0..100 %
- */
-bool readEGR(int* egr) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_EGR, data, &len)) {
-    *egr = ((int)data[3] * 100) / 255;
-    return true;
-  }
-  return false;
-}
-
-/**
- * Legge l'errore EGR (differenza tra comandato e reale).
- * @see PID 0x2D: 1 byte, formula = (A - 128) * 100 / 128, range -100..+99 %
- */
-bool readEGRError(int* err) {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(PID_EGR_ERROR, data, &len)) {
-    *err = ((int)data[3] - 128) * 100 / 128;
-    return true;
-  }
-  return false;
-}
-
-// ============================================================
-// LETTURA DTC (CODICI ERRORE)
-// ============================================================
-
-/**
- * Controlla lo stato MIL e il numero di DTC attivi.
- * @see PID 0x01: byte A bit 7 = MIL on/off, bit 6-0 = numero DTC
- */
-void checkMILStatus() {
-  uint8_t data[8];
-  uint8_t len;
-  if (queryPID(0x01, data, &len)) {
-    milOn = (data[3] & 0x80) != 0;
-    uint8_t count = data[3] & 0x7F;
-    if (milOn && count > 0) {
-      readDTCCodes();
+  uint8_t outcome = obdRunBootScan();
+  if (outcome != OBD_SCAN_OK) {
+    if (outcome == OBD_SCAN_NO_ENGINE) {
+      obdPrintScanReport();
+      showError("Motore non risponde", "Quadro acceso?");
     } else {
-      dtcCount = 0;
-      currentScreen = 0;
-      totalScreens = 1;
+      showError("ECU non risp.", "Quadro acceso?");
     }
-    Serial.print(F("MIL: "));
-    Serial.print(milOn ? "ON" : "OFF");
-    Serial.print(F(", DTC: "));
-    Serial.println(dtcCount);
-  }
-}
-
-/**
- * Legge i codici DTC attivi via Mode 03.
- * Gestisce single frame (fino a 3 DTC) e multi-frame ISO-TP (fino a MAX_DTC).
- * Aggiornato per supportare paginazione display con piu' di 2 DTC.
- */
-void readDTCCodes() {
-  flushCANBuffer();
-
-  // Mode 03: richiesta DTC
-  uint8_t reqData[8] = { 0x01, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-  if (CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, reqData) != CAN_OK) {
+    Serial.println(F("Scan fallito, nuovo tentativo tra 10 s"));
+    waitServingHttp(10000);
     return;
   }
 
-  // Buffer per raccogliere tutti i byte DTC (single o multi-frame)
-  uint8_t dtcBytes[MAX_DTC * 2];
-  uint8_t totalDtcBytes = 0;
-  dtcCount = 0;
+  obdPrintScanReport();
+  obdLiveConfigure();
+  drawScanSummaryOLED();
+  waitServingHttp(2500);
 
-  unsigned long start = millis();
-  unsigned long rxId;
-  uint8_t len;
-  uint8_t buf[8];
+  // Reset stato display e DTC per la nuova sessione monitor
+  labelsDrawn = false;
+  currentScreen = 0;
+  totalScreens = 1;
+  dtcCheckRequested = true;
+  currentMode = MODE_MONITOR;
+}
 
-  while ((millis() - start) < OBD2_TIMEOUT_MS) {
-    if (CAN.checkReceive() == CAN_MSGAVAIL) {
-      CAN.readMsgBuf(&rxId, &len, buf);
-      if (rxId != OBD2_RESPONSE_ID) continue;
-
-      uint8_t pci = buf[0] & 0xF0;
-
-      if (pci == 0x00) {
-        // --- Single Frame: [len, 0x43, DTC1_H, DTC1_L, ...] ---
-        if (buf[1] == 0x43) {
-          uint8_t dataLen = buf[0] & 0x0F;
-          for (int i = 2; i < 2 + dataLen - 1 && totalDtcBytes < MAX_DTC * 2; i++) {
-            dtcBytes[totalDtcBytes++] = buf[i];
-          }
-        }
-        break;
-
-      } else if (pci == 0x10) {
-        // --- First Frame (multi-frame): [0x10, totLen, 0x43, DTC1_H, DTC1_L, ...] ---
-        if (buf[2] == 0x43) {
-          for (int i = 3; i < 8 && totalDtcBytes < MAX_DTC * 2; i++) {
-            dtcBytes[totalDtcBytes++] = buf[i];
-          }
-          // Invia Flow Control per ricevere i Consecutive Frames
-          uint8_t fc[8] = { 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-          CAN.sendMsgBuf(OBD2_REQUEST_ID, 0, 8, fc);
-        }
-
-      } else if (pci == 0x20) {
-        // --- Consecutive Frame: [0x2N, data...] ---
-        for (int i = 1; i < 8 && totalDtcBytes < MAX_DTC * 2; i++) {
-          dtcBytes[totalDtcBytes++] = buf[i];
-        }
-      }
-    }
-    yield();
+/**
+ * Esegue un passo della scansione approfondita avviata dal web e ne mostra l'avanzamento sul display;
+ * al termine il monitor riprende con un ridisegno completo.
+ */
+void executeProbeStep() {
+  static unsigned long lastDraw = 0;
+  obdProbeStep();
+  bool running = obdProbeRunning();
+  if (!running || millis() - lastDraw > 500) {
+    char line[22];
+    snprintf(line, sizeof(line), "%u%%", (unsigned)obdProbePercent());
+    drawStatusScreen("SCANSIONE APPROF.", running ? line : "Completata");
+    lastDraw = millis();
   }
-
-  // Parsa i DTC dal buffer raccolto (2 byte per codice)
-  for (int i = 0; i + 1 < totalDtcBytes && dtcCount < MAX_DTC; i += 2) {
-    uint16_t code = ((uint16_t)dtcBytes[i] << 8) | dtcBytes[i + 1];
-    if (code != 0x0000) {
-      dtcCodes[dtcCount++] = code;
-    }
-  }
-
-  // Calcola il numero totale di schermate (1 dati + N pagine DTC)
-  if (dtcCount > 0) {
-    uint8_t perPage = DTC_PER_PAGE;
-    totalScreens = 1 + (dtcCount + perPage - 1) / perPage;
-  } else {
-    totalScreens = 1;
-  }
-
-  // Log su serial
-  for (int i = 0; i < dtcCount; i++) {
-    char codeStr[6];
-    decodeDTC(dtcCodes[i], codeStr);
-    Serial.print(F("  DTC: "));
-    Serial.println(codeStr);
+  if (!running) {
+    labelsDrawn = false;
+    lastDrawnDtcScreen = 0xFF;
   }
 }
 
@@ -909,62 +438,18 @@ void readDTCCodes() {
 // MODALITA' MONITOR
 // ============================================================
 
-/**
- * Verifica se lo slot PID round-robin è supportato dall'ECU.
- * @param slot indice nello scheduling (0=MAP,1=LOAD,2=RPM,3=MAF,4=IAT,5=BARO,6=COOL,7=EGR,8=EGR_ERR,9=RAIL,10=VOLTS)
- * @return true se il PID corrispondente è supportato
- * @see executeMonitorMode()
- */
-bool isPidSlotSupported(uint8_t slot) {
-  switch (slot) {
-    case 0:  return mapSupported;            // MAP 0x0B
-    case 1:  return loadSupported;           // LOAD 0x04
-    case 2:  return isPIDSupported(0x0C);    // RPM
-    case 3:  return isPIDSupported(0x10);    // MAF
-    case 4:  return isPIDSupported(0x0F);    // IAT
-    case 5:  return isPIDSupported(0x33);    // BARO
-    case 6:  return coolantSupported;        // COOLANT 0x05
-    case 7:  return egrSupported;            // EGR 0x2C
-    case 8:  return egrErrorSupported;       // EGR_ERROR 0x2D
-    case 9:  return isPIDSupported(0x23);    // FUEL_RAIL
-    case 10: return isPIDSupported(0x42);    // VOLTAGE
-    default: return false;
-  }
+/** Ricalcola il numero di schermate dopo una lettura DTC e forza il ridisegno della pagina. */
+void updateScreenCount() {
+  totalScreens = dtcCount > 0 ? 1 + (dtcCount + DTC_PER_PAGE - 1) / DTC_PER_PAGE : 1;
+  if (currentScreen >= totalScreens) currentScreen = 0;
+  lastDrawnDtcScreen = 0xFF;
 }
 
 /**
- * Ricalcola boost e coppia dai valori PID cachati.
- * I modelli gestiscono internamente i NAN (opzionali) e i valori non ancora disponibili.
- * @see executeMonitorMode()
- */
-void recalcModels() {
-  // Boost: richiede MAP, BARO, MAF, RPM, IAT, LOAD tutti finiti
-  // useFilter=false: il filtro EMA è superfluo con la PID cache (smoothing implicito)
-  float bResult = Audi27TDI140kW::Boost::estimateTurboPressureBar(
-    cachedMap, cachedBaro, cachedMaf, cachedRpm, cachedIat, cachedLoad,
-    true, false);
-  if (!isnan(bResult)) {
-    boostBar = bResult;
-    mapAvailable = true;
-  } else {
-    mapAvailable = false;
-  }
-  // Coppia: richiede LOAD, RPM, MAF, MAP, IAT; RAIL/VOLTS/BARO opzionali (NAN ok)
-  float tResult = Audi27TDI140kW::Torque::estimateEngineTorqueNm(
-    cachedLoad, cachedRpm, cachedMaf, cachedMap, cachedIat,
-    cachedRail, cachedVolts, cachedBaro, false);
-  if (tResult > 0.0f || (!isnan(cachedLoad) && !isnan(cachedRpm))) {
-    torqueNm = (int)tResult;
-  }
-}
-
-/**
- * Esegue un ciclo di lettura OBD2 e aggiornamento display.
- * Legge UN solo PID per ciclo in round-robin pesato per massimizzare
- * la velocita' di refresh del display (~8-10 Hz invece di 3-7 Hz).
- * Boost e coppia vengono letti 4x piu' spesso di temp e EGR.
- *
- * @modified 24/03/26 — round-robin PID invece di lettura sequenziale
+ * Esegue un ciclo del monitor: pulsante, controllo periodico dei DTC, una lettura live (obd_live.h)
+ * anche mentre sono visibili le pagine DTC, aggiornamento del display e diagnostica seriale.
+ * Se il motore resta muto per SILENT_CYCLES_BEFORE_RECOVERY cicli reinizializza il MCP2515 in bus-off,
+ * altrimenti ripete lo scan.
  */
 void executeMonitorMode() {
   // Pulsante fisico: short = ciclo schermate, long = clear DTC.
@@ -975,17 +460,17 @@ void executeMonitorMode() {
     labelsDrawn = false;           // forza redraw completo al prossimo update
   } else if (ev == BTN_LONG) {
     drawStatusScreen("CLEAR DTC", "Invio Mode 04...");
-    bool ok = clearDTCsViaCAN();
-    drawStatusScreen("CLEAR DTC", ok ? "Cleared OK" : "Clear FAILED");
+    char message[64];
+    uint8_t result = obdLiveClearDtcs(message, sizeof(message));
+    drawStatusScreen("CLEAR DTC", obdClearResultShortText(result));
     delay(1200);
-    if (ok) lastDtcCheck = 0;      // forza re-check immediato
     labelsDrawn = false;
+    lastDrawnDtcScreen = 0xFF;
   }
 
-  // Controllo periodico MIL/DTC (ogni DTC_CHECK_INTERVAL ms)
-  if (millis() - lastDtcCheck > DTC_CHECK_INTERVAL) {
-    checkMILStatus();
-    lastDtcCheck = millis();
+  if (obdLiveDtcCheckDue()) {
+    obdLiveCheckDtcs();
+    updateScreenCount();
   }
 
   // Logica alternanza schermate: dati → DTC pag.1 → DTC pag.2 → dati (ogni 5s)
@@ -998,124 +483,35 @@ void executeMonitorMode() {
     currentScreen = 0;
   }
 
-  if (currentScreen > 0) {
-    // Schermata DTC — il buffer viene sovrascritto, forza ridisegno completo al ritorno
-    labelsDrawn = false;
-    drawDTCScreen(currentScreen - 1);
-  } else {
-    // Round-robin: trova il prossimo PID supportato nella sequenza
-    uint8_t attempts = 0;
-    uint8_t pidIdx;
-    do {
-      pidIdx = pgm_read_byte(&PID_SCHEDULE[pidScheduleIdx]);
-      pidScheduleIdx = (pidScheduleIdx + 1) % PID_SCHEDULE_LEN;
-      attempts++;
-    } while (!isPidSlotSupported(pidIdx) && attempts < PID_SCHEDULE_LEN);
-
-    // Legge UN solo PID per ciclo e aggiorna la cache condivisa.
-    // Dopo MAX_CONSEC_TIMEOUTS letture consecutive fallite, il valore cachato
-    // torna NAN/false in modo che display e dashboard mostrino N/D.
-    static uint8_t consecTo[11] = {0};
-    static uint8_t totalTo = 0;
-    bool ok = false;
-    uint8_t d[8]; uint8_t dl;
-    switch (pidIdx) {
-      case 0:  // MAP (0x0B)
-        ok = queryPID(0x0B, d, &dl);
-        if (ok) cachedMap = (float)d[3];
-        break;
-      case 1:  // LOAD (0x04)
-        ok = queryPID(0x04, d, &dl);
-        if (ok) {
-          cachedLoad = ((float)d[3] * 100.0f) / 255.0f;
-          loadPct = (int)cachedLoad;
-          loadAvailable = true;
-        }
-        break;
-      case 2:  // RPM (0x0C)
-        ok = queryPID(0x0C, d, &dl);
-        if (ok) cachedRpm = (float)(((d[3] << 8) | d[4]) / 4);
-        break;
-      case 3:  // MAF (0x10)
-        ok = queryPID(0x10, d, &dl);
-        if (ok) cachedMaf = ((float)((d[3] << 8) | d[4])) / 100.0f;
-        break;
-      case 4:  // IAT (0x0F)
-        ok = queryPID(0x0F, d, &dl);
-        if (ok) cachedIat = (float)d[3] - 40.0f;
-        break;
-      case 5:  // BARO (0x33)
-        ok = queryPID(0x33, d, &dl);
-        if (ok) cachedBaro = (float)d[3];
-        break;
-      case 6:  // Temperatura liquido (0x05)
-        if (coolantSupported) {
-          ok = readCoolantTemp(&coolantC);
-          if (ok) coolantAvailable = true;
-        }
-        break;
-      case 7:  // EGR (0x2C)
-        if (egrSupported) {
-          ok = readEGR(&egrPct);
-          if (ok) egrAvailable = true;
-        }
-        break;
-      case 8:  // Errore EGR (0x2D)
-        if (egrErrorSupported) {
-          ok = readEGRError(&egrErrPct);
-          if (ok) egrErrAvailable = true;
-        }
-        break;
-      case 9:  // Fuel rail pressure (0x23)
-        ok = queryPID(0x23, d, &dl);
-        if (ok) cachedRail = (float)(((d[3] << 8) | d[4]) * 10);
-        break;
-      case 10: // Module voltage (0x42)
-        ok = queryPID(0x42, d, &dl);
-        if (ok) cachedVolts = ((float)((d[3] << 8) | d[4])) / 1000.0f;
-        break;
-    }
-
-    if (ok) {
-      consecTo[pidIdx] = 0;
-      totalTo = 0;
+  obdLiveStep();
+  if (obdLiveSilentStreak >= SILENT_CYCLES_BEFORE_RECOVERY) {
+    obdLiveSilentStreak = 0;
+    if (CAN.getError() & 0x20) {
+      Serial.println(F("CAN bus-off, re-init MCP2515"));
+      canInit();
     } else {
-      if (++consecTo[pidIdx] >= 3) {
-        // Stale value: invalida la cache cosi' recalcModels() produrra' NAN
-        // e i flag *Available verranno azzerati a valle.
-        switch (pidIdx) {
-          case 0: cachedMap = NAN; break;
-          case 1: cachedLoad = NAN; loadAvailable = false; break;
-          case 2: cachedRpm = NAN; break;
-          case 3: cachedMaf = NAN; break;
-          case 4: cachedIat = NAN; break;
-          case 5: cachedBaro = NAN; break;
-          case 6: coolantAvailable = false; break;
-          case 7: egrAvailable = false; break;
-          case 8: egrErrAvailable = false; break;
-          case 9: cachedRail = NAN; break;
-          case 10: cachedVolts = NAN; break;
-        }
-      }
-      // Bus-off recovery: dopo 10 timeout consecutivi totali, se il MCP2515
-      // segnala BUS_OFF (EFLG bit 5) re-inizializza il transceiver.
-      if (++totalTo >= 10) {
-        if (CAN.getError() & 0x20) {
-          Serial.println(F("CAN bus-off, re-init MCP2515"));
-          CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL);
-          CAN.setMode(MCP_NORMAL);
-        }
-        totalTo = 0;
-      }
+      Serial.println(F("Il motore non risponde, nuovo scan"));
+      currentMode = MODE_SCAN;
+      return;
     }
+  }
 
-    // Ricalcola boost e coppia solo quando un PID del modello è stato aggiornato
-    // (evita iterazioni EMA inutili su COOLANT/EGR/EGR_ERR che non cambiano la cache)
-    if (pidIdx <= 5 || pidIdx == 9 || pidIdx == 10) {
-      recalcModels();
+  if (currentScreen > 0) {
+    // Pagina DTC: ridisegno solo al cambio pagina o dei codici; al ritorno ai dati ridisegno completo
+    if (currentScreen != lastDrawnDtcScreen) {
+      drawDTCScreen(currentScreen - 1);
+      lastDrawnDtcScreen = currentScreen;
     }
+    labelsDrawn = false;
+  } else {
+    lastDrawnDtcScreen = 0xFF;
     updateDisplay();
-    if (debugMode) printAdvancedDiagnostics();
+  }
+
+  if (debugMode && millis() - lastDiagPrint > DIAG_PRINT_INTERVAL_MS) {
+    obdDiagRefresh(1000);
+    obdPrintDiagnostics(obdDiag);
+    lastDiagPrint = millis();
   }
   yield();
 }
@@ -1142,7 +538,7 @@ void clearValueArea(int x, int y, int w, int h) {
  */
 void drawBoostValue() {
   char val[14];
-  if (mapSupported && mapAvailable) {
+  if (boostAvailable) {
     int bc = (int)(boostBar * 100.0f);
     char s = (bc >= 0) ? '+' : '-';
     int a = abs(bc);
@@ -1154,14 +550,13 @@ void drawBoostValue() {
 }
 
 /**
- * Disegna il valore coppia motore stimata in Nm (da carico motore * 400 Nm).
- * Colonna sinistra, y=54. Font deve essere gia' impostato.
+ * Disegna la coppia motore in Nm, letta dalla centralina o stimata; in rilascio può essere negativa.
+ * Colonna sinistra, y=50. Font deve essere già impostato.
  * @see updateDisplay()
- * @modified 31/03/26 — spostato da alto-DX a basso-SX
  */
 void drawTorqueValue() {
   char val[14];
-  if (loadSupported && loadAvailable) {
+  if (torqueAvailable) {
     snprintf(val, sizeof(val), "%d Nm", torqueNm);
   } else {
     snprintf(val, sizeof(val), "N/D");
@@ -1173,12 +568,10 @@ void drawTorqueValue() {
  * Disegna il valore temperatura liquido raffreddamento.
  * Colonna destra riga 1 (RIGHT_COL_X), y=15. Font deve essere gia' impostato.
  * @see updateDisplay()
- * @modified 31/03/26 — spostato da basso-SX a alto-DX
- * @modified 02/04/26 — confine colonna dedicato per riga 1
  */
 void drawCoolantValue() {
   char val[14];
-  if (coolantSupported && coolantAvailable) {
+  if (coolantAvailable) {
     snprintf(val, sizeof(val), "%d C", coolantC);
   } else {
     snprintf(val, sizeof(val), "N/D");
@@ -1190,46 +583,40 @@ void drawCoolantValue() {
 }
 
 /**
- * Disegna il valore apertura valvola EGR con errore tra parentesi.
- * Formato: "44%(30)" — colonna destra riga 2 (RIGHT_COL_X), y=50.
+ * Disegna la carica della batteria ibrida (PID 0x5B) nella colonna destra della riga 2, y=50:
+ * "100%" occupa esattamente i 28 px fra RIGHT_COL_X e il bordo.
  * @see updateDisplay()
- * @modified 31/03/26 — aggiunto errore EGR (PID 0x2D) tra parentesi
- * @modified 02/04/26 — confine colonna dedicato per riga 2
  */
-void drawEgrValue() {
+void drawHybBattValue() {
   char val[14];
-  if (egrSupported && egrAvailable) {
-    if (egrErrPct != 0) {
-      snprintf(val, sizeof(val), "%d%%(%d)", egrPct, egrErrPct);
-    } else {
-      snprintf(val, sizeof(val), "%d%%", egrPct);
-    }
+  if (hybBattAvailable) {
+    snprintf(val, sizeof(val), "%d%%", hybBattPct);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
-  // Valori larghi (es. "100%(-100)") traslano a sinistra per toccare il bordo destro
-  int w = u8g2.getStrWidth(val);
-  int x = (w > (128 - RIGHT_COL_X)) ? (128 - w) : RIGHT_COL_X;
-  u8g2.drawStr(x, 50, val);
+  u8g2.drawStr(RIGHT_COL_X, 50, val);
 }
 
 /**
  * Aggiorna il display OLED con i valori correnti.
  * In landscape usa aggiornamento parziale: ridisegna solo le tile modificate
  * invece dell'intero framebuffer, riducendo il trasferimento I2C da ~1024 a ~256-384 byte.
- * Le etichette statiche (BOOST, TEMP, COPPIA, EGR) vengono disegnate una sola volta.
+ * Le etichette statiche (BOOST, TEMP, COPPIA, BATT) vengono disegnate una sola volta.
  *
- * Tile layout landscape (font t0_14b, 14px alto):
+ * Tile layout landscape (font 7x14B, 14px alto):
  *   Etichette riga 1 (y=0):  pixel 0-13  -> tile rows 0-1
  *   Valori riga 1 (y=15):    pixel 15-28 -> tile rows 1-3
- *   Etichette riga 2 (y=37): pixel 37-50 -> tile rows 4-6
- *   Valori riga 2 (y=52):    pixel 52-63 -> tile rows 6-7
- *
- * @modified 24/03/26 — aggiornamento parziale con dirty tracking e updateDisplayArea()
+ *   Etichette riga 2 (y=35): pixel 35-48 -> tile rows 4-6
+ *   Valori riga 2 (y=50):    pixel 50-63 -> tile rows 6-7
  */
 void updateDisplay() {
   // --- LANDSCAPE (128x64) con aggiornamento parziale ---
   u8g2.setFont(u8g2_font_7x14B_tr);
+
+  int curBoostInt = boostAvailable ? (int)(boostBar * 100.0f) : -99999;
+  int curTorqueNm = torqueAvailable ? torqueNm : -99999;
+  int curCoolantC = coolantAvailable ? coolantC : -99999;
+  int curHybBattPct = hybBattAvailable ? hybBattPct : -99999;
 
   if (!labelsDrawn) {
     // --- RIDISEGNO COMPLETO: etichette + valori + sendBuffer ---
@@ -1239,33 +626,28 @@ void updateDisplay() {
     u8g2.drawStr(0, 0, "BOOST");
     u8g2.drawStr(RIGHT_COL_X, 0, "TEMP");
     u8g2.drawStr(0, 35, "COPPIA");
-    u8g2.drawStr(RIGHT_COL_X, 35, "EGR");
+    u8g2.drawStr(RIGHT_COL_X, 35, "BATT");
 
     // Valori iniziali
     drawBoostValue();
     drawTorqueValue();
     drawCoolantValue();
-    drawEgrValue();
+    drawHybBattValue();
 
     u8g2.sendBuffer();
     labelsDrawn = true;
 
     // Salva valori correnti per dirty tracking (sentinel -99999 = non disponibile)
-    prevBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
-    prevTorqueNm = loadAvailable ? torqueNm : -99999;
-    prevCoolantC = coolantAvailable ? coolantC : -99999;
-    prevEgrPct = egrAvailable ? egrPct : -99999;
+    prevBoostInt = curBoostInt;
+    prevTorqueNm = curTorqueNm;
+    prevCoolantC = curCoolantC;
+    prevHybBattPct = curHybBattPct;
     return;
   }
 
   // --- AGGIORNAMENTO PARZIALE: solo valori cambiati ---
-  // Sentinel -99999 codifica "PID non disponibile" per confronto corretto
   bool row1dirty = false;
   bool row2dirty = false;
-  int curBoostInt = mapAvailable ? (int)(boostBar * 100.0f) : -99999;
-  int curTorqueNm = loadAvailable ? torqueNm : -99999;
-  int curCoolantC = coolantAvailable ? coolantC : -99999;
-  int curEgrPct = egrAvailable ? egrPct : -99999;
 
   // Boost (colonna sinistra, riga 1)
   if (curBoostInt != prevBoostInt) {
@@ -1283,19 +665,19 @@ void updateDisplay() {
     row1dirty = true;
   }
 
-  // Coppia stimata (colonna sinistra, riga 2)
+  // Coppia (colonna sinistra, riga 2)
   if (curTorqueNm != prevTorqueNm) {
-    clearValueArea(0, 50, EGR_EXTENDED_X, 14);
+    clearValueArea(0, 50, RIGHT_COL_X, 14);
     drawTorqueValue();
     prevTorqueNm = curTorqueNm;
     row2dirty = true;
   }
 
-  // EGR (colonna destra, riga 2 — clear estesa per valori larghi)
-  if (curEgrPct != prevEgrPct) {
-    clearValueArea(EGR_EXTENDED_X, 50, 128 - EGR_EXTENDED_X, 14);
-    drawEgrValue();
-    prevEgrPct = curEgrPct;
+  // Batteria ibrida (colonna destra, riga 2)
+  if (curHybBattPct != prevHybBattPct) {
+    clearValueArea(RIGHT_COL_X, 50, 128 - RIGHT_COL_X, 14);
+    drawHybBattValue();
+    prevHybBattPct = curHybBattPct;
     row2dirty = true;
   }
 
@@ -1309,7 +691,7 @@ void updateDisplay() {
 }
 
 /**
- * Disegna una pagina di codici errore DTC.
+ * Disegna una pagina di codici errore DTC, con la centralina che ha memorizzato ciascun codice.
  * @param page indice pagina (0 = prima pagina DTC, 1 = seconda, etc.)
  */
 void drawDTCScreen(uint8_t page) {
@@ -1331,8 +713,12 @@ void drawDTCScreen(uint8_t page) {
   for (int i = 0; i < perPage && (startIdx + i) < dtcCount; i++) {
     int yBase = 20 + i * 22;
     char codeStr[6];
+    char owner[16];
+    char line[24];
     decodeDTC(dtcCodes[startIdx + i], codeStr);
-    u8g2.drawStr(0, yBase, codeStr);
+    obdEcuShortName(dtcEcuIndex[startIdx + i], owner, sizeof(owner));
+    snprintf(line, sizeof(line), "%s %s", codeStr, owner);
+    u8g2.drawStr(0, yBase, line);
 
     const char* desc = getDTCDescription(dtcCodes[startIdx + i]);
     if (desc != NULL) {
@@ -1344,378 +730,6 @@ void drawDTCScreen(uint8_t page) {
   }
 
   u8g2.sendBuffer();
-}
-
-// ============================================================
-// DIAGNOSTICA SERIALE AVANZATA
-// ============================================================
-
-/**
- * Stampa su Serial tutti i 47 parametri (diretti + calcolati) dai PID disponibili.
- * Completamente autocontenuta: legge tutti i PID internamente via CAN.
- * Attivata da debugMode=true (toggle da /dashboard).
- */
-void printAdvancedDiagnostics() {
-  uint8_t data[8];
-  uint8_t len;
-
-  // Variabili locali per tutti i PID letti (riusate nei calcoli derivati)
-  float loadPctL = 0, mapKpa = 0, baroKpa = 0, mafGs = 0, lambdaV = 1.0f;
-  float iatC = 0, ambC = 0, coolC = 0, volts = 0;
-  int rpm = 0, speedKmh = 0, pedalD = -1, pedalE = -1, throttle = 0;
-  int egrCmd = 0, egrErr = 0, railBar = 0;
-  unsigned long runtimeS = 0;
-  bool hLoad = false, hMap = false, hBaro = false, hMaf = false, hLambda = false;
-  bool hIat = false, hAmb = false, hCool = false, hRpm = false, hSpeed = false;
-  bool hPedD = false, hPedE = false, hThrottle = false, hEgr = false, hEgrErr = false;
-  bool hRail = false, hVolts = false, hRuntime = false;
-
-  static float prevBoostBar = 0;
-  static int prevSpeedKmh = 0;
-  static unsigned long prevMs = 0;
-
-  Serial.println(F("\n========== DIAGNOSTICA COMPLETA (47 parametri) =========="));
-
-  // ---- LETTURA PID DIRETTI ----
-  // NB: CAN restituisce dati in data[3..7], non data[0..3] come ELM327
-
-  // 1. Carico motore (0x04) [0-100%]
-  if (queryPID(0x04, data, &len)) {
-    loadPctL = ((float)data[3] * 100.0f) / 255.0f; hLoad = true;
-    Serial.print(F("  01. Carico motore: ")); Serial.print(loadPctL, 1);
-    Serial.println(F(" %  [idle: 15-25%, pieno carico: 80-100%]"));
-  } else { Serial.println(F("  01. Carico motore: N/D")); }
-
-  // 2. Temp. liquido refrigerante (0x05) [-40..215 C]
-  if (queryPID(0x05, data, &len)) {
-    coolC = (float)data[3] - 40.0f; hCool = true;
-    Serial.print(F("  02. Temp. liquido: ")); Serial.print((int)coolC);
-    Serial.println(F(" C  [regime: 85-95 C]"));
-  } else { Serial.println(F("  02. Temp. liquido: N/D")); }
-
-  // 3. MAP (0x0B) [0-255 kPa]
-  if (queryPID(0x0B, data, &len)) {
-    mapKpa = (float)data[3]; hMap = true;
-    Serial.print(F("  03. MAP: ")); Serial.print((int)mapKpa);
-    Serial.println(F(" kPa  [aspirato: ~100, boost: 120-250]"));
-  } else { Serial.println(F("  03. MAP: N/D")); }
-
-  // 4. RPM (0x0C) [0-16383 rpm]
-  if (queryPID(0x0C, data, &len)) {
-    rpm = ((data[3] << 8) | data[4]) / 4; hRpm = true;
-    Serial.print(F("  04. RPM: ")); Serial.print(rpm);
-    Serial.println(F(" rpm  [idle: 750-850, max: ~4500]"));
-  } else { Serial.println(F("  04. RPM: N/D")); }
-
-  // 5. Velocita' (0x0D) [0-255 km/h]
-  if (queryPID(0x0D, data, &len)) {
-    speedKmh = data[3]; hSpeed = true;
-    Serial.print(F("  05. Velocita: ")); Serial.print(speedKmh);
-    Serial.println(F(" km/h"));
-  } else { Serial.println(F("  05. Velocita: N/D")); }
-
-  // 6. Temp. aria aspirazione IAT (0x0F) [-40..215 C]
-  if (queryPID(0x0F, data, &len)) {
-    iatC = (float)data[3] - 40.0f; hIat = true;
-    Serial.print(F("  06. Temp. aria (IAT): ")); Serial.print((int)iatC);
-    Serial.println(F(" C  [post-intercooler: ambiente+10-30]"));
-  } else { Serial.println(F("  06. Temp. aria (IAT): N/D")); }
-
-  // 7. MAF (0x10) [0-655.35 g/s]
-  if (queryPID(0x10, data, &len)) {
-    mafGs = ((float)((data[3] << 8) | data[4])) / 100.0f; hMaf = true;
-    Serial.print(F("  07. MAF: ")); Serial.print(mafGs, 1);
-    Serial.println(F(" g/s  [idle: 3-8, pieno carico: 40-80]"));
-  } else { Serial.println(F("  07. MAF: N/D")); }
-
-  // 8. Pressione rail (0x23) [0-655350 kPa]
-  if (queryPID(0x23, data, &len)) {
-    int railKpa = ((data[3] << 8) | data[4]) * 10;
-    railBar = railKpa / 100; hRail = true;
-    Serial.print(F("  08. Pressione rail: ")); Serial.print(railBar);
-    Serial.println(F(" bar  [idle: 250-400, carico: 800-1800]"));
-  } else { Serial.println(F("  08. Pressione rail: N/D")); }
-
-  // 9. Lambda (0x24) [0-2 ratio]
-  if (queryPID(0x24, data, &len)) {
-    lambdaV = ((float)((data[3] << 8) | data[4])) / 32768.0f; hLambda = true;
-    Serial.print(F("  09. Lambda: ")); Serial.print(lambdaV, 3);
-    Serial.println(F("  [stechiometrico: 1.0, diesel normale: 1.3-3.5]"));
-
-    // 10. Tensione O2 (0x24 byte C,D)
-    float o2v = ((float)((data[5] << 8) | data[6])) / 8192.0f;
-    Serial.print(F("  10. Tensione O2: ")); Serial.print(o2v, 3);
-    Serial.println(F(" V  [0-8 V]"));
-  } else {
-    Serial.println(F("  09. Lambda: N/D"));
-    Serial.println(F("  10. Tensione O2: N/D"));
-  }
-
-  // 11. EGR comandato (0x2C) [0-100%]
-  if (queryPID(0x2C, data, &len)) {
-    egrCmd = ((int)data[3] * 100) / 255; hEgr = true;
-    Serial.print(F("  11. EGR comandato: ")); Serial.print(egrCmd);
-    Serial.println(F(" %  [0=chiuso, regime: 10-50%]"));
-  } else { Serial.println(F("  11. EGR comandato: N/D")); }
-
-  // 12. Errore EGR (0x2D) [-100..+99%]
-  if (queryPID(0x2D, data, &len)) {
-    egrErr = ((int)data[3] - 128) * 100 / 128; hEgrErr = true;
-    Serial.print(F("  12. Errore EGR: ")); Serial.print(egrErr);
-    Serial.println(F(" %  [normale: -5..+5%, allarme: >|10|%]"));
-  } else { Serial.println(F("  12. Errore EGR: N/D")); }
-
-  // 13. Pressione barometrica (0x33) [0-255 kPa]
-  if (queryPID(0x33, data, &len)) {
-    baroKpa = (float)data[3]; hBaro = true;
-    Serial.print(F("  13. Pressione baro: ")); Serial.print((int)baroKpa);
-    Serial.println(F(" kPa  [livello mare: 101 kPa]"));
-  } else { Serial.println(F("  13. Pressione baro: N/D")); }
-
-  // 14. Batteria (0x42) [0-65.5 V]
-  if (queryPID(0x42, data, &len)) {
-    volts = ((float)((data[3] << 8) | data[4])) / 1000.0f; hVolts = true;
-    Serial.print(F("  14. Batteria: ")); Serial.print(volts, 1);
-    Serial.println(F(" V  [motore acceso: 13.5-14.5 V]"));
-  } else { Serial.println(F("  14. Batteria: N/D")); }
-
-  // 15. Temp. esterna (0x46) [-40..215 C]
-  if (queryPID(0x46, data, &len)) {
-    ambC = (float)data[3] - 40.0f; hAmb = true;
-    Serial.print(F("  15. Temp. esterna: ")); Serial.print((int)ambC);
-    Serial.println(F(" C"));
-  } else { Serial.println(F("  15. Temp. esterna: N/D")); }
-
-  // 16. Pedale acceleratore D (0x49) [0-100%]
-  if (queryPID(0x49, data, &len)) {
-    pedalD = ((int)data[3] * 100) / 255; hPedD = true;
-    Serial.print(F("  16. Pedale acc. D: ")); Serial.print(pedalD);
-    Serial.println(F(" %"));
-  } else { Serial.println(F("  16. Pedale acc. D: N/D")); }
-
-  // 17. Pedale acceleratore E (0x4A) [0-100%]
-  if (queryPID(0x4A, data, &len)) {
-    pedalE = ((int)data[3] * 100) / 255; hPedE = true;
-    Serial.print(F("  17. Pedale acc. E: ")); Serial.print(pedalE);
-    Serial.println(F(" %"));
-  } else { Serial.println(F("  17. Pedale acc. E: N/D")); }
-
-  // 18. Farfalla comandata (0x4C) [0-100%]
-  if (queryPID(0x4C, data, &len)) {
-    throttle = ((int)data[3] * 100) / 255; hThrottle = true;
-    Serial.print(F("  18. Farfalla cmd: ")); Serial.print(throttle);
-    Serial.println(F(" %"));
-  } else { Serial.println(F("  18. Farfalla cmd: N/D")); }
-
-  // 19. Stato MIL + DTC (0x01)
-  if (queryPID(0x01, data, &len)) {
-    bool mil = (data[3] & 0x80) != 0;
-    int dtcN = data[3] & 0x7F;
-    Serial.print(F("  19. MIL: ")); Serial.print(mil ? "ACCESA" : "SPENTA");
-    Serial.print(F(", DTC attivi: ")); Serial.println(dtcN);
-  } else { Serial.println(F("  19. MIL/DTC: N/D")); }
-
-  // 20. Tempo motore acceso (0x1F) [0-65535 s]
-  if (queryPID(0x1F, data, &len)) {
-    runtimeS = (data[3] << 8) | data[4]; hRuntime = true;
-    int h = runtimeS / 3600;
-    int m = (runtimeS % 3600) / 60;
-    int s = runtimeS % 60;
-    Serial.print(F("  20. Tempo motore: ")); Serial.print(h); Serial.print(F(":"));
-    if (m < 10) Serial.print(F("0")); Serial.print(m); Serial.print(F(":"));
-    if (s < 10) Serial.print(F("0")); Serial.println(s);
-  } else { Serial.println(F("  20. Tempo motore: N/D")); }
-
-  // 21. Km con MIL accesa (0x21)
-  if (queryPID(0x21, data, &len)) {
-    int kmMil = (data[3] << 8) | data[4];
-    Serial.print(F("  21. Km con MIL: ")); Serial.print(kmMil);
-    Serial.println(F(" km  [0 = nessun errore attivo]"));
-  } else { Serial.println(F("  21. Km con MIL: N/D")); }
-
-  // 22. Avviamenti da reset DTC (0x30)
-  if (queryPID(0x30, data, &len)) {
-    Serial.print(F("  22. Avviamenti da reset: ")); Serial.println(data[3]);
-  } else { Serial.println(F("  22. Avviamenti da reset: N/D")); }
-
-  // ---- VALORI CALCOLATI ----
-  Serial.println(F("  --- CALCOLATI ---"));
-
-  // 24. Boost (bar) — via BoostModel (stesso modello del flusso principale)
-  if (hMap && hBaro) {
-    float boostBarLoc = Audi27TDI140kW::Boost::estimateTurboPressureBar(
-      mapKpa, baroKpa,
-      hMaf ? mafGs : NAN,
-      hRpm ? (float)rpm : NAN,
-      hIat ? iatC : NAN,
-      hLoad ? loadPctL : NAN,
-      true, false);
-    Serial.print(F("  24. Boost: ")); Serial.print(boostBarLoc, 2);
-    Serial.println(F(" bar  [aspira: <0, turbo: 0.3-1.5]"));
-  } else { Serial.println(F("  24. Boost: N/D")); }
-
-  // 25-27. Coppia (TorqueModel), Potenza kW, Potenza CV, 47. Consumo specifico
-  if (hLoad) {
-    float tRailKpa = hRail ? (float)railBar * 100.0f : NAN;
-    float tVoltsV = hVolts ? volts : NAN;
-    float tBaroKpa = hBaro ? baroKpa : NAN;
-    int torqueNmL = (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
-      loadPctL, (float)rpm, mafGs, mapKpa, iatC, tRailKpa, tVoltsV, tBaroKpa, false);
-    Serial.print(F("  25. Coppia stimata: ")); Serial.print(torqueNmL);
-    Serial.println(F(" Nm  [idle: 60-100, max: 400]"));
-
-    if (hRpm && rpm > 0) {
-      float powKw = (float)torqueNmL * (float)rpm / 9549.0f;
-      Serial.print(F("  26. Potenza stimata: ")); Serial.print(powKw, 1);
-      Serial.println(F(" kW  [max: 132]"));
-      float powCv = powKw * 1.36f;
-      Serial.print(F("  27. Potenza stimata: ")); Serial.print(powCv, 1);
-      Serial.println(F(" CV  [max: 180]"));
-
-      if (hMaf && hLambda && powKw > 1.0f) {
-        float fGs = mafGs / (14.5f * (lambdaV > 0.5f ? lambdaV : 1.0f));
-        float bsfc = (fGs * 3600.0f) / powKw;
-        Serial.print(F("  47. Cons. specifico:")); Serial.print((int)bsfc);
-        Serial.println(F(" g/kWh  [ottimo: 200-250, normale: 250-350]"));
-      } else { Serial.println(F("  47. Cons. specifico:N/D (potenza insufficiente)")); }
-    } else {
-      Serial.println(F("  26. Potenza kW: N/D"));
-      Serial.println(F("  27. Potenza CV: N/D"));
-      Serial.println(F("  47. Cons. specifico:N/D"));
-    }
-  } else {
-    Serial.println(F("  25. Coppia: N/D"));
-    Serial.println(F("  26. Potenza kW: N/D"));
-    Serial.println(F("  27. Potenza CV: N/D"));
-    Serial.println(F("  47. Cons. specifico:N/D"));
-  }
-
-  // 28. Air/Fuel Ratio
-  if (hLambda) {
-    float afr = lambdaV * 14.5f;
-    Serial.print(F("  28. Air/Fuel Ratio: ")); Serial.print(afr, 1);
-    Serial.println(F("  [diesel: 18-50, stechiometrico: 14.5]"));
-  } else { Serial.println(F("  28. Air/Fuel Ratio: N/D")); }
-
-  // 30. Consumo L/100km
-  float fuelLh = 0;
-  bool haveFuel = false;
-  if (hMaf) {
-    float lam = (hLambda && lambdaV > 0.5f) ? lambdaV : 1.0f;
-    float fuelGs = mafGs / (14.5f * lam);
-    fuelLh = (fuelGs * 3600.0f) / 835.0f;
-    haveFuel = true;
-  }
-  if (haveFuel && hSpeed && speedKmh > 3) {
-    float l100 = (fuelLh / (float)speedKmh) * 100.0f;
-    Serial.print(F("  30. Consumo: ")); Serial.print(l100, 1);
-    Serial.println(F(" L/100km  [citta: 8-12, strada: 5-7, autostrada: 7-10]"));
-  } else { Serial.println(F("  30. Consumo L/100km: N/D (fermo o dati mancanti)")); }
-
-  // 31. Altitudine (m)
-  if (hBaro && baroKpa > 0) {
-    float altM = 44330.0f * (1.0f - pow(baroKpa / 101.325f, 0.1903f));
-    Serial.print(F("  31. Altitudine: ")); Serial.print((int)altM);
-    Serial.println(F(" m  [rif: 101.3 kPa = 0 m]"));
-  } else { Serial.println(F("  31. Altitudine: N/D")); }
-
-  // 32. Densita' aria
-  if (hMap && hIat) {
-    float rho = (mapKpa * 1000.0f) / (Audi27TDI140kW::GAS_CONSTANT_AIR * (iatC + 273.15f));
-    Serial.print(F("  32. Densita aria: ")); Serial.print(rho, 3);
-    Serial.println(F(" kg/m3  [livello mare 20C: 1.204]"));
-  } else { Serial.println(F("  32. Densita aria: N/D")); }
-
-  // 33. Efficienza intercooler
-  if (hMap && hBaro && hIat && hAmb && mapKpa > baroKpa) {
-    float ambK = ambC + 273.15f;
-    float tTeor = ambK * pow(mapKpa / baroKpa, 0.286f) - 273.15f;
-    float denom = tTeor - ambC;
-    if (denom > 1.0f) {
-      int eff = (int)(((tTeor - iatC) / denom) * 100.0f);
-      Serial.print(F("  33. Eff. intercooler: ")); Serial.print(eff);
-      Serial.println(F(" %  [buono: 60-85%]"));
-    } else { Serial.println(F("  33. Eff. intercooler: N/D (denom troppo piccolo)")); }
-  } else { Serial.println(F("  33. Eff. intercooler: N/D (no boost)")); }
-
-  // 34. Rapporto compressione turbo
-  if (hMap && hBaro && baroKpa > 0) {
-    float pr = mapKpa / baroKpa;
-    Serial.print(F("  34. Rapporto compr. turbo: ")); Serial.print(pr, 2);
-    Serial.println(F("  [1.0=aspirato, 1.5=0.5bar, 2.0=1bar]"));
-  } else { Serial.println(F("  34. Rapporto compr. turbo: N/D")); }
-
-  // 36. Efficienza volumetrica
-  if (hMaf && hRpm && hMap && hIat && rpm > 0) {
-    float rho = (mapKpa * 1000.0f) / (Audi27TDI140kW::GAS_CONSTANT_AIR * (iatC + 273.15f));
-    float displL = Audi27TDI140kW::ENGINE_DISPLACEMENT_M3 * 1000.0f;
-    float volEff = (mafGs * 120.0f) / (displL * (float)rpm * rho / 1000.0f);
-    Serial.print(F("  36. Eff. volumetrica: ")); Serial.print((int)volEff);
-    Serial.println(F(" %  [normale: 70-95%]"));
-  } else { Serial.println(F("  36. Eff. volumetrica: N/D")); }
-
-  // 37. Drift pedale
-  if (hPedD && hPedE) {
-    int drift = abs(pedalD - pedalE);
-    Serial.print(F("  37. Drift pedale: ")); Serial.print(drift);
-    Serial.print(F(" % (D=")); Serial.print(pedalD);
-    Serial.print(F(" E=")); Serial.print(pedalE);
-    Serial.println(F(")  [normale: <3%, allarme: >5%]"));
-  } else { Serial.println(F("  37. Drift pedale: N/D")); }
-
-  // 39. Risposta farfalla
-  if (hThrottle && hPedD) {
-    int resp = throttle - pedalD;
-    Serial.print(F("  39. Delta farfalla-pedale: ")); Serial.print(resp);
-    Serial.println(F(" %  [normale: -5..+5%]"));
-  } else { Serial.println(F("  39. Delta farfalla-pedale: N/D")); }
-
-  // 40. Taglio iniezione (la centralina taglia il gasolio durante il rilascio acceleratore)
-  if (hLoad) {
-    bool dfco = (loadPctL < 1.0f);
-    Serial.print(F("  40. Taglio iniezione: ")); Serial.println(dfco ? "ATTIVO (consumo 0)" : "OFF");
-  } else { Serial.println(F("  40. Taglio iniezione: N/D")); }
-
-  // 42. Rapporto CVT
-  if (hRpm && hSpeed && speedKmh > 5 && rpm > 0) {
-    float gearRatio = (float)rpm / ((float)speedKmh * 7.9f);
-    Serial.print(F("  42. Rapporto CVT: ")); Serial.print(gearRatio, 2);
-    Serial.println(F("  [basso(1a): ~3.5, alto(6a): ~0.6]"));
-  } else { Serial.println(F("  42. Rapporto CVT: N/D (fermo)")); }
-
-  // 43. Accelerazione
-  unsigned long nowMs = millis();
-  if (hSpeed && prevMs > 0) {
-    float dtS = (float)(nowMs - prevMs) / 1000.0f;
-    if (dtS > 0.05f) {
-      float accMs2 = ((float)(speedKmh - prevSpeedKmh) / 3.6f) / dtS;
-      Serial.print(F("  43. Accelerazione: ")); Serial.print(accMs2, 2);
-      Serial.println(F(" m/s2  [frenata: <-3, acc. forte: >2]"));
-    }
-  } else { Serial.println(F("  43. Accelerazione: N/D (primo ciclo)")); }
-
-  // 44. Variazione boost — derivata sul boost calcolato dal modello
-  if (hMap && hBaro && prevMs > 0) {
-    float dtS = (float)(nowMs - prevMs) / 1000.0f;
-    float curBoost = Audi27TDI140kW::Boost::estimateTurboPressureBar(
-      mapKpa, baroKpa,
-      hMaf ? mafGs : NAN,
-      hRpm ? (float)rpm : NAN,
-      hIat ? iatC : NAN,
-      hLoad ? loadPctL : NAN,
-      true, false);
-    if (dtS > 0.05f) {
-      float dBoost = (curBoost - prevBoostBar) / dtS;
-      Serial.print(F("  44. Variaz. boost: ")); Serial.print(dBoost, 2);
-      Serial.println(F(" bar/s  [risposta turbo: >0.5 = reattivo]"));
-      prevBoostBar = curBoost;
-    }
-  } else { Serial.println(F("  44. Variaz. boost: N/D (primo ciclo)")); }
-
-  prevSpeedKmh = hSpeed ? speedKmh : 0;
-  prevMs = nowMs;
-
-  Serial.println(F("==========================================================\n"));
 }
 
 // ============================================================

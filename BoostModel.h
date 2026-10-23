@@ -3,9 +3,9 @@
 #include "EngineConstants.h" // risolto da build.extra_flags = -I<radice del progetto>, cosi' vale su macOS e su Windows
 
 /*
-  TurboPressureEstimatorAudi27TDI.h
+  BoostModel.h
 
-  Stima della pressione turbo per Audi 2.7 TDI usando PID OBD standard.
+  Stima della pressione turbo per Audi 2.0 TFSI DMSA 150 kW usando PID OBD standard.
 
   --------------------------------------------------
   INPUT:
@@ -41,7 +41,7 @@
   - Mantiene valori negativi (NO clamp a 0)
 */
 
-namespace Audi27TDI140kW::Boost
+namespace Audi40TFSI150kW::Boost
 {
     struct TurboFilterState
     {

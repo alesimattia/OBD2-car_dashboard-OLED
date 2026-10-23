@@ -5,7 +5,7 @@
 /*
   TorqueModel.h
 
-  Stima della coppia motore per Audi 2.7 TDI 140 kW usando PID OBD standard.
+  Stima della coppia motore per Audi 2.0 TFSI DMSA 150 kW usando PID OBD standard.
   Pensato per ESP8266 / Arduino.
 
   INPUT PRINCIPALI:
@@ -27,7 +27,7 @@
     e può essere attivato/disattivato tramite useFilter.
 */
 
-namespace Audi27TDI140kW::Torque
+namespace Audi40TFSI150kW::Torque
 {
     struct FilterState
     {
@@ -169,7 +169,7 @@ namespace Audi27TDI140kW::Torque
     {
         float ve = freshAirVolumetricEfficiency(rpm, maf_gps, map_kpa, iat_c);
 
-        // In un turbo diesel a carico elevato VE apparente ~0.85..1.05 è plausibile
+        // A carico elevato una VE apparente ~0.85..1.05 è plausibile
         // Correttivo molto moderato per non introdurre rumore
         float c = 0.85f + 0.15f * (ve / 0.90f);
 
@@ -185,7 +185,7 @@ namespace Audi27TDI140kW::Torque
             return 1.0f;
 
         // Correttivo volutamente debole.
-        // Su diesel il rail pressure da solo non dice la massa iniettata,
+        // Il rail pressure da solo non dice la massa iniettata,
         // ma se è molto basso rispetto al carico richiesto può indicare limitazione.
         float load = clampf(load_pct / 100.0f, 0.0f, 1.0f);
 

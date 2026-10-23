@@ -2,15 +2,19 @@
  * Dashboard web live per OBD2 Monitor.
  *
  * Fornisce gli endpoint HTTP:
- *   /dashboard  — pagina HTML dashboard con auto-refresh 500ms
- *   /data       — JSON con tutti i 47 parametri (diretti + calcolati)
- *   /debug      — toggle diagnostica seriale (?on/?off)
- *   /brightness — stato/override luminosità OLED (?set=N | ?auto)
- *   /clear-dtc  — cancella DTC (OBD2 Mode 04)
+ *   /dashboard:    pagina HTML dashboard con auto-refresh 500ms
+ *   /scan:         stessa pagina, aperta sulla tab "PID supportati"
+ *   /data:         JSON con i valori principali e, in debug, l'istantanea diagnostica completa
+ *   /scan-data:    JSON dello scan: centraline, PID, InfoType Mode 09, OBFCM, scansione approfondita
+ *   /probe:        avvio (?start) e stato della scansione approfondita
+ *   /probe-status: avanzamento della scansione approfondita
+ *   /debug:        toggle diagnostica seriale (?on/?off)
+ *   /brightness:   stato/override luminosità OLED (?set=N | ?auto)
+ *   /clear-dtc:    cancella i DTC di tutte le centraline (OBD2 Mode 04)
  *
- * L'handler /data legge i PID internamente, come printAdvancedDiagnostics().
- * Richiede che lo .ino definisca OBD_CONN_WIFI o OBD_CONN_CAN prima dell'include,
- * e che le funzioni queryOBDPID/queryPID siano gia' dichiarate.
+ * Gli handler non interrogano il bus mentre obdBusy è attivo (scan o scansione approfondita)
+ * e non richiamano mai handleClient(), che non è rientrante. Richiede che lo .ino definisca
+ * OBD_CONN_WIFI o OBD_CONN_CAN e includa obd_scan.h e obd_live.h prima di questo header.
  *
  * Usato da: WIFI_conn.ino, CANbus_conn.ino
  *
@@ -25,6 +29,8 @@
 #include "light_sensor.h"
 #include "pid_descriptions.h"
 #include "serial_logger.h" // per WebSerial::logReadFrom() nell'handler /serial-data
+#include "obd_scan.h"
+#include "obd_live.h"
 
 // ============================================================
 // HTML della dashboard (PROGMEM)
@@ -86,9 +92,16 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 .eh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #222;padding-bottom:6px;margin-bottom:8px}
 .eid{color:#00d4ff;font-size:.95em;font-weight:600;letter-spacing:1px}
 .ecnt{color:#5588bb;font-size:.78em}
-.pl{display:flex;flex-wrap:wrap;gap:6px}
+.pl{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .pl span{background:#0f1a30;border:1px solid #1a3060;border-radius:4px;padding:3px 8px;font-size:.78em;color:#cfe6f5}
+.pl.miss span{border-color:#604010;color:#e0c080}
+.pl.xtra span{border-color:#106040;color:#90e0b0}
+.lt{color:#5588bb;font-size:.72em;margin:6px 0 4px}
 .empty{color:#888;font-style:italic;font-size:.85em}
+.note{color:#888;font-size:.75em;margin-bottom:6px}
+.note.w{color:#ca4}
+.pbtn{width:100%;background:#1a2a30;color:#8eddf0;border:1px solid #1a3060;border-radius:4px;padding:7px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px}
+.pbtn:disabled{opacity:.5;cursor:wait}
 .fnote{color:#666;font-size:.72em;text-align:center;margin-top:14px}
 .smHdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .smBtn{background:#1a2a30;color:#8eddf0;border:1px solid #1a3060;border-radius:4px;padding:3px 10px;font-size:.72em;font-weight:600;cursor:pointer;font-family:inherit}
@@ -100,9 +113,10 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </head>
 <body>
 <h1>OBD2 Dashboard</h1>
-<p class="sub">Audi A5 B8 2.7 TDI CGKA</p>
+<p class="sub">Audi A5 F5 (B9.5) 40 TFSI</p>
 <div class="tg"><label>Diagnostica Serial</label><label class="sw"><input type="checkbox" id="dbgTgl" onchange="fetch('/debug?'+(this.checked?'on':'off'))"><span class="sl"></span></label></div>
 <p class="sub" id="dbgWarn" style="display:none;color:#ca4">Rallenta il refresh dei dati sul display</p>
+<p class="sub" id="busyWarn" style="display:none;color:#ca4">Connessione o scansione in corso: diagnostica sospesa</p>
 <div class="tabs">
 <button class="tabBtn act" id="tbD" onclick="swT('d')">Dashboard</button>
 <button class="tabBtn" id="tbS" onclick="swT('s')">PID supportati</button>
@@ -110,10 +124,10 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </div>
 <div class="tabC act" id="tcD">
 <div class="s"><div class="st">Dati principali</div><div class="mg">
-<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u">bar</div></div>
+<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u" id="u_boost">bar</div></div>
 <div class="mc"><div class="l">TEMP</div><div class="v" id="d_cool">--</div><div class="u">&deg;C</div></div>
-<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u">Nm</div></div>
-<div class="mc"><div class="l">EGR</div><div class="v" id="d_egr">--</div><div class="u"></div></div>
+<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u" id="u_torq">Nm</div></div>
+<div class="mc"><div class="l">BATTERIA IBRIDA</div><div class="v" id="d_hyb">--</div><div class="u">%</div></div>
 </div></div>
 <div class="s"><div class="st">Luce ambiente</div>
 <div class="g">
@@ -131,32 +145,36 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">MAF</span><span class="v" id="d_maf">--</span></div>
 <div class="i"><span class="l">Press. rail</span><span class="v" id="d_rail">--</span></div>
 <div class="i"><span class="l">Lambda</span><span class="v" id="d_lam">--</span></div>
+<div class="i"><span class="l">Lambda cmd</span><span class="v" id="d_lamc">--</span></div>
 <div class="i"><span class="l">Air/Fuel Ratio</span><span class="v" id="d_afr">--</span></div>
 <div class="i"><span class="l">Temp. liq.</span><span class="v" id="d_cool2">--</span></div>
+<div class="i"><span class="l">Temp. olio</span><span class="v" id="d_oil">--</span></div>
 <div class="i"><span class="l">IAT</span><span class="v" id="d_iat">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Veicolo</div><div class="g">
 <div class="i"><span class="l">Velocit&agrave;</span><span class="v" id="d_spd">--</span></div>
 <div class="i"><span class="l">Farfalla</span><span class="v" id="d_thr">--</span></div>
-<div class="i"><span class="l">Rapporto CVT</span><span class="v" id="d_gear">--</span></div>
+<div class="i"><span class="l">Rapporto cambio</span><span class="v" id="d_gear">--</span></div>
 <div class="i"><span class="l">Acceleraz.</span><span class="v" id="d_acc">--</span></div>
-</div>
 <div class="i"><span class="l">Pedale D</span><span class="v" id="d_pD">--</span></div>
 <div class="i"><span class="l">Pedale E</span><span class="v" id="d_pE">--</span></div>
-</div>
+</div></div>
 <div class="s debug" style="display:none"><div class="st">Consumi</div><div class="g">
 <div class="i"><span class="l">Consumo</span><span class="v" id="d_fl100">--</span></div>
+<div class="i"><span class="l">Portata carb.</span><span class="v" id="d_flh">--</span></div>
 <div class="i"><span class="l">Cons. specifico</span><span class="v" id="d_bsfc">--</span></div>
 <div class="i"><span class="l">Potenza</span><span class="v" id="d_pow">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Turbo</div><div class="g">
 <div class="i"><span class="l">Boost</span><span class="v" id="d_boost2">--</span></div>
+<div class="i"><span class="l">Press. boost</span><span class="v" id="d_bkpa">--</span></div>
 <div class="i"><span class="l">Rapporto compr.</span><span class="v" id="d_pr">--</span></div>
 <div class="i"><span class="l">Eff. intercooler</span><span class="v" id="d_ic">--</span></div>
 <div class="i"><span class="l">Variaz. boost</span><span class="v" id="d_br">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Diagnostica</div><div class="g">
 <div class="i"><span class="l">Batteria</span><span class="v" id="d_volt">--</span></div>
+<div class="i"><span class="l">Motore</span><span class="v" id="d_eng">--</span></div>
 <div class="i"><span class="l">Drift pedale</span><span class="v" id="d_drift">--</span></div>
 <div class="i"><span class="l">Taglio iniezione</span><span class="v" id="d_dfco">--</span></div>
 <div class="i"><span class="l">Eff. volum.</span><span class="v" id="d_ve">--</span></div>
@@ -171,13 +189,13 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="s debug" style="display:none"><div class="st">Contatori</div><div class="g">
 <div class="i"><span class="l">Tempo motore</span><span class="v" id="d_rt">--</span></div>
 <div class="i"><span class="l">Km con MIL</span><span class="v" id="d_km">--</span></div>
-<div class="i"><span class="l">Avviamenti</span><span class="v" id="d_st">--</span></div>
+<div class="i"><span class="l">Riscaldamenti</span><span class="v" id="d_st">--</span></div>
 </div></div>
 <div class="sb">Auto-refresh 500ms</div>
 </div>
 <div class="tabC" id="tcS">
 <div id="scR" class="empty">Carico elenco PID...</div>
-<p class="fnote">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
+<p class="fnote">Elenco dei parametri OBD2 standard (SAE J1979) dichiarati da ogni centralina. Il report completo, con i codici, &egrave; nel Serial monitor.</p>
 </div>
 <div class="tabC" id="tcL">
 <div class="s">
@@ -187,71 +205,104 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </div>
 </div>
 <script>
-var scLoaded=false;
-var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']};
-function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s'&&!scLoaded)loadScan();if(w==='l')logStart();else logStop();}
-function loadScan(){fetch('/scan-data').then(r=>r.json()).then(d=>{var r=document.getElementById('scR');if(!d.ecus||d.ecus.length===0){r.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}var h='';d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';if(e.pids.length===0){h+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}else{h+='<div class="pl">';e.pids.forEach(function(p){h+='<span>'+p+'</span>';});h+='</div>';}h+='</div>';});r.innerHTML=h;scLoaded=true;}).catch(()=>{document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
+var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']},prT=null;
+function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s')loadScan();if(w==='l')logStart();else logStop();}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function list(a,cls){if(!a||a.length===0)return '';var h='<div class="pl'+(cls?' '+cls:'')+'">';a.forEach(function(p){h+='<span>'+esc(p)+'</span>';});return h+'</div>';}
+function loadScan(){fetch('/scan-data').then(function(r){return r.json();}).then(renderScan).catch(function(){document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
+function renderScan(d){var h='',p=d.probe||{};
+if(d.adapter&&!d.adapter.headers)h+='<p class="note w">Adattatore senza header CAN: elenco limitato a una centralina.</p>';
+if(d.engine){h+='<div class="s"><div class="st">Motore</div><p class="note">Coppia '+(d.engine.torque==='ECU'?'letta dalla centralina':'stimata dal modello')+' &middot; Boost '+(d.engine.boost==='ECU'?'letto dalla centralina':'stimato dal modello')+' &middot; Lettura '+(d.engine.multiPid?'multi-PID':'a PID singolo')+(d.engine.refTorque>0?' &middot; Coppia di riferimento '+d.engine.refTorque+' Nm':'')+'</p></div>';}
+if(d.obfcm){var o=d.obfcm;h+='<div class="s"><div class="st">Consumo reale di vita (OBFCM)</div><p class="note">'+(o.km>=0?o.km.toFixed(1)+' km':'km N/D')+' &middot; '+(o.liters>=0?o.liters.toFixed(1)+' L':'litri N/D')+(o.avg>=0?' &middot; media '+o.avg.toFixed(2)+' L/100 km':'')+'</p>'+(o.plausible?'':'<p class="note w">Valori non plausibili: ordine dei campi da verificare sul report Serial.</p>')+'</div>';}
+var run=p.state==='running';
+h+='<div class="s"><div class="st">Scansione approfondita</div><p class="note">Interroga ogni PID Mode 01 e InfoType Mode 09 su tutte le centraline e confronta le risposte con quanto dichiarato (circa 30 s su CAN, 60-80 s su WiFi).</p><p class="note" id="prSt">'+(run?'In corso: '+p.percent+'%':p.state==='done'?'Completata in '+p.seconds+' s':'Non eseguita')+'</p><button class="pbtn" id="prBtn" onclick="probeStart()"'+(run?' disabled':'')+'>Avvia scansione approfondita</button></div>';
+if(!d.ecus||d.ecus.length===0){h+='<p class="empty">Nessuna centralina rilevata.</p>';}
+d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(e.name)+(e.detail?' <span class="ecnt">'+esc(e.detail)+'</span>':'')+'</span><span class="ecnt">'+e.pids.length+' PID'+(e.undoc?' + '+e.undoc+' non documentati':'')+'</span></div>';
+h+=e.pids.length?list(e.pids):'<p class="empty">Nessun PID documentato.</p>';
+if(e.mode09&&e.mode09.length){h+='<div class="lt">Informazioni veicolo (Mode 09)</div>'+list(e.mode09);}
+if(e.probed){if(e.silent&&e.silent.length||e.silentUndoc){h+='<div class="lt">Dichiarati ma senza risposta</div>'+list(e.silent,'miss')+(e.silentUndoc?'<p class="note">+ '+e.silentUndoc+' non documentati</p>':'');}
+if(e.extra&&e.extra.length||e.extra09&&e.extra09.length||e.extraUndoc){h+='<div class="lt">Rispondono senza essere dichiarati</div>'+list(e.extra,'xtra')+list(e.extra09,'xtra')+(e.extraUndoc?'<p class="note">+ '+e.extraUndoc+' non documentati</p>':'');}
+if(!(e.silent&&e.silent.length)&&!e.silentUndoc&&!(e.extra&&e.extra.length)&&!(e.extra09&&e.extra09.length)&&!e.extraUndoc)h+='<p class="note">Scansione approfondita: tutti i PID dichiarati rispondono.</p>';}
+h+='</div>';});
+document.getElementById('scR').innerHTML=h;if(run)probePoll();}
+function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: attendere la fine dello scan iniziale.');if(b)b.disabled=false;return;}probePoll();}).catch(function(){if(b)b.disabled=false;});}
+function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=p.state==='running'?'In corso: '+p.percent+'%':'Completata in '+p.seconds+' s';if(p.state!=='running'){clearInterval(prT);prT=null;loadScan();}}).catch(function(){});},1000);}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
-function u(){fetch('/data').then(r=>r.json()).then(d=>{
+function f(v,n,u){return v===null||v===undefined?'N/D':v.toFixed(n)+(u||'');}
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
+function set(id,t,r,y){var e=document.getElementById(id);e.textContent=t;c(e,r,y);}
+var busy=false;
+function u(){fetch('/data').then(function(r){return r.json();}).then(function(d){
 document.getElementById('dbgTgl').checked=d.debug;
 document.getElementById('dbgWarn').style.display=d.debug?'':'none';
+document.getElementById('busyWarn').style.display=d.busy?'':'none';
+if(busy&&!d.busy&&document.getElementById('tcS').classList.contains('act'))loadScan();busy=d.busy;
 document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
-var s=d.boost>=0?'+':'';
-var el=document.getElementById('d_boost');el.textContent=s+d.boost.toFixed(2);el.className='v'+(d.boost>1.5?' al':'');
-el=document.getElementById('d_cool');el.textContent=d.coolant;el.className='v'+(d.coolant>110?' al':d.coolant>100?' w':'');
-document.getElementById('d_torq').textContent=d.torque;
-el=document.getElementById('d_egr');el.textContent=d.egr+'%('+d.egrErr+')';el.className='v'+(Math.abs(d.egrErr)>10?' al':'');
+var bs=d.boost!==null&&d.boost>=0?'+':'';
+set('d_boost',d.boost===null?'N/D':bs+d.boost.toFixed(2),d.boost>1.5,d.boost>1.3);
+document.getElementById('u_boost').textContent=d.boost===null?'bar':(d.boostSrc==='ECU'?'bar misurato':'bar stimato');
+set('d_cool',d.coolant===null?'N/D':d.coolant,d.coolant>115,d.coolant>110);
+set('d_torq',d.torque===null?'N/D':d.torque,false,false);
+document.getElementById('u_torq').textContent=d.torque===null?'Nm':(d.torqueSrc==='ECU'?'Nm misurata':'Nm stimata');
+set('d_hyb',d.hybBatt===null?'N/D':d.hybBatt,false,false);
 document.getElementById('d_ldr').textContent=d.lightLevel;
 document.getElementById('d_ctr').textContent=d.contrast;
 document.getElementById('d_brm').textContent=d.brightnessMode;
 var sl=document.getElementById('brSld');if(document.activeElement!==sl)sl.value=d.contrast;
-if(d.debug){
-document.getElementById('d_load').textContent=d.load.toFixed(1)+' %';
-document.getElementById('d_rpm').textContent=d.rpm;
-document.getElementById('d_maf').textContent=d.maf.toFixed(1)+' g/s';
-el=document.getElementById('d_rail');el.textContent=d.railBar+' bar';c(el,d.railBar<200||d.railBar>1850,false);
-el=document.getElementById('d_lam');el.textContent=d.lambda.toFixed(3);c(el,d.lambda<0.8,false);
-document.getElementById('d_afr').textContent=d.afr.toFixed(1);
-el=document.getElementById('d_cool2');el.textContent=d.coolant+' \u00B0C';c(el,d.coolant>110,d.coolant>100);
-document.getElementById('d_iat').textContent=d.iat+' \u00B0C';
-document.getElementById('d_spd').textContent=d.speed+' km/h';
-document.getElementById('d_pD').textContent=d.pedalD+' %';
-document.getElementById('d_pE').textContent=d.pedalE+' %';
-document.getElementById('d_thr').textContent=d.throttle+' %';
-document.getElementById('d_gear').textContent=d.gearRatio>0?d.gearRatio.toFixed(2):'N/D';
-document.getElementById('d_acc').textContent=d.accel.toFixed(2)+' m/s\u00B2';
-document.getElementById('d_fl100').textContent=d.fuelL100>0?d.fuelL100.toFixed(1)+' L/100':'N/D';
-el=document.getElementById('d_bsfc');el.textContent=d.bsfc>0?d.bsfc+' g/kWh':'N/D';c(el,d.bsfc>400,false);
-document.getElementById('d_pow').textContent=d.powerKw.toFixed(1)+' kW / '+d.powerCv.toFixed(1)+' CV';
-document.getElementById('d_boost2').textContent=s+d.boost.toFixed(2)+' bar';
-document.getElementById('d_pr').textContent=d.pressureRatio.toFixed(2);
-el=document.getElementById('d_ic');el.textContent=d.intercoolerEff>=0?d.intercoolerEff+' %':'N/D';c(el,d.intercoolerEff>=0&&d.intercoolerEff<40,false);
-document.getElementById('d_br').textContent=d.boostRate.toFixed(2)+' bar/s';
-el=document.getElementById('d_volt');el.textContent=d.volts.toFixed(1)+' V';c(el,d.volts<12.5||d.volts>15,d.volts<13||d.volts>14.5);
-el=document.getElementById('d_drift');el.textContent=d.driftPedal+' %';c(el,d.driftPedal>5,d.driftPedal>=3);
-document.getElementById('d_dfco').textContent=d.dfco?'ATTIVO':'OFF';
-el=document.getElementById('d_ve');el.textContent=d.volEff>=0?d.volEff+' %':'N/D';c(el,d.volEff>=0&&d.volEff<60,false);
-document.getElementById('d_dt').textContent=d.deltaThrottlePedal+' %';
-document.getElementById('d_amb').textContent=d.ambient+' \u00B0C';
-document.getElementById('d_bar').textContent=d.baro+' kPa';
-document.getElementById('d_alt').textContent=d.altitude+' m';
-document.getElementById('d_ad').textContent=d.airDensity.toFixed(3)+' kg/m\u00B3';
-var rt=d.runtime;var h=Math.floor(rt/3600);var m=Math.floor((rt%3600)/60);var sc=rt%60;
-document.getElementById('d_rt').textContent=h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');
-document.getElementById('d_km').textContent=d.kmMil+' km';
-document.getElementById('d_st').textContent=d.starts;
+var g=d.diag;
+if(d.debug&&g){
+var lean=g.lambda!==null&&g.lambda>1.15&&!g.dfco&&!g.engineStopped;
+set('d_load',f(g.load,1,' %'));
+set('d_rpm',f(g.rpm,0,''));
+set('d_maf',f(g.maf,1,' g/s'));
+set('d_rail',f(g.railBar,0,' bar'),g.railBar!==null&&((g.railBar<30&&g.rpm>0)),g.railBar>360);
+set('d_lam',f(g.lambda,3,''),g.lambda!==null&&(g.lambda<0.75||lean));
+set('d_lamc',f(g.lambdaCmd,3,''));
+set('d_afr',f(g.afr,1,''));
+set('d_cool2',f(g.coolant,0,' °C'),g.coolant>115,g.coolant>110);
+set('d_oil',f(g.oilTemp,0,' °C'));
+set('d_iat',f(g.iat,0,' °C'));
+set('d_spd',f(g.speed,0,' km/h'));
+set('d_pD',f(g.pedalD,0,' %'));
+set('d_pE',f(g.pedalE,0,' %'));
+set('d_thr',f(g.throttle,0,' %'));
+set('d_gear',f(g.gearRatio,2,''));
+set('d_acc',f(g.accel,2,' m/s²'));
+set('d_fl100',f(g.fuelL100,1,' L/100'));
+set('d_flh',g.fuelLh===null?'N/D':g.fuelLh.toFixed(2)+' L/h '+(g.fuelSrc==='ECU'?'(ECU)':'(stima)'));
+set('d_bsfc',f(g.bsfc,0,' g/kWh'),g.bsfc>400&&g.load>50);
+set('d_pow',g.powerKw===null?'N/D':g.powerKw.toFixed(1)+' kW / '+(g.powerKw*1.36).toFixed(1)+' CV');
+set('d_boost2',g.boost===null?'N/D':(g.boost>=0?'+':'')+g.boost.toFixed(2)+' bar '+(g.boostSrc==='ECU'?'(ECU)':'(stima)'),g.boost>1.5,g.boost>1.3);
+set('d_bkpa',f(g.boostKpa,1,' kPa'));
+set('d_pr',f(g.pressureRatio,2,''));
+set('d_ic',f(g.intercoolerEff,0,' %'),g.intercoolerEff!==null&&g.intercoolerEff<40);
+set('d_br',f(g.boostRate,2,' bar/s'));
+set('d_volt',f(g.volts,2,' V'),g.volts!==null&&(g.volts<11.8||g.volts>15.3),g.volts!==null&&(g.volts<12.2||g.volts>15.0));
+set('d_eng',g.engineStopped?'FERMO':'ACCESO');
+set('d_drift',f(g.driftPedal,0,' %'),g.driftPedal>5,g.driftPedal>=3);
+set('d_dfco',g.dfco===null?'N/D':g.dfco?'ATTIVO':'OFF');
+set('d_ve',f(g.volEff,0,' %'),g.volEff!==null&&g.volEff<60);
+set('d_dt',f(g.deltaThrottlePedal,0,' %'));
+set('d_amb',f(g.ambient,0,' °C'));
+set('d_bar',f(g.baro,0,' kPa'));
+set('d_alt',f(g.altitude,0,' m'));
+set('d_ad',f(g.airDensity,3,' kg/m³'));
+if(g.runtime===null){set('d_rt','N/D');}else{var rt=g.runtime;var h=Math.floor(rt/3600);var m=Math.floor((rt%3600)/60);var sc=rt%60;set('d_rt',h+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0'));}
+set('d_km',f(g.kmMil,0,' km'));
+set('d_st',f(g.starts,0,''));
 }
 var db=document.getElementById('dtcBox');
-if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+(d.dtc[i].desc||'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
-}).catch(()=>{});}
-function clrDtc(){if(!confirm('Cancellare i codici DTC?\nSi perde lo storico errori e si resettano i monitor di readiness.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(r=>r.json()).then(d=>{alert(d.ok?'DTC cancellati. Re-check in corso.':'Cancellazione fallita.');}).catch(()=>alert('Errore di rete')).finally(()=>{b.disabled=false;b.textContent='CANCELLA';});}
+document.getElementById('milB').style.display=d.mil?'':'none';
+if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+esc(d.dtc[i].ecu)+(d.dtc[i].desc?' &middot; '+esc(d.dtc[i].desc):'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
+}).catch(function(){});}
+function clrDtc(){if(!confirm('Cancellare i codici DTC di tutte le centraline?\nSi perde lo storico errori e si resettano i monitor di readiness.\nIl motore deve essere spento con il quadro acceso.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(function(r){return r.json();}).then(function(d){alert(d.msg);}).catch(function(){alert('Errore di rete');}).finally(function(){b.disabled=false;b.textContent='CANCELLA';});}
 var logSeq=-1,logTimer=null,logErr=0;
 function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,250);}
 function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
 function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
 function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
 function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+if(location.pathname==='/scan')swT('s');
 setInterval(u,500);u();
 </script>
 </body>
@@ -259,558 +310,131 @@ setInterval(u,500);u();
 )rawliteral";
 
 // ============================================================
-// HTML della pagina /scan (PROGMEM) — risultati dello scan multi-ECU
-// ============================================================
-static const char SCAN_HTML[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Scan PID OBD2</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#111;color:#e0e0e0;font-family:'Segoe UI',-apple-system,Arial,sans-serif;padding:12px;max-width:560px;margin:0 auto}
-h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
-.sub{text-align:center;color:#888;font-size:.78em;margin-bottom:14px}
-.sub a{color:#00d4ff;text-decoration:none}
-.ecu{background:#1a1a2e;border-radius:8px;padding:10px 12px;margin-bottom:12px;border:1px solid #222}
-.eh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid #222;padding-bottom:6px;margin-bottom:8px}
-.eid{color:#00d4ff;font-size:.95em;font-weight:600;letter-spacing:1px}
-.ecnt{color:#5588bb;font-size:.78em}
-.pl{display:flex;flex-wrap:wrap;gap:6px}
-.pl span{background:#0f1a30;border:1px solid #1a3060;border-radius:4px;padding:3px 8px;font-size:.78em;color:#cfe6f5}
-.empty{color:#888;font-style:italic;font-size:.85em}
-.note{color:#666;font-size:.72em;text-align:center;margin-top:14px}
-</style>
-</head>
-<body>
-<h1>Scan PID OBD2</h1>
-<p class="sub">PID standard SAE J1979 supportati dagli ECU del veicolo &middot; <a href="/dashboard">Dashboard</a></p>
-<div id="root">Caricamento...</div>
-<p class="note">I PID non documentati nel database SAE sono mostrati come "PID 0xXX".</p>
-<script>
-fetch('/scan-data').then(r=>r.json()).then(d=>{
-	var root=document.getElementById('root');
-	if(!d.ecus||d.ecus.length===0){root.innerHTML='<p class="empty">Nessun ECU rilevato.</p>';return;}
-	var html='';
-	d.ecus.forEach(function(e){
-		html+='<div class="ecu"><div class="eh"><span class="eid">ECU '+e.id+'</span><span class="ecnt">'+e.totalRaw+' PID totali ('+e.pids.length+' documentati)</span></div>';
-		if(e.pids.length===0){html+='<p class="empty">Nessun PID documentato per questo ECU.</p>';}
-		else{html+='<div class="pl">';e.pids.forEach(function(p){html+='<span>'+p+'</span>';});html+='</div>';}
-		html+='</div>';
-	});
-	root.innerHTML=html;
-}).catch(function(){document.getElementById('root').innerHTML='<p class="empty">Errore di rete.</p>';});
-</script>
-</body>
-</html>
-)rawliteral";
-
-// ============================================================
-// Handler /scan-data — JSON con i risultati dello scan multi-ECU
-// Mostra solo descrizioni testuali dei PID (senza indirizzi hex).
+// Handler /data: valori principali e, in debug, istantanea diagnostica
 // ============================================================
 
-#ifdef OBD_CONN_CAN
-struct ECUScanResult;
-extern ECUScanResult ecuResults[];
-extern uint8_t ecuCount;
+/** Accoda al JSON un campo numerico, oppure null quando il valore non è disponibile. */
+static void jsonNumberField(ObdJsonStream &json, PGM_P key, bool ok, float value, uint8_t decimals)
+{
+	json.rawP(PSTR(",\""));
+	json.rawP(key);
+	json.rawP(PSTR("\":"));
+	if (ok)
+		json.printfP(PSTR("%.*f"), (int)decimals, value);
+	else
+		json.rawP(PSTR("null"));
+}
+
+/** Accoda al JSON un campo dell'istantanea diagnostica letto dal PID, null se non letto. */
+static void jsonDiagPid(ObdJsonStream &json, PGM_P key, uint8_t pid, float scale, uint8_t decimals)
+{
+	float value = 0.0f;
+	const bool ok = obdDiagGet(obdDiag, pid, &value);
+	jsonNumberField(json, key, ok, value * scale, decimals);
+}
+
+/** Accoda al JSON l'oggetto "diag" con i PID letti e le grandezze calcolate dell'istantanea. */
+static void jsonDiagnostics(ObdJsonStream &json)
+{
+	const ObdDiagSnapshot &s = obdDiag;
+	float lambda = 0.0f;
+	const bool hLambda = obdDiagGet(s, 0x24, &lambda) || obdDiagGet(s, 0x34, &lambda);
+	json.printfP(PSTR(",\"diag\":{\"engineStopped\":%s"), s.engineStopped ? "true" : "false");
+	jsonDiagPid(json, PSTR("load"), 0x04, 1, 1);
+	jsonDiagPid(json, PSTR("coolant"), 0x05, 1, 0);
+	jsonDiagPid(json, PSTR("oilTemp"), 0x5C, 1, 0);
+	jsonDiagPid(json, PSTR("map"), 0x0B, 1, 0);
+	jsonDiagPid(json, PSTR("boostKpa"), 0x70, 1, 1);
+	jsonDiagPid(json, PSTR("rpm"), 0x0C, 1, 0);
+	jsonDiagPid(json, PSTR("speed"), 0x0D, 1, 0);
+	jsonDiagPid(json, PSTR("iat"), 0x0F, 1, 0);
+	jsonDiagPid(json, PSTR("maf"), 0x10, 1, 1);
+	jsonDiagPid(json, PSTR("railBar"), 0x23, 0.01f, 0);
+	jsonNumberField(json, PSTR("lambda"), hLambda, lambda, 3);
+	jsonDiagPid(json, PSTR("lambdaCmd"), 0x44, 1, 3);
+	jsonNumberField(json, PSTR("o2v"), s.hasO2Voltage, s.o2Voltage, 3);
+	jsonNumberField(json, PSTR("o2ma"), s.hasO2Current, s.o2CurrentMa, 2);
+	jsonDiagPid(json, PSTR("baro"), 0x33, 1, 0);
+	jsonDiagPid(json, PSTR("volts"), 0x42, 1, 2);
+	jsonDiagPid(json, PSTR("ambient"), 0x46, 1, 0);
+	jsonDiagPid(json, PSTR("pedalD"), 0x49, 1, 0);
+	jsonDiagPid(json, PSTR("pedalE"), 0x4A, 1, 0);
+	jsonDiagPid(json, PSTR("throttle"), 0x4C, 1, 0);
+	jsonDiagPid(json, PSTR("runtime"), 0x1F, 1, 0);
+	jsonDiagPid(json, PSTR("kmMil"), 0x21, 1, 0);
+	jsonDiagPid(json, PSTR("starts"), 0x30, 1, 0);
+	jsonNumberField(json, PSTR("boost"), s.boostOk, s.boostBar, 2);
+	json.printfP(PSTR(",\"boostSrc\":\"%s\",\"fuelSrc\":\"%s\""), s.boostMeasured ? "ECU" : "stima",
+				 s.fuelFromEcu ? "ECU" : "stima");
+	jsonNumberField(json, PSTR("torque"), s.torqueOk, (float)s.torqueNm, 0);
+	jsonNumberField(json, PSTR("powerKw"), s.powerOk, s.powerKw, 1);
+	jsonNumberField(json, PSTR("afr"), s.afrOk, s.afr, 1);
+	jsonNumberField(json, PSTR("fuelLh"), s.fuelOk, s.fuelLh, 2);
+	jsonNumberField(json, PSTR("fuelL100"), s.fuelL100Ok, s.fuelL100, 1);
+	jsonNumberField(json, PSTR("bsfc"), s.bsfcOk, (float)s.bsfc, 0);
+	jsonNumberField(json, PSTR("altitude"), s.altitudeOk, (float)s.altitude, 0);
+	jsonNumberField(json, PSTR("airDensity"), s.airDensityOk, s.airDensity, 3);
+	jsonNumberField(json, PSTR("intercoolerEff"), s.intercoolerOk, (float)s.intercoolerEff, 0);
+	jsonNumberField(json, PSTR("pressureRatio"), s.pressureRatioOk, s.pressureRatio, 2);
+	jsonNumberField(json, PSTR("volEff"), s.volEffOk, (float)s.volEff, 0);
+	jsonNumberField(json, PSTR("driftPedal"), s.driftOk, (float)s.driftPedal, 0);
+	jsonNumberField(json, PSTR("deltaThrottlePedal"), s.deltaOk, (float)s.deltaThrottlePedal, 0);
+	jsonNumberField(json, PSTR("gearRatio"), s.gearOk, s.gearRatio, 2);
+	jsonNumberField(json, PSTR("accel"), s.accelOk, s.accel, 2);
+	jsonNumberField(json, PSTR("boostRate"), s.boostRateOk, s.boostRate, 2);
+	if (s.dfcoOk)
+		json.printfP(PSTR(",\"dfco\":%s}"), s.dfco ? "true" : "false");
+	else
+		json.rawP(PSTR(",\"dfco\":null}"));
+}
 
 /**
- * Scrive il JSON dei risultati dello scan multi-ECU su HTTP.
- * Per ogni ECU: id (hex 3 char), totale PID grezzi, elenco descrizioni
- * SAE dei soli PID documentati (i non documentati sono omessi).
- *
- * Layout struct ECUScanResult: { uint16_t ecuId; uint8_t mode01[32];
- *   uint16_t pidCount; }. Per evitare include circolari ridichiariamo
- *   solo l'estensione tramite extern e accediamo via offset memcpy:
- *   in pratica usiamo direttamente i campi tramite forward decl.
- *
- * @since 07/05/26 Mattia Alesi
+ * Risponde a /data con i valori mostrati sul display (sempre, senza interrogare il bus), lo stato DTC
+ * di tutte le centraline e la luminosità; in debug aggiunge l'istantanea diagnostica letta in quel
+ * momento, salvo durante scan e scansione approfondita, quando segnala solo busy.
  */
-static void handleScanData(ESP8266WebServer &server)
-{
-	// Accesso ai campi della struct definita in CANbus_conn.ino.
-	// Per evitare conflitti di include includiamo qui la stessa
-	// struttura come dichiarazione esterna (devono coincidere).
-	struct LocalECUScan
-	{
-		uint16_t ecuId;
-		uint8_t mode01[32];
-		uint16_t pidCount;
-	};
-	LocalECUScan *results = (LocalECUScan *)ecuResults;
-
-	String json = F("{\"ecus\":[");
-	for (uint8_t e = 0; e < ecuCount; e++)
-	{
-		if (e > 0)
-			json += ',';
-		char hdr[48];
-		snprintf(hdr, sizeof(hdr), "{\"id\":\"%03X\",\"totalRaw\":%u,\"pids\":[",
-				 results[e].ecuId & 0xFFF, (unsigned)results[e].pidCount);
-		json += hdr;
-
-		bool firstPid = true;
-		for (int p = 1; p <= 0xFF; p++)
-		{
-			uint8_t byteIdx = (p - 1) / 8;
-			uint8_t bitIdx = 7 - ((p - 1) % 8);
-			if ((results[e].mode01[byteIdx] & (1 << bitIdx)) == 0)
-				continue;
-
-			// Tutti i PID supportati vengono esposti. Se il database SAE
-			// non contiene una sigla, fallback a "PID 0xXX".
-			char buf[40];
-			const char *name = getPIDShortName((uint8_t)p);
-			if (name)
-			{
-				strncpy_P(buf, name, sizeof(buf) - 1);
-				buf[sizeof(buf) - 1] = 0;
-			}
-			else
-			{
-				snprintf(buf, sizeof(buf), "PID 0x%02X", p);
-			}
-
-			if (!firstPid)
-				json += ',';
-			json += '"';
-			json += buf;
-			json += '"';
-			firstPid = false;
-		}
-		json += F("]}");
-	}
-	json += F("]}");
-	server.send(200, "application/json", json);
-}
-#endif
-
-// ============================================================
-// Variabili statiche per derivate (accelerazione, variaz. boost)
-// ============================================================
-static float _prevBoostBar = 0;
-static int _prevSpeedKmh = 0;
-static unsigned long _prevDataMs = 0;
-
-// ============================================================
-// Helper: legge un PID e restituisce true se ok
-// Adattato per WiFi o CAN in base alla define
-// ============================================================
-
-#ifdef OBD_CONN_WIFI
-// WiFi: usa queryOBDPID(pid, dataBytes, maxBytes, &actualBytes)
-static bool _readPid(uint8_t pid, uint8_t *buf, uint8_t maxBytes, uint8_t *actual)
-{
-	return queryOBDPID(pid, buf, maxBytes, actual);
-}
-#endif
-
-#ifdef OBD_CONN_CAN
-// CAN: usa queryPID(pid, data[8], &len) — dati in buf[3..7]
-static uint8_t _canBuf[8];
-static uint8_t _canLen;
-static bool _readPidCan(uint8_t pid)
-{
-	return queryPID(pid, _canBuf, &_canLen);
-}
-#endif
-
-// ============================================================
-// Handler /data — genera JSON con tutti i 47 parametri
-// ============================================================
-
 static void handleData(ESP8266WebServer &server)
 {
-	extern bool debugMode;
+	const bool busy = obdBusy || obdProbeRunning() || engineEcuIndex < 0;
+	if (debugMode && !busy)
+		obdDiagRead();
 
-	// Variabili globali dal round-robin (sempre disponibili, zero query OBD)
-	extern float boostBar;
-	extern int coolantC, torqueNm, egrPct, egrErrPct;
-	extern bool mapAvailable, coolantAvailable, loadAvailable, egrAvailable;
-	extern bool milOn;
-	extern uint8_t dtcCount;
-	extern uint16_t dtcCodes[];
+	ObdJsonStream json;
+	json.begin(server);
+	json.printfP(PSTR("{\"debug\":%s,\"busy\":%s,\"mil\":%s,\"dtcCount\":%u"), debugMode ? "true" : "false",
+				 busy ? "true" : "false", milOn ? "true" : "false", (unsigned)dtcCount);
+	jsonNumberField(json, PSTR("boost"), boostAvailable, boostBar, 2);
+	jsonNumberField(json, PSTR("coolant"), coolantAvailable, (float)coolantC, 0);
+	jsonNumberField(json, PSTR("torque"), torqueAvailable, (float)torqueNm, 0);
+	jsonNumberField(json, PSTR("hybBatt"), hybBattAvailable, (float)hybBattPct, 0);
+	json.printfP(PSTR(",\"boostSrc\":\"%s\",\"torqueSrc\":\"%s\""), boostMeasured ? "ECU" : "stima",
+				 torqueMeasured ? "ECU" : "stima");
+	const char *brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
+																		 : "fading";
+	json.printfP(PSTR(",\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\""), (int)br.ldrEma,
+				 br.currentContrast, brm);
 
-	if (!debugMode)
-	{
-		// --- JSON ridotto: solo 4 valori principali + DTC ---
-		char json[384];
-		int p = 0;
-		int bc = (int)(boostBar * 100.0f);
-		const char *brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
-																			 : "fading";
-		p += snprintf(json + p, sizeof(json) - p,
-					  "{\"boost\":%.2f,\"coolant\":%d,\"torque\":%d,"
-					  "\"egr\":%d,\"egrErr\":%d,\"mil\":%s,\"dtcCount\":%d,"
-					  "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\","
-					  "\"debug\":false,\"dtc\":[",
-					  boostBar, coolantC, torqueNm,
-					  egrPct, egrErrPct, milOn ? "true" : "false", (int)dtcCount,
-					  (int)br.ldrEma, br.currentContrast, brm);
-		for (int i = 0; i < dtcCount && i < 6; i++)
-		{
-			char code[6];
-			decodeDTC(dtcCodes[i], code);
-			const char *desc = getDTCDescription(dtcCodes[i]);
-			char descBuf[22] = "";
-			if (desc)
-			{
-				strncpy_P(descBuf, desc, 21);
-				descBuf[21] = 0;
-			}
-			p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
-						  i > 0 ? "," : "", code, descBuf);
-		}
-		p += snprintf(json + p, sizeof(json) - p, "]}");
-		server.send(200, "application/json", json);
-		return;
-	}
-
-	// --- JSON completo: legge TUTTI i PID internamente ---
-	uint8_t d[4];
-	uint8_t n;
-
-	float loadPct = 0, mapKpa = 0, baroKpa = 0, mafGs = 0, lambdaVal = 1.0f;
-	float iatC = 0, ambC = 0, coolC = 0, voltsV = 0, o2v = 0;
-	int rpm = 0, speedKmh = 0, pedalD = 0, pedalE = 0, throttle = 0;
-	int egrCmd = 0, egrErr = 0, railBar = 0;
-	unsigned long runtimeS = 0;
-	int kmMil = 0, starts = 0;
-	bool mil = false;
-	int dtcN = 0;
-
-	bool hLoad = 0, hMap = 0, hBaro = 0, hMaf = 0, hLam = 0, hIat = 0, hAmb = 0, hCool = 0;
-	bool hRpm = 0, hSpd = 0, hPD = 0, hPE = 0, hThr = 0, hEgr = 0, hEgrE = 0, hRail = 0, hV = 0, hRt = 0;
-
-	// ---- Lettura PID ----
-#ifdef OBD_CONN_WIFI
-	if (_readPid(0x04, d, 1, &n) && n >= 1)
-	{
-		loadPct = ((float)d[0] * 100.0f) / 255.0f;
-		hLoad = 1;
-	}
-	if (_readPid(0x05, d, 1, &n) && n >= 1)
-	{
-		coolC = (float)d[0] - 40.0f;
-		hCool = 1;
-	}
-	if (_readPid(0x0B, d, 1, &n) && n >= 1)
-	{
-		mapKpa = (float)d[0];
-		hMap = 1;
-	}
-	if (_readPid(0x0C, d, 2, &n) && n >= 2)
-	{
-		rpm = ((d[0] << 8) | d[1]) / 4;
-		hRpm = 1;
-	}
-	if (_readPid(0x0D, d, 1, &n) && n >= 1)
-	{
-		speedKmh = d[0];
-		hSpd = 1;
-	}
-	if (_readPid(0x0F, d, 1, &n) && n >= 1)
-	{
-		iatC = (float)d[0] - 40.0f;
-		hIat = 1;
-	}
-	if (_readPid(0x10, d, 2, &n) && n >= 2)
-	{
-		mafGs = ((float)((d[0] << 8) | d[1])) / 100.0f;
-		hMaf = 1;
-	}
-	if (_readPid(0x23, d, 2, &n) && n >= 2)
-	{
-		railBar = ((d[0] << 8) | d[1]) * 10 / 100;
-		hRail = 1;
-	}
-	if (_readPid(0x24, d, 4, &n) && n >= 2)
-	{
-		lambdaVal = ((float)((d[0] << 8) | d[1])) / 32768.0f;
-		hLam = 1;
-		if (n >= 4)
-			o2v = ((float)((d[2] << 8) | d[3])) / 8192.0f;
-	}
-	if (_readPid(0x2C, d, 1, &n) && n >= 1)
-	{
-		egrCmd = ((int)d[0] * 100) / 255;
-		hEgr = 1;
-	}
-	if (_readPid(0x2D, d, 1, &n) && n >= 1)
-	{
-		egrErr = ((int)d[0] - 128) * 100 / 128;
-		hEgrE = 1;
-	}
-	if (_readPid(0x33, d, 1, &n) && n >= 1)
-	{
-		baroKpa = (float)d[0];
-		hBaro = 1;
-	}
-	if (_readPid(0x42, d, 2, &n) && n >= 2)
-	{
-		voltsV = ((float)((d[0] << 8) | d[1])) / 1000.0f;
-		hV = 1;
-	}
-	if (_readPid(0x46, d, 1, &n) && n >= 1)
-	{
-		ambC = (float)d[0] - 40.0f;
-		hAmb = 1;
-	}
-	if (_readPid(0x49, d, 1, &n) && n >= 1)
-	{
-		pedalD = ((int)d[0] * 100) / 255;
-		hPD = 1;
-	}
-	if (_readPid(0x4A, d, 1, &n) && n >= 1)
-	{
-		pedalE = ((int)d[0] * 100) / 255;
-		hPE = 1;
-	}
-	if (_readPid(0x4C, d, 1, &n) && n >= 1)
-	{
-		throttle = ((int)d[0] * 100) / 255;
-		hThr = 1;
-	}
-	if (_readPid(0x01, d, 4, &n) && n >= 1)
-	{
-		mil = (d[0] & 0x80) != 0;
-		dtcN = d[0] & 0x7F;
-	}
-	if (_readPid(0x1F, d, 2, &n) && n >= 2)
-	{
-		runtimeS = (d[0] << 8) | d[1];
-		hRt = 1;
-	}
-	if (_readPid(0x21, d, 2, &n) && n >= 2)
-	{
-		kmMil = (d[0] << 8) | d[1];
-	}
-	if (_readPid(0x30, d, 1, &n) && n >= 1)
-	{
-		starts = d[0];
-	}
-#endif
-
-#ifdef OBD_CONN_CAN
-	if (_readPidCan(0x04))
-	{
-		loadPct = ((float)_canBuf[3] * 100.0f) / 255.0f;
-		hLoad = 1;
-	}
-	if (_readPidCan(0x05))
-	{
-		coolC = (float)_canBuf[3] - 40.0f;
-		hCool = 1;
-	}
-	if (_readPidCan(0x0B))
-	{
-		mapKpa = (float)_canBuf[3];
-		hMap = 1;
-	}
-	if (_readPidCan(0x0C))
-	{
-		rpm = ((_canBuf[3] << 8) | _canBuf[4]) / 4;
-		hRpm = 1;
-	}
-	if (_readPidCan(0x0D))
-	{
-		speedKmh = _canBuf[3];
-		hSpd = 1;
-	}
-	if (_readPidCan(0x0F))
-	{
-		iatC = (float)_canBuf[3] - 40.0f;
-		hIat = 1;
-	}
-	if (_readPidCan(0x10))
-	{
-		mafGs = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 100.0f;
-		hMaf = 1;
-	}
-	if (_readPidCan(0x23))
-	{
-		railBar = ((_canBuf[3] << 8) | _canBuf[4]) * 10 / 100;
-		hRail = 1;
-	}
-	if (_readPidCan(0x24))
-	{
-		lambdaVal = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 32768.0f;
-		hLam = 1;
-		o2v = ((float)((_canBuf[5] << 8) | _canBuf[6])) / 8192.0f;
-	}
-	if (_readPidCan(0x2C))
-	{
-		egrCmd = ((int)_canBuf[3] * 100) / 255;
-		hEgr = 1;
-	}
-	if (_readPidCan(0x2D))
-	{
-		egrErr = ((int)_canBuf[3] - 128) * 100 / 128;
-		hEgrE = 1;
-	}
-	if (_readPidCan(0x33))
-	{
-		baroKpa = (float)_canBuf[3];
-		hBaro = 1;
-	}
-	if (_readPidCan(0x42))
-	{
-		voltsV = ((float)((_canBuf[3] << 8) | _canBuf[4])) / 1000.0f;
-		hV = 1;
-	}
-	if (_readPidCan(0x46))
-	{
-		ambC = (float)_canBuf[3] - 40.0f;
-		hAmb = 1;
-	}
-	if (_readPidCan(0x49))
-	{
-		pedalD = ((int)_canBuf[3] * 100) / 255;
-		hPD = 1;
-	}
-	if (_readPidCan(0x4A))
-	{
-		pedalE = ((int)_canBuf[3] * 100) / 255;
-		hPE = 1;
-	}
-	if (_readPidCan(0x4C))
-	{
-		throttle = ((int)_canBuf[3] * 100) / 255;
-		hThr = 1;
-	}
-	if (_readPidCan(0x01))
-	{
-		mil = (_canBuf[3] & 0x80) != 0;
-		dtcN = _canBuf[3] & 0x7F;
-	}
-	if (_readPidCan(0x1F))
-	{
-		runtimeS = (_canBuf[3] << 8) | _canBuf[4];
-		hRt = 1;
-	}
-	if (_readPidCan(0x21))
-	{
-		kmMil = (_canBuf[3] << 8) | _canBuf[4];
-	}
-	if (_readPidCan(0x30))
-	{
-		starts = _canBuf[3];
-	}
-#endif
-
-	// ---- Calcoli derivati ----
-	float boost = (hMap && hBaro) ? (mapKpa - baroKpa) / 100.0f : 0;
-	int torque = hLoad ? (int)Audi27TDI140kW::Torque::estimateEngineTorqueNm(
-							 loadPct, (float)rpm, mafGs, mapKpa, iatC,
-							 hRail ? (float)railBar * 100.0f : NAN,
-							 hV ? voltsV : NAN,
-							 hBaro ? baroKpa : NAN, false)
-					   : 0;
-	float powerKw = (hLoad && hRpm && rpm > 0) ? (float)torque * (float)rpm / 9549.0f : 0;
-	float powerCv = powerKw * 1.36f;
-	float afr = hLam ? lambdaVal * 14.5f : 0;
-	float lam = (hLam && lambdaVal > 0.5f) ? lambdaVal : 1.0f;
-	float fuelGs = hMaf ? mafGs / (14.5f * lam) : 0;
-	float fuelLh = hMaf ? (fuelGs * 3600.0f) / 835.0f : 0;
-	float fuelL100 = (hMaf && hSpd && speedKmh > 3) ? (fuelLh / (float)speedKmh) * 100.0f : 0;
-	int altitude = (hBaro && baroKpa > 0) ? (int)(44330.0f * (1.0f - pow(baroKpa / 101.325f, 0.1903f))) : 0;
-	float airDens = (hMap && hIat) ? (mapKpa * 1000.0f) / (287.058f * (iatC + 273.15f)) : 0;
-	float pr = (hMap && hBaro && baroKpa > 0) ? mapKpa / baroKpa : 0;
-	int volEff = (hMaf && hRpm && hMap && hIat && rpm > 0 && airDens > 0) ? (int)((mafGs * 120.0f) / (2.698f * (float)rpm * airDens / 1000.0f)) : -1;
-	int driftPedal = (hPD && hPE) ? abs(pedalD - pedalE) : 0;
-	int deltaTP = (hThr && hPD) ? throttle - pedalD : 0;
-	bool dfco = hLoad && (loadPct < 1.0f);
-	float gearRatio = (hRpm && hSpd && speedKmh > 5 && rpm > 0) ? (float)rpm / ((float)speedKmh * 7.9f) : 0;
-	int bsfc = (powerKw > 1.0f && hMaf) ? (int)((fuelGs * 3600.0f) / powerKw) : 0;
-
-	// Intercooler
-	int icEff = -1;
-	if (hMap && hBaro && hIat && hAmb && mapKpa > baroKpa)
-	{
-		float tTeor = (ambC + 273.15f) * pow(mapKpa / baroKpa, 0.286f) - 273.15f;
-		float den = tTeor - ambC;
-		if (den > 1.0f)
-			icEff = (int)(((tTeor - iatC) / den) * 100.0f);
-	}
-
-	// Accelerazione e variazione boost
-	unsigned long nowMs = millis();
-	float accel = 0, boostRate = 0;
-	if (_prevDataMs > 0)
-	{
-		float dt = (float)(nowMs - _prevDataMs) / 1000.0f;
-		if (dt > 0.05f)
-		{
-			accel = ((float)(speedKmh - _prevSpeedKmh) / 3.6f) / dt;
-			boostRate = (boost - _prevBoostBar) / dt;
-		}
-	}
-	_prevSpeedKmh = speedKmh;
-	_prevBoostBar = boost;
-	_prevDataMs = nowMs;
-
-	// ---- Genera JSON ----
-	// Uso snprintf a blocchi per limitare l'uso di RAM
-	char json[768];
-	int p = 0;
-	p += snprintf(json + p, sizeof(json) - p,
-				  "{\"load\":%.1f,\"coolant\":%d,\"map\":%d,\"rpm\":%d,\"speed\":%d,"
-				  "\"iat\":%d,\"maf\":%.1f,\"railBar\":%d,\"lambda\":%.3f,\"o2v\":%.3f,"
-				  "\"egr\":%d,\"egrErr\":%d,\"baro\":%d,\"volts\":%.1f,"
-				  "\"ambient\":%d,\"pedalD\":%d,\"pedalE\":%d,\"throttle\":%d,",
-				  loadPct, (int)coolC, (int)mapKpa, rpm, speedKmh,
-				  (int)iatC, mafGs, railBar, lambdaVal, o2v,
-				  egrCmd, egrErr, (int)baroKpa, voltsV,
-				  (int)ambC, pedalD, pedalE, throttle);
-
-	p += snprintf(json + p, sizeof(json) - p,
-				  "\"mil\":%s,\"dtcCount\":%d,\"runtime\":%lu,"
-				  "\"kmMil\":%d,\"starts\":%d,"
-				  "\"boost\":%.2f,\"torque\":%d,\"powerKw\":%.1f,\"powerCv\":%.1f,"
-				  "\"afr\":%.1f,\"fuelL100\":%.1f,\"altitude\":%d,",
-				  mil ? "true" : "false", dtcN, runtimeS,
-				  kmMil, starts,
-				  boost, torque, powerKw, powerCv,
-				  afr, fuelL100, altitude);
-
-	p += snprintf(json + p, sizeof(json) - p,
-				  "\"airDensity\":%.3f,\"intercoolerEff\":%d,\"pressureRatio\":%.2f,"
-				  "\"volEff\":%d,\"driftPedal\":%d,"
-				  "\"deltaThrottlePedal\":%d,\"dfco\":%s,\"gearRatio\":%.2f,"
-				  "\"accel\":%.2f,\"boostRate\":%.2f,"
-				  "\"bsfc\":%d,",
-				  airDens, icEff, pr,
-				  volEff, driftPedal,
-				  deltaTP, dfco ? "true" : "false", gearRatio,
-				  accel, boostRate,
-				  bsfc);
-
-	// Brightness state + DTC array
-	const char *brmDbg = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
-																			: "fading";
-	p += snprintf(json + p, sizeof(json) - p,
-				  "\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\",\"debug\":true,\"dtc\":[",
-				  (int)br.ldrEma, br.currentContrast, brmDbg);
-	for (int i = 0; i < dtcCount && i < 6; i++)
+	json.rawP(PSTR(",\"dtc\":["));
+	for (uint8_t i = 0; i < dtcCount; i++)
 	{
 		char code[6];
+		char owner[24];
 		decodeDTC(dtcCodes[i], code);
+		obdEcuDisplayName(dtcEcuIndex[i], owner, sizeof(owner));
+		if (i > 0)
+			json.put(',');
+		json.printfP(PSTR("{\"code\":\"%s\",\"ecu\":"), code);
+		json.string(owner, false);
+		json.rawP(PSTR(",\"desc\":"));
 		const char *desc = getDTCDescription(dtcCodes[i]);
-		char descBuf[22] = "";
-		if (desc)
-		{
-			strncpy_P(descBuf, desc, 21);
-			descBuf[21] = 0;
-		}
-		p += snprintf(json + p, sizeof(json) - p, "%s{\"code\":\"%s\",\"desc\":\"%s\"}",
-					  i > 0 ? "," : "", code, descBuf);
+		json.string(desc ? desc : PSTR(""), true);
+		json.put('}');
 	}
-	p += snprintf(json + p, sizeof(json) - p, "]}");
-
-	server.send(200, "application/json", json);
+	json.put(']');
+	if (debugMode && !busy && obdDiagValid)
+		jsonDiagnostics(json);
+	json.put('}');
+	json.end();
 }
 
 // ============================================================
@@ -818,19 +442,36 @@ static void handleData(ESP8266WebServer &server)
 // ============================================================
 
 /**
- * Registra gli endpoint /dashboard, /data, /debug, /brightness, /clear-dtc sul web server HTTP.
+ * Registra gli endpoint /dashboard, /scan, /data, /scan-data, /probe, /probe-status, /serial-data,
+ * /debug, /brightness e /clear-dtc sul web server HTTP.
  * Chiamare dopo httpUpdater.setup() e prima di httpServer.begin().
  *
  * @param server riferimento al web server ESP8266
  * @see WIFI_conn.ino, CANbus_conn.ino — setup()
- * @since 01/04/26 Mattia Alesi
  */
 void setupWebDashboard(ESP8266WebServer &server)
 {
 	server.on("/dashboard", HTTP_GET, [&server]()
 			  { server.send_P(200, "text/html", DASHBOARD_HTML); });
+	// La pagina scan è la dashboard aperta sulla tab "PID supportati"
+	server.on("/scan", HTTP_GET, [&server]()
+			  { server.send_P(200, "text/html", DASHBOARD_HTML); });
 	server.on("/data", HTTP_GET, [&server]()
 			  { handleData(server); });
+	server.on("/scan-data", HTTP_GET, [&server]()
+			  { obdHandleScanData(server); });
+	server.on("/probe-status", HTTP_GET, [&server]()
+			  { obdHandleProbeStatus(server); });
+	// Avvio della scansione approfondita: l'handler imposta solo lo stato, il bus lo interroga il loop
+	server.on("/probe", HTTP_GET, [&server]()
+			  {
+		bool started = server.hasArg("start") && obdProbeStart();
+		ObdJsonStream json;
+		json.begin(server);
+		json.printfP(PSTR("{\"started\":%s,\"status\":"), started ? "true" : "false");
+		obdJsonProbeStatus(json);
+		json.put('}');
+		json.end(); });
 	// Serial monitor live: ritorna i byte da ?since=N (cursor del client)
 	// fino al piu' recente disponibile nel buffer circolare di WebSerial.
 	// Usa text/plain con header X-Seq (nuovo cursor) e X-Dropped (1 se il
@@ -863,19 +504,9 @@ void setupWebDashboard(ESP8266WebServer &server)
 		body.reserve(n);
 		for (size_t i = 0; i < n; i++) body += (char)chunk[i];
 		server.send(200, "text/plain", body); });
-// Pagina e dati scan multi-ECU (solo build CAN: gli ECU multipli sono
-// raggiungibili solo via bus CAN diretto, non tramite ELM/WiFi)
-#ifdef OBD_CONN_CAN
-	server.on("/scan", HTTP_GET, [&server]()
-			  { server.send_P(200, "text/html", SCAN_HTML); });
-	server.on("/scan-data", HTTP_GET, [&server]()
-			  { handleScanData(server); });
-#endif
 	// Toggle diagnostica seriale: /debug?on, /debug?off, /debug (stato)
-	extern bool debugMode;
 	server.on("/debug", HTTP_GET, [&server]()
 			  {
-		extern bool debugMode;
 		if (server.hasArg("on")) { debugMode = true; }
 		else if (server.hasArg("off")) { debugMode = false; }
 		char json[20];
@@ -903,25 +534,23 @@ void setupWebDashboard(ESP8266WebServer &server)
 			"{\"ldr\":%d,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
 			(int)br.ldrEma, br.currentContrast, m, br.ldrAtOverride);
 		server.send(200, "application/json", j); });
-	// Cancellazione DTC (OBD2 Mode 04). Implementata in CANbus_conn.ino o WIFI_conn.ino.
+	// Cancellazione DTC di tutte le centraline (OBD2 Mode 04, obd_live.h), rifiutata durante le scansioni
 	server.on("/clear-dtc", HTTP_GET, [&server]()
 			  {
+		char message[64];
 		bool ok = false;
-#ifdef OBD_CONN_CAN
-			extern bool clearDTCsViaCAN();
-			ok = clearDTCsViaCAN();
-#endif
-#ifdef OBD_CONN_WIFI
-			extern bool clearDTCsViaELM();
-			ok = clearDTCsViaELM();
-#endif
-		if (ok) {
-			extern unsigned long lastDtcCheck;
-			lastDtcCheck = 0;  // forza re-check immediato al prossimo monitor cycle
+		if (obdBusy || obdProbeRunning() || engineEcuIndex < 0) {
+			snprintf_P(message, sizeof(message), PSTR("Scansione in corso, riprovare più tardi"));
+		} else {
+			uint8_t result = obdLiveClearDtcs(message, sizeof(message));
+			ok = result == OBD_CLEAR_OK || result == OBD_CLEAR_PARTIAL;
 		}
-		char json[24];
-		snprintf(json, sizeof(json), "{\"ok\":%s}", ok ? "true" : "false");
-		server.send(200, "application/json", json); });
+		ObdJsonStream json;
+		json.begin(server);
+		json.printfP(PSTR("{\"ok\":%s,\"msg\":"), ok ? "true" : "false");
+		json.string(message, false);
+		json.put('}');
+		json.end(); });
 }
 
 #endif

@@ -1,12 +1,12 @@
-- [Hardware setup](project_hardware.md) — ESP-01 vs D1 Mini, vincoli pin/flash, scelte cablaggio
-- [Veicolo target](project_vehicle.md) — Audi A5 B8 2.7 TDI CGKA Multitronic: bus CAN 11-bit 500 kbps, quali ECU rispondono (solo 0x7E8), 28 PID supportati e quelli assenti con i fallback, parametri specifici motore
-- [Limitazioni OBD2 VAG](project_obd2_vag.md) — perché molti PID standard non sono supportati su questa auto
-- [Architettura sketch](project_architecture.md) — round-robin slot, helper header-only, web endpoint
-- [Decisioni di scope](project_scope_obd2.md) — esclusi UDS, Mode 06/08/09 e la lettura live multi-ECU; easy wins futuri in ordine: Mode 07, 0A, 02
-- [Stato dello scan multi-ECU](project_scan_state.md) — discovery implementata (executeScanMode, ecuResults, pagina /scan); il monitor live resta single-ECU su 0x7E8, attendere il report reale dell'utente prima di promuovere PID
-- [Helper non modificabili](feedback_helpers_readonly.md) — TorqueModel.h e BoostModel.h sono forniti dall'utente
-- [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md) — niente dati grezzi opachi o che richiedano reverse engineering, niente indirizzi hex in dashboard
-- [Non configurare la macchina di sviluppo](feedback_no_machine_config.md) — niente install/config di tool sulla workstation, build manuale a carico dell'utente
-- [Endpoint e credenziali](reference_endpoints.md) — URL dashboard, OTA, WiFi ELM327
-- [Riferimenti documentali OBD2](reference_obd2_docs.md) — README §5, pid_descriptions.h, DOCS/supported_pid_WIFI per la verità su PID/Mode
-- [Come si compila su pc-030](reference_build.md) — build.ps1 di verifica (nessun binario esportato), board e opzioni ESP8266, il -I per gli header condivisi, core esp8266 3.1.2 filtrato installato in C:\tmp\arduino, librerie mcp_can/U8g2 mancanti, include del Mac reso portabile
+- [Hardware setup](project_hardware.md): ESP-01 vs D1 Mini, vincoli pin/flash, scelte cablaggio
+- [Veicolo target](project_vehicle.md): Audi A5 F5 B9.5 40 TFSI DMSA MHEV 12 V, S tronic 0CK: dati motore/cambio, centraline e PID osservati sulle B9 (OBDb), limiti del mild hybrid
+- [Limitazioni OBD2 VAG](project_obd2_vag.md): cosa la B9.5 espone via OBD standard e cosa resta solo UDS; nessun UDS proprietario per scelta dell'utente
+- [Architettura sketch](project_architecture.md): header condivisi obd_proto/obd_scan/obd_live, trasporto obdTransact per sketch, lettura multi-PID, OLED e endpoint web
+- [Decisioni di scope](project_scope_obd2.md): in ambito Mode 01/03/04/09 (OBFCM, nome ECU); esclusi UDS, Mode 06/08 e la lettura live di altre centraline; easy wins Mode 07, 0A, 02
+- [Stato della discovery OBD](project_scan_state.md): discovery multi-centralina e scansione approfondita da web; attendere il report reale dall'auto, e riproporre la domanda su TorqueModel se manca 0x62
+- [Helper non modificabili](feedback_helpers_readonly.md): TorqueModel.h e BoostModel.h sono forniti dall'utente
+- [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md): niente dati grezzi opachi o che richiedano reverse engineering, niente indirizzi hex in dashboard
+- [Non configurare la macchina di sviluppo](feedback_no_machine_config.md): niente install/config di tool sulla workstation, build manuale a carico dell'utente
+- [Endpoint e credenziali](reference_endpoints.md): SoftAP, endpoint web, impostazioni ELM327 (ATH1, ATSH), file DOCS e anteprime
+- [Riferimenti documentali OBD2](reference_obd2_docs.md): README §5, obd_proto.h, pid_descriptions.h, dump DOCS per la verità su PID/Mode
+- [Come si compila su pc-030](reference_build.md): build.ps1 di verifica, board e opzioni ESP8266, il -I per gli header condivisi, core 3.1.2 in C:\tmp\arduino, librerie mancanti e verifica con librerie stub

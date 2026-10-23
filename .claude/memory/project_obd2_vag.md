@@ -1,20 +1,19 @@
 ---
 name: Limitazioni OBD2 VAG
-description: Perché molti PID standard non sono supportati e quali alternative usare per Audi/VW
-type: project
+description: Cosa VAG espone via OBD2 standard sulla B9.5 e cosa resta solo UDS; scelte dell'utente sui protocolli proprietari
+metadata:
+  type: project
 ---
 
-VAG (Volkswagen Audi Group) limita intenzionalmente i PID OBD2 standard al solo set richiesto per emissioni. Tutto il resto è accessibile solo via protocolli proprietari (KWP2000/UDS) con tool VCDS o OBDeleven.
+VAG espone via OBD2 standard solo i PID Mode 01 legati alle emissioni; tutto il resto passa da UDS con label file VCDS/ODIS.
+Sulla B9.5 il set standard del motore è però ampio (coppia `62`/`63`/`8E`, boost `70`, olio `5C`, portata carburante `5E`,
+livello `2F`, contachilometri `A6`), mentre restano solo UDS: marcia (`22 210F` su `0x7E1`), batteria e BAS del mild hybrid,
+temperature e adattamenti del cambio S tronic.
 
-**Conseguenze pratiche per questo progetto:**
-- Niente PID standard per: oil temp, torque diretto, fuel level, transmission temp, gear position
-- I sensori climatronic, sensori parcheggio, posizioni finestrini ecc. sono su CAN comfort separato → non accessibili da OBD2 standard
-- Per accedere serve hardware aggiuntivo (gateway K-line) o software che parla UDS sui CAN proprietari
+**Mode 03 su CAN:** la risposta ha il byte di conteggio dopo `0x43` (ISO 15765-4); multi-frame con flow control all'ID fisico
+della centralina (risposta − 8).
 
-**Mode 03 (DTC):** funziona normalmente, supporta single-frame fino a 3 DTC. Per multi-frame serve flow control ISO-TP (gia' implementato in CANbus_conn.ino). ELM327 gestisce ISO-TP automaticamente.
+**Scelta dell'utente:** nessuna comunicazione UDS proprietaria o sul CAN comfort; si usano solo PID e InfoType standard SAE.
 
-**Conferma diretta dall'utente:** non vuole introdurre comunicazione su CAN comfort/UDS proprietario, accetta i limiti dei 28 PID standard supportati.
-
-**Why:** L'utente ha gia' verificato cosa risponde la sua ECU (vedi DOCS/serial_output.txt). Le limitazioni sono note e accettate.
-
-**How to apply:** Quando viene chiesto "perche' non posso leggere X?" la risposta è quasi sempre "VAG non lo espone via OBD2 standard, serve VCDS/OBDeleven". Non proporre soluzioni che richiedano UDS proprietario o gateway K-line.
+**How to apply:** a "perchè non posso leggere X?" la risposta è quasi sempre "solo UDS, serve VCDS/OBDeleven"; non proporre
+soluzioni UDS proprietarie. Vedi [[project_scope_obd2]] e [[project_vehicle]].

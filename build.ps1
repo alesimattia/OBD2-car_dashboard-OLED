@@ -9,13 +9,12 @@
     Uso:
       .\build.ps1                      compila CANbus_conn
       .\build.ps1 -Sketch WIFI_conn    compila l'altro sketch principale
-      .\build.ps1 -Sketch can_sniffer  compila uno dei tool
       .\build.ps1 -Clean               ricompila tutto da zero
       .\build.ps1 -Dettagli            output completo del compilatore
       .\build.ps1 -Avvisi              con tutti i warning del compilatore attivi
 #>
 param(
-    [ValidateSet('CANbus_conn', 'WIFI_conn', 'can_sniffer', 'canbox_sniffer')]
+    [ValidateSet('CANbus_conn', 'WIFI_conn')]
     [string] $Sketch = 'CANbus_conn',
     [switch] $Clean,
     [switch] $Dettagli,
@@ -41,10 +40,8 @@ $FlagExtra = "build.extra_flags=-I$Progetto"
 # Ogni sketch sta in una cartella che si chiama gia' come il suo .ino, quindi
 # qui non serve nessuna junction
 $Cartelle = @{
-    'CANbus_conn'    = "$Progetto\CANbus_conn"
-    'WIFI_conn'      = "$Progetto\WIFI_conn"
-    'can_sniffer'    = "$Progetto\tools\can_sniffer"
-    'canbox_sniffer' = "$Progetto\tools\canbox_sniffer"
+    'CANbus_conn' = "$Progetto\CANbus_conn"
+    'WIFI_conn'   = "$Progetto\WIFI_conn"
 }
 $CartellaSketch = $Cartelle[$Sketch]
 # Senza --build-path arduino-cli metterebbe gli intermedi nella build cache su C:
@@ -53,10 +50,8 @@ $BuildDir = "A:\tmp\arduino-build\$Sketch"
 # Librerie di terze parti che ogni sketch include, anche attraverso gli header
 # condivisi: light_sensor.h porta U8g2lib.h nei due sketch principali
 $LibrerieRichieste = @{
-    'CANbus_conn'    = @('mcp_can', 'U8g2')
-    'WIFI_conn'      = @('U8g2')
-    'can_sniffer'    = @('mcp_can')
-    'canbox_sniffer' = @()
+    'CANbus_conn' = @('mcp_can', 'U8g2')
+    'WIFI_conn'   = @('U8g2')
 }
 
 if (-not (Test-Path $Cli)) {

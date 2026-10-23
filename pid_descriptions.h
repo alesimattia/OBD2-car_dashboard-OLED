@@ -6,7 +6,7 @@
  *
  * Le stringhe sono salvate in PROGMEM per non occupare la SRAM.
  *
- * Usato da: CANbus_conn.ino (printScanReportSerial), web_dashboard.h (handleScanData).
+ * Usato da: obd_scan.h (report e JSON dello scan), web_dashboard.h.
  */
 
 #ifndef PID_DESCRIPTIONS_H
@@ -59,7 +59,7 @@ static const char PD_S_1F[] PROGMEM = "Tempo motore dall'avviamento";
 static const char PD_S_20[] PROGMEM = "PID supportati 21-40";
 static const char PD_S_21[] PROGMEM = "Distanza percorsa con MIL accesa";
 static const char PD_S_22[] PROGMEM = "Pressione rail (relativa al collettore)";
-static const char PD_S_23[] PROGMEM = "Pressione rail (diesel/iniezione diretta)";
+static const char PD_S_23[] PROGMEM = "Pressione rail (iniezione diretta)";
 static const char PD_S_24[] PROGMEM = "Sonda lambda 1 - rapporto aria/carburante + tensione";
 static const char PD_S_25[] PROGMEM = "Sonda lambda 2 - rapporto aria/carburante + tensione";
 static const char PD_S_26[] PROGMEM = "Sonda lambda 3 - rapporto aria/carburante + tensione";
@@ -92,7 +92,7 @@ static const char PD_S_40[] PROGMEM = "PID supportati 41-60";
 static const char PD_S_41[] PROGMEM = "Stato monitor del drive cycle corrente";
 static const char PD_S_42[] PROGMEM = "Tensione modulo di controllo (batteria)";
 static const char PD_S_43[] PROGMEM = "Carico assoluto";
-static const char PD_S_44[] PROGMEM = "Rapporto stechiometrico comandato";
+static const char PD_S_44[] PROGMEM = "Lambda comandata (rapporto di equivalenza)";
 static const char PD_S_45[] PROGMEM = "Posizione relativa farfalla";
 static const char PD_S_46[] PROGMEM = "Temperatura aria ambiente";
 static const char PD_S_47[] PROGMEM = "Posizione assoluta farfalla B";
@@ -115,7 +115,7 @@ static const char PD_S_57[] PROGMEM = "Trim sonda lambda secondaria a breve term
 static const char PD_S_58[] PROGMEM = "Trim sonda lambda secondaria a lungo termine - B2/B4";
 static const char PD_S_59[] PROGMEM = "Pressione assoluta rail carburante";
 static const char PD_S_5A[] PROGMEM = "Posizione relativa pedale acceleratore";
-static const char PD_S_5B[] PROGMEM = "Vita residua batteria pacco ibrido";
+static const char PD_S_5B[] PROGMEM = "Carica residua batteria ibrida";
 static const char PD_S_5C[] PROGMEM = "Temperatura olio motore";
 static const char PD_S_5D[] PROGMEM = "Anticipo iniezione";
 static const char PD_S_5E[] PROGMEM = "Consumo carburante motore";
@@ -146,34 +146,54 @@ static const char PD_S_76[] PROGMEM = "Temperatura turbo (B)";
 static const char PD_S_77[] PROGMEM = "Temperatura intercooler (CACT)";
 static const char PD_S_78[] PROGMEM = "Temperatura gas di scarico Banco 1";
 static const char PD_S_79[] PROGMEM = "Temperatura gas di scarico Banco 2";
-static const char PD_S_7A[] PROGMEM = "DPF (filtro particolato) - dati";
+static const char PD_S_7A[] PROGMEM = "DPF (filtro particolato) - pressione differenziale";
 static const char PD_S_7B[] PROGMEM = "DPF (filtro particolato) - dati";
 static const char PD_S_7C[] PROGMEM = "Temperatura DPF";
 static const char PD_S_7D[] PROGMEM = "Stato area NOx NTE";
 static const char PD_S_7E[] PROGMEM = "Stato area PM NTE";
 static const char PD_S_7F[] PROGMEM = "Tempo cumulativo motore";
 static const char PD_S_80[] PROGMEM = "PID supportati 81-A0";
-static const char PD_S_81[] PROGMEM = "Tempo motore AECD #1-10";
-static const char PD_S_82[] PROGMEM = "Tempo motore AECD #11-20";
+static const char PD_S_81[] PROGMEM = "Tempo motore AECD #1-5";
+static const char PD_S_82[] PROGMEM = "Tempo motore AECD #6-10";
 static const char PD_S_83[] PROGMEM = "Sensore NOx";
 static const char PD_S_84[] PROGMEM = "Temperatura superficie collettore";
 static const char PD_S_85[] PROGMEM = "Sistema reagente NOx (AdBlue)";
 static const char PD_S_86[] PROGMEM = "Sensore particolato (PM)";
 static const char PD_S_87[] PROGMEM = "Pressione assoluta collettore (esteso)";
 static const char PD_S_88[] PROGMEM = "Sistema induzione SCR";
+static const char PD_S_89[] PROGMEM = "Tempo motore AECD #11-15";
+static const char PD_S_8A[] PROGMEM = "Tempo motore AECD #16-20";
 static const char PD_S_8B[] PROGMEM = "Diagnostica post-trattamento diesel";
-static const char PD_S_8D[] PROGMEM = "Sonda lambda Wide Range";
-static const char PD_S_8E[] PROGMEM = "Coppia frizione motore (%)";
+static const char PD_S_8C[] PROGMEM = "Sonda lambda wide range";
+static const char PD_S_8D[] PROGMEM = "Posizione farfalla G";
+static const char PD_S_8E[] PROGMEM = "Coppia di attrito motore (%)";
 static const char PD_S_8F[] PROGMEM = "Sensore PM Banco 1 e 2";
+static const char PD_S_90[] PROGMEM = "Informazioni sistema OBD WWH";
+static const char PD_S_91[] PROGMEM = "Informazioni sistema OBD WWH (estese)";
 static const char PD_S_92[] PROGMEM = "Controllo sistema carburante";
-static const char PD_S_9A[] PROGMEM = "Dati sistema veicolo ibrido/EV";
+static const char PD_S_93[] PROGMEM = "Contatori OBD WWH supportati";
+static const char PD_S_94[] PROGMEM = "Sistema avviso e induzione NOx";
+static const char PD_S_98[] PROGMEM = "Sensore temperatura gas di scarico";
+static const char PD_S_99[] PROGMEM = "Sensore temperatura gas di scarico (2)";
+static const char PD_S_9A[] PROGMEM = "Dati sistema ibrido/EV (batteria, tensione)";
 static const char PD_S_9B[] PROGMEM = "Sensore AdBlue";
-static const char PD_S_9D[] PROGMEM = "Consumo motore (esteso)";
+static const char PD_S_9C[] PROGMEM = "Dati sonda lambda";
+static const char PD_S_9D[] PROGMEM = "Portata carburante motore";
+static const char PD_S_9E[] PROGMEM = "Portata gas di scarico";
+static const char PD_S_9F[] PROGMEM = "Percentuale uso sistema carburante";
 static const char PD_S_A0[] PROGMEM = "PID supportati A1-C0";
+static const char PD_S_A1[] PROGMEM = "Dati corretti sensore NOx";
 static const char PD_S_A2[] PROGMEM = "Consumo per cilindro";
+static const char PD_S_A3[] PROGMEM = "Pressione vapori sistema evap. (estesa)";
 static const char PD_S_A4[] PROGMEM = "Marcia attuale cambio";
+static const char PD_S_A5[] PROGMEM = "Dosaggio AdBlue comandato";
 static const char PD_S_A6[] PROGMEM = "Contachilometri";
+static const char PD_S_A7[] PROGMEM = "Concentrazione NOx sensori 3-4";
+static const char PD_S_A8[] PROGMEM = "Concentrazione NOx corretta sensori 3-4";
+static const char PD_S_A9[] PROGMEM = "Stato disattivazione ABS";
 static const char PD_S_C0[] PROGMEM = "PID supportati C1-E0";
+static const char PD_S_C3[] PROGMEM = "Livello carburante A/B";
+static const char PD_S_C4[] PROGMEM = "Diagnostica controllo particolato";
 
 // Sigle compatte per dashboard web — copertura completa dei PID Mode 01
 // standard SAE J1979. Una stringa per ogni PID per cui esiste un fullName.
@@ -245,7 +265,7 @@ static const char PD_N_40[] PROGMEM = "PIDs 41-60";
 static const char PD_N_41[] PROGMEM = "Monitor drive cycle";
 static const char PD_N_42[] PROGMEM = "Tensione batteria";
 static const char PD_N_43[] PROGMEM = "Carico assoluto";
-static const char PD_N_44[] PROGMEM = "Stech. comandato";
+static const char PD_N_44[] PROGMEM = "Lambda comandata";
 static const char PD_N_45[] PROGMEM = "Farfalla relativa";
 static const char PD_N_46[] PROGMEM = "Temp. ambiente";
 static const char PD_N_47[] PROGMEM = "Farfalla B ass.";
@@ -289,7 +309,7 @@ static const char PD_N_6C[] PROGMEM = "Farfalla esteso";
 static const char PD_N_6D[] PROGMEM = "Sist. press. carb.";
 static const char PD_N_6E[] PROGMEM = "Sist. press. iniez.";
 static const char PD_N_6F[] PROGMEM = "Press. ingresso comp.";
-static const char PD_N_70[] PROGMEM = "Boost comandato";
+static const char PD_N_70[] PROGMEM = "Pressione boost";
 static const char PD_N_71[] PROGMEM = "VGT";
 static const char PD_N_72[] PROGMEM = "Wastegate";
 static const char PD_N_73[] PROGMEM = "Press. scarico";
@@ -306,27 +326,47 @@ static const char PD_N_7D[] PROGMEM = "NOx NTE";
 static const char PD_N_7E[] PROGMEM = "PM NTE";
 static const char PD_N_7F[] PROGMEM = "Tempo motore tot.";
 static const char PD_N_80[] PROGMEM = "PIDs 81-A0";
-static const char PD_N_81[] PROGMEM = "AECD 1-10";
-static const char PD_N_82[] PROGMEM = "AECD 11-20";
+static const char PD_N_81[] PROGMEM = "AECD 1-5";
+static const char PD_N_82[] PROGMEM = "AECD 6-10";
 static const char PD_N_83[] PROGMEM = "Sensore NOx";
 static const char PD_N_84[] PROGMEM = "Temp. collettore";
 static const char PD_N_85[] PROGMEM = "AdBlue";
 static const char PD_N_86[] PROGMEM = "Sensore PM";
 static const char PD_N_87[] PROGMEM = "MAP esteso";
 static const char PD_N_88[] PROGMEM = "SCR";
+static const char PD_N_89[] PROGMEM = "AECD 11-15";
+static const char PD_N_8A[] PROGMEM = "AECD 16-20";
 static const char PD_N_8B[] PROGMEM = "Post-trattamento";
-static const char PD_N_8D[] PROGMEM = "Lambda Wide";
-static const char PD_N_8E[] PROGMEM = "Coppia frizione";
+static const char PD_N_8C[] PROGMEM = "Lambda wide range";
+static const char PD_N_8D[] PROGMEM = "Farfalla G";
+static const char PD_N_8E[] PROGMEM = "Coppia attrito";
 static const char PD_N_8F[] PROGMEM = "PM B1/B2";
+static const char PD_N_90[] PROGMEM = "Info OBD WWH";
+static const char PD_N_91[] PROGMEM = "Info OBD WWH est.";
 static const char PD_N_92[] PROGMEM = "Controllo carb.";
+static const char PD_N_93[] PROGMEM = "Contatori WWH";
+static const char PD_N_94[] PROGMEM = "Avviso NOx";
+static const char PD_N_98[] PROGMEM = "Temp. scarico sens.";
+static const char PD_N_99[] PROGMEM = "Temp. scarico sens. 2";
 static const char PD_N_9A[] PROGMEM = "Ibrido/EV";
 static const char PD_N_9B[] PROGMEM = "AdBlue sens.";
-static const char PD_N_9D[] PROGMEM = "Consumo esteso";
+static const char PD_N_9C[] PROGMEM = "Dati lambda";
+static const char PD_N_9D[] PROGMEM = "Portata carburante";
+static const char PD_N_9E[] PROGMEM = "Portata scarico";
+static const char PD_N_9F[] PROGMEM = "Uso sist. carburante";
 static const char PD_N_A0[] PROGMEM = "PIDs A1-C0";
+static const char PD_N_A1[] PROGMEM = "NOx corretto";
 static const char PD_N_A2[] PROGMEM = "Consumo cilindro";
+static const char PD_N_A3[] PROGMEM = "Press. evap. est.";
 static const char PD_N_A4[] PROGMEM = "Marcia";
+static const char PD_N_A5[] PROGMEM = "Dosaggio AdBlue";
 static const char PD_N_A6[] PROGMEM = "Contachilometri";
+static const char PD_N_A7[] PROGMEM = "NOx sens. 3-4";
+static const char PD_N_A8[] PROGMEM = "NOx corr. 3-4";
+static const char PD_N_A9[] PROGMEM = "ABS disattivato";
 static const char PD_N_C0[] PROGMEM = "PIDs C1-E0";
+static const char PD_N_C3[] PROGMEM = "Livello carb. A/B";
+static const char PD_N_C4[] PROGMEM = "Diagn. particolato";
 
 // Tabella indicizzata: index = PID. Slot vuoti = nullptr (PID non documentato).
 // NB: usiamo array di puntatori PROGMEM per accesso O(1) in lookup.
@@ -349,14 +389,14 @@ static const char *const PID_SHORT_NAMES[256] PROGMEM = {
 		/* 0x70 */ PD_N_70, PD_N_71, PD_N_72, PD_N_73, PD_N_74, PD_N_75, PD_N_76, PD_N_77,
 		/* 0x78 */ PD_N_78, PD_N_79, PD_N_7A, PD_N_7B, PD_N_7C, PD_N_7D, PD_N_7E, PD_N_7F,
 		/* 0x80 */ PD_N_80, PD_N_81, PD_N_82, PD_N_83, PD_N_84, PD_N_85, PD_N_86, PD_N_87,
-		/* 0x88 */ PD_N_88, nullptr, nullptr, PD_N_8B, nullptr, PD_N_8D, PD_N_8E, PD_N_8F,
-		/* 0x90 */ nullptr, nullptr, PD_N_92, nullptr, nullptr, nullptr, nullptr, nullptr,
-		/* 0x98 */ nullptr, nullptr, PD_N_9A, PD_N_9B, nullptr, PD_N_9D, nullptr, nullptr,
-		/* 0xA0 */ PD_N_A0, nullptr, PD_N_A2, nullptr, PD_N_A4, nullptr, PD_N_A6, nullptr,
-		/* 0xA8-0xBF tutti nullptr */
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		/* 0xC0 */ PD_N_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0x88 */ PD_N_88, PD_N_89, PD_N_8A, PD_N_8B, PD_N_8C, PD_N_8D, PD_N_8E, PD_N_8F,
+		/* 0x90 */ PD_N_90, PD_N_91, PD_N_92, PD_N_93, PD_N_94, nullptr, nullptr, nullptr,
+		/* 0x98 */ PD_N_98, PD_N_99, PD_N_9A, PD_N_9B, PD_N_9C, PD_N_9D, PD_N_9E, PD_N_9F,
+		/* 0xA0 */ PD_N_A0, PD_N_A1, PD_N_A2, PD_N_A3, PD_N_A4, PD_N_A5, PD_N_A6, PD_N_A7,
+		/* 0xA8 */ PD_N_A8, PD_N_A9, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xB0 */ nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xB8 */ nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC0 */ PD_N_C0, nullptr, nullptr, PD_N_C3, PD_N_C4, nullptr, nullptr, nullptr,
 		/* 0xC8-0xFF tutti nullptr */
 		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
@@ -384,14 +424,14 @@ static const char *const PID_FULL_NAMES[256] PROGMEM = {
 		/* 0x70 */ PD_S_70, PD_S_71, PD_S_72, PD_S_73, PD_S_74, PD_S_75, PD_S_76, PD_S_77,
 		/* 0x78 */ PD_S_78, PD_S_79, PD_S_7A, PD_S_7B, PD_S_7C, PD_S_7D, PD_S_7E, PD_S_7F,
 		/* 0x80 */ PD_S_80, PD_S_81, PD_S_82, PD_S_83, PD_S_84, PD_S_85, PD_S_86, PD_S_87,
-		/* 0x88 */ PD_S_88, nullptr, nullptr, PD_S_8B, nullptr, PD_S_8D, PD_S_8E, PD_S_8F,
-		/* 0x90 */ nullptr, nullptr, PD_S_92, nullptr, nullptr, nullptr, nullptr, nullptr,
-		/* 0x98 */ nullptr, nullptr, PD_S_9A, PD_S_9B, nullptr, PD_S_9D, nullptr, nullptr,
-		/* 0xA0 */ PD_S_A0, nullptr, PD_S_A2, nullptr, PD_S_A4, nullptr, PD_S_A6, nullptr,
-		/* 0xA8-0xBF tutti nullptr */
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		/* 0xC0 */ PD_S_C0, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0x88 */ PD_S_88, PD_S_89, PD_S_8A, PD_S_8B, PD_S_8C, PD_S_8D, PD_S_8E, PD_S_8F,
+		/* 0x90 */ PD_S_90, PD_S_91, PD_S_92, PD_S_93, PD_S_94, nullptr, nullptr, nullptr,
+		/* 0x98 */ PD_S_98, PD_S_99, PD_S_9A, PD_S_9B, PD_S_9C, PD_S_9D, PD_S_9E, PD_S_9F,
+		/* 0xA0 */ PD_S_A0, PD_S_A1, PD_S_A2, PD_S_A3, PD_S_A4, PD_S_A5, PD_S_A6, PD_S_A7,
+		/* 0xA8 */ PD_S_A8, PD_S_A9, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xB0 */ nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xB8 */ nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		/* 0xC0 */ PD_S_C0, nullptr, nullptr, PD_S_C3, PD_S_C4, nullptr, nullptr, nullptr,
 		/* 0xC8-0xFF tutti nullptr */
 		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,

@@ -1,37 +1,28 @@
 ---
 name: Veicolo target
-description: Audi A5 B8 2.7 TDI CGKA Multitronic — bus CAN, ECU che rispondono, PID supportati, parametri motore/trasmissione, range tipici
-type: project
+description: Audi A5 F5 B9.5 40 TFSI DMSA mild hybrid 12 V, S tronic 0CK FWD: dati motore e cambio, centraline OBD osservate sulle B9, PID attesi e assenti, limiti del mild hybrid
+metadata:
+  type: project
 ---
 
-**Veicolo:** Audi A5 B8 (2008) 2.7 TDI **Euro 5**, motore codice **CGKA** (140 kW / 400 Nm), cambio automatico
-**Multitronic** (CVT), bus **CAN 11-bit 500 kbps**.
+**Veicolo:** Audi A5 F5 (B9.5) 40 TFSI, motore **DMSA** (2.0 TFSI EA888, 1984 cm³, 82.5 × 92.8 mm, compressione 12.2),
+150 kW a 4475-6000 rpm, 320 Nm a 1450-4475 rpm, benzina 95 EN 228, GPF, Euro 6d/6e. Cambio **S tronic DL382 `0CK`**,
+trazione anteriore, rapporti 3.188 / 2.190 / 1.517 / 1.057 / 0.738 / 0.557 / 0.433, coppia finale 4.234, pneumatico di serie
+225/50 R17. Fonte: scheda tecnica Audi eTD della A5 Sportback 40 TFSI S tronic 150 kW MHEV.
 
-**ECU che rispondono sul bus OBD2 standard:**
-- `0x7E8` motore — risponde sempre, espone i ~28 PID Mode 01 elencati sotto
-- `0x7E9` cambio Multitronic J217 — sui VAG pre-2010 raramente risponde a Mode 01 standard; i dati ricchi
-  vivono solo via UDS Mode `0x22` con label files VCDS proprietari
-- `0x7EA`-`0x7EF` (ABS, BCM, ecc.) — praticamente mai rispondono a Mode 01
+**Mild hybrid 12 V:** BAS (slave LIN della centralina motore) e batteria Li-ion 12 V 10 Ah. Veleggio a motore spento fra
+55 e 160 km/h, start-stop sotto 22 km/h: la centralina motore risponde con RPM, carico e MAF a zero. Potenza del BAS e carica
+della batteria non sono esposte dall'OBD standard (batteria leggibile solo via UDS, indirizzo 0080).
 
-Essendo **pre-Euro 6** non ci sono SCR/AdBlue né sensori NOx: è il vincolo principale di scope
-(vedi [[project_scope_obd2]]).
+**Centraline OBD sulle B9** (catture OBDb di A4/A5/Q5 2019-2024, nessuna con certezza DMSA):
+- `0x7E8` motore: PID completo, fra cui `5C`, `61`/`62`/`63` (320 Nm sulle 40 TFSI), `8E`, `70`, `23` (70-100 bar al minimo), `2F`, `5E`, `9D`, `9E`, `A6`.
+- `0x7E9` cambio: solo `01 04 05 0C 0D 41 42 49`.
+- `0x7EC` (richiesta `0x7E4`): funzione non identificata, `01 04 05 0C 0D 41 42 46 49`.
+- Mai visti sulle B9 termiche: `5B`, `9A`, `A4`, `7A`-`7C`, EGR `2C`/`2D`.
+- `0x70` sensore A è pressione assoluta (verificato con BARO sulle catture); l'indirizzamento fisico `7E0` funziona attraverso il gateway; SFD non blocca Mode 01/03/09.
 
-**PID OBD2 supportati (28 totali, da scan reale):**
-0x01, 0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x0F, 0x10, 0x13, 0x1C, 0x1F, 0x20, 0x21, 0x23, 0x24, 0x2C, 0x2D, 0x30, 0x31, 0x33, 0x40, 0x41, 0x42, 0x46, 0x49, 0x4A, 0x4C, 0x4F.
+**Dato reale ancora da acquisire:** lo scan e la scansione approfondita eseguiti dall'utente sull'auto; in `DOCS/` ci sono la
+scheda eTD Audi e `references.lnk` con le fonti web, il report dello scan va salvato lì. Vedi [[project_scan_state]].
 
-**PID NON supportati** (richiedevano fallback nel codice):
-- 0x5C (oil temp) → sostituito con 0x05 (coolant)
-- 0x62/0x63 (torque %, torque ref) → sostituiti con TorqueModel basato su load×400Nm
-- 0x2F (fuel level) → sostituito con calcolo L/100km da MAF + lambda
-- 0x5E (consumo l/h diretto) → non esposto dalla CGKA
-
-**Parametri specifici CGKA:**
-- Coppia massima: 400 Nm
-- Potenza massima: 140 kW (190 CV)
-- Cilindrata: 2.698 L (usata in TorqueModel e BoostModel)
-- Pressione rail tipica: 250-400 bar idle, 800-1800 bar carico
-- Multitronic CVT: costante K=7.9 per stimare il rapporto (RPM / (speed × K))
-
-**Why:** VAG limita i PID standard OBD2 a quelli minimi richiesti per emissioni. Tutto il resto è proprietario VAG-COM/VCDS. Molti PID tipici di altri veicoli non funzionano qui.
-
-**How to apply:** Prima di proporre PID nuovi, verificare che siano nella lista dei 28 supportati. Per dati non disponibili via OBD2 standard suggerire VCDS/OBDeleven o helper di stima (TorqueModel, BoostModel).
+**How to apply:** prima di proporre PID nuovi verificare che il motore li dichiari nel report dello scan; per coppia e boost la
+centralina è la fonte primaria, `TorqueModel.h`/`BoostModel.h` sono il ripiego (vedi [[feedback_helpers_readonly]]).

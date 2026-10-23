@@ -1,36 +1,21 @@
 ---
 name: Endpoint e credenziali
-description: URL dashboard, OTA, WiFi ELM327, IP statici — riferimenti rapidi
-type: reference
+description: SoftAP ESP, endpoint web, impostazioni ELM327 WiFi, file DOCS e anteprime
+metadata:
+  type: reference
 ---
 
-**SoftAP ESP (creato dallo sketch):**
-- SSID: `OBD2_UPDATE`
-- Password: `alesimattia`
-- IP fisso: `192.168.4.1`
-- Attivo solo nei primi 3 minuti dal boot (OTA_WINDOW_MS = 180000)
-- Resta attivo finche' un client è connesso (timer si resetta a disconnessione)
+**SoftAP ESP:** SSID `OBD2_UPDATE`, password in `OTA_PASS` degli sketch, IP `192.168.4.1`. Attivo per 3 minuti dal boot
+(`OTA_WINDOW_MS`), sospeso finchè un client è connesso; dopo la chiusura una riconnessione WiFi non lo riaccende.
 
-**Endpoint web disponibili:**
-- `http://192.168.4.1/dashboard` — dashboard live HTML, refresh 500ms
-- `http://192.168.4.1/data` — JSON dati live
-- `http://192.168.4.1/debug?on` `?off` — toggle diagnostica seriale
-- `http://192.168.4.1/ota` — upload OTA (sketch WIFI_conn)
-- `http://192.168.4.1/update` — upload OTA (sketch CANbus_conn)
+**Endpoint:** `/dashboard`, `/scan` (pagina scan), `/data`, `/scan-data`, `/probe?start`, `/probe-status`, `/serial-data`,
+`/debug?on|off`, `/brightness?set=N|auto`, `/clear-dtc`; OTA `/ota` (WiFi) o `/update` (CAN). Dettagli in README §11.2.
 
-**Adattatore ELM327 WiFi (per WIFI_conn.ino):**
-- SSID: `WiFi_OBDII`
-- Password: vuota (rete aperta)
-- IP TCP: `192.168.0.10`
-- Porta: `35000`
-- Protocollo: `ATSP6` (CAN 11bit 500kbps, standard VAG B8)
+**ELM327 WiFi (WIFI_conn):** rete `WiFi_OBDII` aperta, TCP `192.168.0.10:35000`, protocollo `ATSP6`, init `ATE0 ATL0 ATS0 ATH1`,
+`ATSH 7E0`/`7DF` per fisico/funzionale.
 
-**Documentazione tecnica:**
-- `c:\obd\DOCS\TJA1050.pdf` — datasheet transceiver CAN
-- `c:\obd\DOCS\MCP2515-Stand-Alone-CAN-Controller-with-SPI-20001801J.pdf` — datasheet MCP2515
-- `c:\obd\DOCS\serial_output.txt` — output serial reale dello scan PID dell'auto
-- `c:\obd\DOCS\supported_pid audi_A5.md` — lista commentata PID supportati
+**Documentazione nel repo:** `DOCS/TJA1050.pdf`, `DOCS/MCP2515-...pdf`, la scheda tecnica Audi
+`DOCS/eTD-Audi-A5-Sportback-40-TFSI-S_tronic-150kW-MHEV_240613.pdf` e `DOCS/references.lnk` (file di testo con le fonti web:
+su Windows l'estensione `.lnk` non si apre con doppio clic, va aperto con un editor).
 
-**Anteprime browser locali (no ESP):**
-- `c:\obd\monitor_preview.html` — simulazione dashboard live con dati casuali
-- `c:\obd\ui_preview.html` — simulazione schermate display OLED
+**Anteprime offline:** `monitor_preview.html` (dashboard con endpoint simulati), `ui_preview.html` (schermate OLED).

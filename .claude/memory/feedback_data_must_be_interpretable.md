@@ -9,8 +9,8 @@ pubblico (SAE J1979, ISO 14229) o da fonti chiaramente affidabili.
 
 **Why:** durante il design dello scan multi-ECU l'utente ha esplicitamente escluso, in ordine:
 1. Mode 06 perché "TID opachi senza label costruttore"
-2. Mode 09 PID 0x0B IPT diesel ("queste informazioni mi sembrano inutili") pur essendo decodificabile — la
-   curva di completamento dei monitor readiness non gli interessa
+2. Mode 09 IPT, i contatori di completamento dei monitor readiness ("queste informazioni mi sembrano inutili"),
+   pur essendo decodificabili: restano solo nella scansione approfondita, mai in dashboard
 3. Mode 22 UDS perché "contiene informazioni proprietarie non interpretabili senza reverse engineering"
 4. PID raw senza descrizione testuale nella dashboard ("nella dashboard web non scrivere gli indirizzi tipo
    0x0F perché non mi interessano")

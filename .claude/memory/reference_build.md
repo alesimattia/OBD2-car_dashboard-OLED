@@ -16,7 +16,6 @@ carica niente sulla board, come gli script degli altri due progetti, che non pas
 ```
 A:\obd\build.ps1                      CANbus_conn (predefinito)
 A:\obd\build.ps1 -Sketch WIFI_conn    l'altro sketch principale
-A:\obd\build.ps1 -Sketch can_sniffer  oppure -Sketch canbox_sniffer, i tool
 A:\obd\build.ps1 -Clean               da zero
 A:\obd\build.ps1 -Dettagli            output completo del compilatore
 A:\obd\build.ps1 -Avvisi              con --warnings all
@@ -46,12 +45,22 @@ fallire la compilazione con errori poco parlanti.
 
 1. **Core ESP8266 3.1.2 installato**, la stessa versione dell'altra macchina, da un index
    filtrato che tiene la sola 3.1.2 con `xtensa-lx106-elf-gcc` e `python3`: dettaglio nella
-   memoria `build_toolchain_arduino` di `A:\epd`. `tools\canbox_sniffer` compila.
+   memoria `build_toolchain_arduino` di `A:\epd`.
 2. **Mancano `mcp_can` e `U8g2`**, non installate per decisione dell'utente. Lo script tiene la
-   tabella delle librerie per sketch: `mcp_can` per `CANbus_conn` e `tools\can_sniffer`, `U8g2`
-   per i due sketch principali, dove arriva anche da `light_sensor.h`; `canbox_sniffer` non ne
-   usa. Sull'altra macchina U8g2 è la **2.35.30**. Finchè mancano, `CANbus_conn`, `WIFI_conn` e
-   `can_sniffer` si fermano sul controllo e non si compilano su questa macchina.
+   tabella delle librerie per sketch: `mcp_can` per `CANbus_conn`, `U8g2` per i due sketch, dove
+   arriva anche da `light_sensor.h`. Sull'altra macchina U8g2 è la **2.35.30**. Finchè mancano,
+   `CANbus_conn` e `WIFI_conn` si fermano sul controllo e non si compilano con `build.ps1`.
+
+## Verifica di compilazione senza le librerie
+
+Funziona invocando direttamente `C:\tmp\arduino\bin\arduino-cli.exe` con le stesse board options
+di `build.ps1`, `--build-path` nello scratchpad e `--library` verso due librerie stub create nello
+scratchpad (`mcp_can/src/mcp_can.h` e `U8g2/src/U8g2lib.h`, ciascuna con un `library.properties`),
+che dichiarano solo le classi e i metodi usati dal codice (`MCP_CAN`, `U8G2_SH1106_128X64_NONAME_F_HW_I2C`,
+font `u8g2_font_6x10_tr` e `u8g2_font_7x14B_tr`). Nessuna installazione: verifica tutto il codice del
+progetto, librerie escluse, e stampa l'occupazione di RAM, IRAM e flash. Sulla macchina non c'è un
+compilatore host: codice C++ da eseguire su PC (per esempio test di `obd_proto.h`) qui si controlla
+solo con `xtensa-lx106-elf-g++ -std=gnu++17 -fsyntax-only` e si esegue sul Mac.
 
 ## Modifica fatta per renderlo possibile
 

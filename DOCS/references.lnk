@@ -1,0 +1,67 @@
+Fonti web consultate per l'adattamento ad Audi A5 F5 (B9.5) 40 TFSI DMSA
+Per ogni link: cosa ne è stato ricavato. File di testo, una fonte per riga.
+
+== Veicolo: motore, cambio, mild hybrid ==
+https://uploads.audi.com/system/production/car_motorizations/964/file_en/1efb854a2a376cbaeaba745c036c20e5805ecd0a/eTD-Audi-A5-Sportback-40-TFSI-S_tronic-150kW-MHEV_240613.pdf  scheda tecnica Audi eTD (copia in DOCS): alesaggio, corsa, compressione, rapporti del cambio, capacità, masse
+https://www.audi.com/en/audi-a5-sportback-33  pagina Audi A5 Sportback con i link alle schede eTD
+https://www.audi.com/en/the-audi-a5-new-look-and-new-technologies-2020-12622/drive-system-and-suspension-12627  Audi A5 2020: 40 TFSI ciclo B, mild hybrid 12 V, BAS, batteria Li-ion 10 Ah, veleggio 55-160 km/h, start-stop 22 km/h
+https://audi-mediacenter.com/en/the-audi-a4-major-upgrade-for-the-bestseller-11884/drive-and-suspension-11894  Audi A4 B9.5: mild hybrid 12 V sui TFSI
+https://www.audi.com/en/the-audi-a4-major-upgrade-for-the-bestseller-2019-11884/drive-and-suspension-11894  Audi A4 B9.5: recupero BAS fino a 5 kW
+https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/audi/a5/f5-facelift/330927/  ADAC A5 Coupè 40 TFSI: codice motore DMS, trazione anteriore, 1560 kg, 0-100 in 7,1 s
+https://de.wikipedia.org/wiki/Audi_A5_F5  Audi A5 F5: motorizzazioni, coppia 320 Nm a 1450-4475 rpm, normative Euro 6d/6e
+https://www.autozine.nl/audi/nieuws/meer-vermogen-voor-audi-a4-en-a5  40 TFSI portato da 140 a 150 kW (09/2020)
+https://www.motordirekt.de/audi/a5/615/motor-dms-dmsa-audi-a5-f53-f5p-2.0-tfsi-mild-hybrid-204-ps  motore DMS/DMSA 2.0 TFSI mild hybrid 204 CV
+https://has-antriebstechnik.de/shop/motoren/313/audi-dms-dmsa-dmsb-motor-2.0-tsi-35-tfsi-40tfsi-mit-anbauteilen  codici motore DMS/DMSA/DMSB per 35 e 40 TFSI
+https://www.ultimatespecs.com/car-specs/Audi/115053/Audi-A5-(F5)-40-TFSI-S-tronic.html  A5 40 TFSI: alesaggio e corsa, coppia finale 4,23, serbatoio 54 L
+https://audizine.com/forum/showthread.php/962761-Potential-New-Owner-2018-or-2019-DL382  codici DL382: 0CK trazione anteriore, 0CJ quattro ultra, 0CL quattro Torsen
+https://volkswagen-newsroom.com/en/the-new-golf-gti-international-media-drive-6282/engine-of-the-new-golf-gti-6285  EA888 evo4: pressione di iniezione 200-350 bar
+https://static.nhtsa.gov/odi/tsbs/2014/MC-10122162-9999.pdf  formazione Audi EA888 Gen3: gestione termica (107 C carico parziale, termostato d'emergenza 113 C), lambda 1
+https://static.nhtsa.gov/odi/tsbs/2018/MC-10149155-9999.pdf  formazione Audi mild hybrid 12 V (A6 C8): BAS slave LIN, batteria Li-ion indirizzo 0080
+
+== OBD2: PID, Mode 09, OBFCM ==
+https://en.wikipedia.org/wiki/OBD-II_PIDs  tabella SAE J1979 pubblica: byte e formule dei PID Mode 01, nomi 0x89-0xC4, InfoType Mode 09
+https://raw.githubusercontent.com/brendan-w/python-OBD/master/obd/commands.py  python-OBD: lunghezze dei comandi
+https://raw.githubusercontent.com/brendan-w/python-OBD/master/obd/protocols/protocol_can.py  python-OBD: uso del byte di conteggio DTC su CAN
+https://www.iso.org/standard/66368.html  ISO 15031-5: scheda della norma
+https://help.repairsolutions.com/article/2336-a-guide-for-live-data  PID 0x62 come coppia indicata
+https://www.researchgate.net/publication/328584829  J1939 SPN 513/514: coppia effettiva comprende l'attrito, coppia di attrito nominale
+https://github.com/Anush-aj/obfcm  OBFCM: Mode 09 InfoType 0x17, layout 4 x uint32, FFFFFFFF = non disponibile
+https://forums.ross-tech.com/index.php?threads/36805/  VCDS "Mode 9, Type 17" (OBFCM) su vetture del gruppo VW
+https://theicct.org/wp-content/uploads/2022/02/obfcm-accuracy-verification-feb22.pdf  ICCT: OBFCM e SAE J1979-DA
+https://www.legislation.gov.uk/eur/2018/1832/annex/X?view=plain  regolamento UE 2018/1832, allegato XXII: parametri OBFCM
+https://climate.ec.europa.eu/document/download/d5e3ff53-4d70-43ea-8e86-68a542fd9f60_en?filename=report_fuel_consumption_en.pdf  Commissione UE: accesso OBFCM via ISO 15765-4 / ISO 15031-5
+https://support.munic.io/knowledge/article/268  campi OBFCM
+https://github.com/Ircama/ELM327-emulator  formato della risposta 0900 senza byte NODI
+https://github.com/Ircama/ELM327-emulator/issues/38  citazione delle regole SAE J1979 sulle richieste multi-PID
+
+== Catture reali Audi B9 (progetto OBDb) ==
+https://github.com/OBDb/Audi-A4  catture A4 2015-2024 (command_support e risposte grezze: 0170, 0162, 0163, 018E, 015C, 0123...)
+https://github.com/OBDb/Audi-A5  catture A5 2017-2025
+https://github.com/OBDb/Audi-Q5  catture Q5 2015-2022
+https://raw.githubusercontent.com/OBDb/Audi-A4/main/tests/test_cases/2019/command_support.yaml  PID per centralina A4 2019 (7E0, 7E1, 7E4)
+https://raw.githubusercontent.com/OBDb/Audi-A4/main/tests/test_cases/2021/command_support.yaml  PID per centralina A4 2021
+https://raw.githubusercontent.com/OBDb/Audi-A4/main/tests/test_cases/2024/command_support.yaml  PID per centralina A4 2024
+https://raw.githubusercontent.com/OBDb/Audi-A4/main/signalsets/v3/default.json  segnali UDS A4 (marcia 22 210F su 7E1)
+https://raw.githubusercontent.com/OBDb/SAEJ1979/main/signalsets/v3/default.json  layout SAE di 0x70 (sensore A in D-E / 32 kPa), 0x62, 0x63, 0x5B
+https://github.com/ConnorHowell/vag-uds-ids  indirizzi diagnostici VAG
+https://www.vwroc.com/forums/topic/32235-any-experienced-torque-pro-users-on-the-forum/page/2/  015C non supportato su Golf R Mk7
+
+== Gateway VAG e SFD ==
+https://wiki.ross-tech.com/wiki/index.php/SFD  SFD dal MY 2020/2021: non blocca la lettura di identificazione, DTC e valori
+https://www.audiworld.com/forums/a4-b9-platform-discussion-212/tr-sfd-protection-2024-coded-a4-b9-5-a-3061065/  SFD2 su A4 B9.5 2024
+
+== ELM327 ==
+https://www.elmelectronics.com/wp-content/uploads/2017/01/ELM327DS.pdf  datasheet ELM327: ATH1 con PCI, multi-frame grezzi, multi-PID, suffisso numero risposte, ATSH, ATCRA, ATST, STOPPED
+https://en.wikipedia.org/wiki/ELM327  versioni clone "v1.5"
+https://github.com/PowerBroker2/ELMduino/issues/69  clone v1.5: comandi non supportati
+https://github.com/PowerBroker2/ELMduino/issues/179  clone: suffisso numero risposte non affidabile
+https://docs.kernel.org/networking/device_drivers/can/can327.html  driver Linux can327: limiti dei cloni, BUFFER FULL
+
+== ISO 15765 / ISO-TP ==
+https://en.wikipedia.org/wiki/ISO_15765-2  flow control, block size, STmin, numerazione delle consecutive frame
+https://github.com/Xaloqi/EDS/issues/453  timeout ISO 15765-2 generici
+
+== Librerie e core ==
+https://raw.githubusercontent.com/coryjfowler/MCP_CAN_lib/master/mcp_can.cpp  mcp_can: MCP_ANY ignora maschere e filtri, rollover RXB0/RXB1, timeout di sendMsgBuf, abortTX
+https://ww1.microchip.com/downloads/en/DeviceDoc/MCP2515-Stand-Alone-CAN-Controller-with-SPI-20001801J.pdf  datasheet MCP2515 (copia già in DOCS): registri RXBnCTRL ed EFLG
+https://raw.githubusercontent.com/esp8266/Arduino/3.1.2/libraries/ESP8266WebServer/src/ESP8266WebServer-impl.h  ESP8266WebServer 3.1.2: chunked encoding, handleClient non rientrante

@@ -1,23 +1,19 @@
 ---
 name: Riferimenti documentali OBD2 del progetto
-description: Dove vivono le tabelle di verità su PID/Mode/ECU — README §5, pid_descriptions.h, dump ELM327 in DOCS
-type: reference
+description: Dove vivono le tabelle di verità su PID, Mode e centraline: README §5, obd_proto.h, pid_descriptions.h, dump DOCS
+metadata:
+  type: reference
 ---
 
-Quando serve sapere "quali PID supporta l'A5", "cosa fa ciascun Mode OBD2/UDS", o "qual è il nome di un PID",
-consultare in ordine:
+Per "quali PID espone l'A5", "cosa fa un Mode", "come si decodifica un PID" consultare in ordine:
 
-1. **[README.md](../../README.md) §5** — verità di progetto:
-   - §5.1 elenco PID Mode 01 supportati (variante WIFI, ECU motore `0x7E8`, ~28 PID con formula di conversione)
-   - §5.2 placeholder per la variante CANbus (da popolare con dump reale)
-   - §5.3.1 PID Mode 01 *non ancora monitorati* ma potenzialmente abilitabili (con ECU di provenienza)
-   - §5.3.2 calcoli derivati ottenibili da PID già letti
-   - §5.4 riferimento completo Mode OBD2 e UDS con colonne ECU/PID/Standard/Monitored
-2. **[pid_descriptions.h](../../pid_descriptions.h)** — database PROGMEM per il firmware:
-   `getPIDShortName(pid)` (sigla compatta italiana per la dashboard) e `getPIDFullName(pid)` (descrizione
-   estesa per Serial). Copertura ~110 PID Mode 01 standard SAE J1979.
-3. **[DOCS/supported_pid_WIFI audi_A5.md](../../DOCS/supported_pid_WIFI%20audi_A5.md)** — dump originale
-   ELM327 con le formule complete.
+1. **README §5**: §5 tabella centraline B9 da catture OBDb; §5.1 discovery e scansione approfondita; §5.2 PID letti dal
+   firmware con formule; §5.3.1 PID potenziali e già letti (✅); §5.4 Mode OBD2/UDS con colonna Monitored; §5.5 stato adattamento.
+2. **`obd_proto.h`**: tabella delle lunghezze SAE di ogni PID Mode 01 (`obdPidDataLen`) e decoder di protocollo.
+3. **`pid_descriptions.h`**: nomi italiani brevi (dashboard) ed estesi (Serial) dei PID Mode 01, 256 voci indicizzate per PID;
+   **`obd_scan.h`** per i nomi delle InfoType Mode 09.
+4. **`DOCS/`**: scheda tecnica eTD Audi della vettura e `references.lnk` con le fonti web consultate; il report dello scan reale,
+   quando disponibile, va salvato qui.
 
-Per UDS, i soli DID standard ISO 14229 affidabili sono `0xF190` (VIN), `0xF18C` (Serial), `0xF187`
-(Part Number). Tutto il resto è proprietario VAG e richiede label files VCDS — non documentato qui.
+Fonti esterne affidabili usate: tabella Wikipedia "OBD-II PIDs", datasheet ELM327 (Elm Electronics), catture OBDb su GitHub
+(repo `OBDb/Audi-A4`, `Audi-A5`, `Audi-Q5`, `SAEJ1979`), scheda eTD Audi.
