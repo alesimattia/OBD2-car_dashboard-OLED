@@ -10,3 +10,4 @@
 - [Endpoint e credenziali](reference_endpoints.md): SoftAP, endpoint web, impostazioni ELM327 (ATH1, ATSH), file DOCS e anteprime
 - [Riferimenti documentali OBD2](reference_obd2_docs.md): README §5, obd_proto.h, pid_descriptions.h, dump DOCS per la verità su PID/Mode
 - [Come si compila su pc-030](reference_build.md): build.ps1 di verifica, board e opzioni ESP8266, il -I per gli header condivisi, core 3.1.2 in C:\tmp\arduino, librerie mancanti e verifica con librerie stub
+- [vLinker FS USB](reference_vlinker_fs.md): scan OBD2 da PC con tools\pid_scan.ps1, driver FTDI e baud 115200, vincoli USB e seriali, HEX-V2 non utilizzabile
