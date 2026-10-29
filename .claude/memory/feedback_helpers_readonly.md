@@ -1,20 +1,19 @@
 ---
-name: Helper non modificabili
-description: TorqueModel.h e BoostModel.h sono forniti dall'utente, modificare solo cio' che è richiesto
-type: feedback
+name: feedback_helpers_readonly
+description: TorqueModel.h e BoostModel.h sono modelli dell'utente; formule, costanti fisiche e soglie si toccano solo con permesso esplicito
+metadata:
+  type: feedback
 ---
 
-**Regola:** I file `TorqueModel.h` e `BoostModel.h` sono modelli matematici forniti direttamente dall'utente. Vanno usati come scatole nere — modificare la modalita' di calcolo richiede esplicito permesso.
+`TorqueModel.h` e `BoostModel.h` sono modelli fisici forniti e tarati dall'utente, che li aggiorna esternamente: si usano come
+scatole nere e la modalità di calcolo si modifica solo con permesso esplicito.
 
-**Why:** L'utente ha detto piu' volte: "non modificare la modalita' di calcolo di TorqueModel.h" e "non modificare la modalita' di calcolo di BoostModel.h". Sono file che lui stesso aggiorna esternamente con modelli fisici tarati.
+**Why:** l'utente ha chiesto più volte di non modificare la modalità di calcolo dei due file.
 
-Eccezioni concesse:
-- E' stato OK pulire BoostModel.h da codice DUPLICATO (era stato incollato due volte per errore)
-- E' stato OK rimuovere `estimateTurboAbsolutePressureKpa()` non usata
-- E' stato OK ottimizzare struttura (header-only con `static inline`, niente PROGMEM) ma SENZA toccare formule
-- Il 25/08/2026 è stato OK sostituire in entrambi l'`#include` di `EngineConstants.h`,
-  che portava un path assoluto del Mac, con `#include "EngineConstants.h"`: quel path su
-  Windows non esiste e impediva ogni compilazione, mentre il `-I<radice>` già passato da
-  `build.extra_flags` lo risolve su entrambe le macchine. Toccata solo la riga di include.
+**Ammesso senza permesso:** rimozione di codice duplicato o morto, struttura header-only con `static inline` senza PROGMEM,
+righe di include (`EngineConstants.h` si include per nome e lo risolve il `-I` sulla radice del progetto). Formule, costanti
+fisiche e soglie restano intatte.
 
-**How to apply:** Quando si lavora su questi file, limitarsi a fix di errori evidenti (duplicazioni, codice morto). Mai modificare formule, costanti fisiche, soglie. Se serve ottimizzare le chiamate, farlo nei .ino o web_dashboard.h, non nei modelli.
+**How to apply:** limitarsi agli errori evidenti; le ottimizzazioni delle chiamate vanno negli sketch, in `obd_live.h` o in
+`web_dashboard.h`. Le formule non ancora adeguate al benzina (correzioni rail e VE di `TorqueModel.h`, perdita di carico di
+`BoostModel.h`, elencate in README §9) si segnalano all'utente, non si correggono. Vedi [[project_scan_state]].

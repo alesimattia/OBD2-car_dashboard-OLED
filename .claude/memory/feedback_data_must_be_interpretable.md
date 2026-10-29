@@ -1,27 +1,24 @@
 ---
-name: I dati devono essere interpretabili
-description: L'utente rifiuta dati grezzi non decodificabili — verificare sempre l'interpretabilità prima di proporre estensioni, e mai indirizzi hex grezzi in dashboard
-type: feedback
+name: feedback_data_must_be_interpretable
+description: Proporre solo dati con decodifica e significato fisico da standard pubblico; in dashboard descrizioni testuali, mai indirizzi hex
+metadata:
+  type: feedback
 ---
 
-Non proporre feature che producano dati il cui significato non sia direttamente interpretabile dallo standard
-pubblico (SAE J1979, ISO 14229) o da fonti chiaramente affidabili.
+Proporre solo feature i cui dati siano interpretabili dallo standard pubblico (SAE J1979, ISO 14229) o da fonti chiaramente
+affidabili.
 
-**Why:** durante il design dello scan multi-ECU l'utente ha esplicitamente escluso, in ordine:
-1. Mode 06 perché "TID opachi senza label costruttore"
-2. Mode 09 IPT, i contatori di completamento dei monitor readiness ("queste informazioni mi sembrano inutili"),
-   pur essendo decodificabili: restano solo nella scansione approfondita, mai in dashboard
-3. Mode 22 UDS perché "contiene informazioni proprietarie non interpretabili senza reverse engineering"
-4. PID raw senza descrizione testuale nella dashboard ("nella dashboard web non scrivere gli indirizzi tipo
-   0x0F perché non mi interessano")
+**Why:** l'utente ha escluso, con queste motivazioni:
+- Mode 06, perchè i TID sono opachi senza le label del costruttore.
+- Mode 09 IPT (contatori di completamento dei monitor readiness), pur decodificabili, perchè ritenuti inutili: restano solo
+  nella scansione approfondita, mai in dashboard.
+- Mode 22 UDS, perchè contiene informazioni proprietarie non interpretabili senza reverse engineering.
+- Brute force dei DID a 16 bit, perchè lungo e non interpretabile.
+- Indirizzi dei PID in dashboard (per esempio `0x0F`), che non gli interessano.
 
 **How to apply:**
-- Prima di proporre l'aggiunta di un PID/DID/TID al monitor, verificare che formula di decodifica e unità di
-  misura siano standard pubblici e che il *significato fisico* sia chiaro.
-- Se proponi qualcosa parzialmente interpretabile (es. UASID standard ma TID opaco), segnala esplicitamente
-  l'incertezza e aspettati un rifiuto.
-- Non proporre brute-force scan di range 16-bit DID: escluso "perché impiega molto tempo e non interpretabile".
-- Presentazione dei dati: descrizioni testuali in italiano, non indirizzi hex grezzi (database delle sigle in
-  [pid_descriptions.h](../../pid_descriptions.h)).
+- Prima di proporre un PID, DID o TID per il monitor verificare che formula, unità e significato fisico siano pubblici e chiari.
+- Se una proposta è interpretabile solo in parte (per esempio UASID standard ma TID opaco), dichiararlo e aspettarsi un rifiuto.
+- In dashboard descrizioni testuali italiane da [pid_descriptions.h](../../pid_descriptions.h), non indirizzi esadecimali.
 
 Vedi anche [[project_scope_obd2]].

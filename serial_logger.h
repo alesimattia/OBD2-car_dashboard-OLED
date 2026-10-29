@@ -48,6 +48,7 @@
 		// Forward dei metodi di HardwareSerial usati dallo sketch
 		void begin(unsigned long baud) { _hw.begin(baud); }
 		void begin(unsigned long baud, SerialConfig cfg) { _hw.begin(baud, cfg); }
+		void begin(unsigned long baud, SerialConfig cfg, SerialMode mode) { _hw.begin(baud, cfg, mode); }
 		void end() { _hw.end(); }
 		int available() { return _hw.available(); }
 		int read() { return _hw.read(); }

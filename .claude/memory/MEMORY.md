@@ -1,13 +1,13 @@
-- [Hardware setup](project_hardware.md): ESP-01 vs D1 Mini, vincoli pin/flash, scelte cablaggio
-- [Veicolo target](project_vehicle.md): Audi A5 F5 B9.5 40 TFSI DMSA MHEV 12 V, S tronic 0CK: dati motore/cambio, centraline e PID osservati sulle B9 (OBDb), limiti del mild hybrid
+- [Hardware setup](project_hardware.md): CANbus_conn solo D1 Mini; WIFI_conn su D1 Mini o ESP-01 con profilo dalla board (pulsante su RX, niente LDR); scelta dei pin e flash
+- [Veicolo target](project_vehicle.md): Audi A5 F5 B9.5 40 TFSI DMSA MHEV 12 V, S-tronic 0CK: dati motore/cambio, centraline e PID osservati sulle B9 (OBDb), limiti del mild hybrid
 - [Limitazioni OBD2 VAG](project_obd2_vag.md): cosa la B9.5 espone via OBD standard e cosa resta solo UDS; nessun UDS proprietario per scelta dell'utente
-- [Architettura sketch](project_architecture.md): header condivisi obd_proto/obd_scan/obd_live, trasporto obdTransact per sketch, lettura multi-PID, OLED e endpoint web
+- [Architettura sketch](project_architecture.md): header condivisi obd_proto/obd_scan/obd_live, trasporto obdTransact per sketch, lettura multi-PID, calcoli in obdDiagCompute, OLED, luminosità con LDR opzionale e endpoint web
 - [Decisioni di scope](project_scope_obd2.md): in ambito Mode 01/03/04/09 (OBFCM, nome ECU); esclusi UDS, Mode 06/08 e la lettura live di altre centraline; easy wins Mode 07, 0A, 02
-- [Stato della discovery OBD](project_scan_state.md): discovery multi-centralina e scansione approfondita da web; attendere il report reale dall'auto, e riproporre la domanda su TorqueModel se manca 0x62
-- [Helper non modificabili](feedback_helpers_readonly.md): TorqueModel.h e BoostModel.h sono forniti dall'utente
+- [Report dello scan reale](project_scan_state.md): fonti firmware e pid_scan.ps1, cosa fare all'arrivo del report (DOCS, README §5, PID live insieme all'utente, domanda su TorqueModel se manca 0x62)
+- [Helper non modificabili](feedback_helpers_readonly.md): formule, costanti e soglie di TorqueModel.h e BoostModel.h appartengono all'utente
 - [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md): niente dati grezzi opachi o che richiedano reverse engineering, niente indirizzi hex in dashboard
 - [Non configurare la macchina di sviluppo](feedback_no_machine_config.md): niente install/config di tool sulla workstation, build manuale a carico dell'utente
-- [Endpoint e credenziali](reference_endpoints.md): SoftAP, endpoint web, impostazioni ELM327 (ATH1, ATSH), file DOCS e anteprime
-- [Riferimenti documentali OBD2](reference_obd2_docs.md): README §5, obd_proto.h, pid_descriptions.h, dump DOCS per la verità su PID/Mode
-- [Come si compila su pc-030](reference_build.md): build.ps1 di verifica, board e opzioni ESP8266, il -I per gli header condivisi, core 3.1.2 in C:\tmp\arduino, librerie mancanti e verifica con librerie stub
-- [vLinker FS USB](reference_vlinker_fs.md): scan OBD2 da PC con tools\pid_scan.ps1, driver FTDI e baud 115200, vincoli USB e seriali, HEX-V2 non utilizzabile
+- [Endpoint, DOCS e anteprime](reference_endpoints.md): SoftAP, endpoint web, impostazioni ELM327 (ATH1, ATSH), file DOCS, anteprime e ricattura degli screenshot con Edge headless
+- [Riferimenti documentali OBD2](reference_obd2_docs.md): mappa di README §5 e §9, obd_proto.h, pid_descriptions.h, dump DOCS per la verità su PID, Mode e calcoli
+- [Come si compila su pc-030](reference_build.md): build.ps1 di verifica, board e opzioni ESP8266, il -I per gli header condivisi, toolchain portable in C:\tmp\arduino, verifica con librerie stub
+- [vLinker FS USB](reference_vlinker_fs.md): scan OBD2 da PC con tools\pid_scan.ps1 (README §5.5), driver FTDI e baud 115200, vincoli USB e seriali, HEX-V2 non utilizzabile

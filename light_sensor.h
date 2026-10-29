@@ -2,6 +2,9 @@
  * Auto-brightness OLED tramite fotoresistore (LDR) su A0.
  *
  * Hardware: 3.3V -> LDR -> A0 -> 10k -> GND. Piu' luce -> ADC piu' alto.
+ * L'LDR è opzionale: finchè una lettura non ne prova la presenza il contrasto resta a defaultBrightness,
+ * perchè senza LDR A0 è a massa come al buio totale; gli sketch senza ingresso analogico disattivano la
+ * lettura con LDR_ENABLED a 0.
  *
  * State machine:
  *   AUTO       contrasto = mapping(ldr filtrato)
@@ -32,8 +35,17 @@
 
 	#define LDR_PIN          A0
 
-	/** Il display reagisce a una variazione netta di luce con tempo di settling 
-	 * al 95% ≈ 18 / LDR_SAMPLE_HZ secondi (EMA alpha=0.15)   Es. 10 Hz -> ~1.8 s; 4 Hz -> ~4.5 s.
+	// Gli sketch senza LDR (profilo ESP-01 di WIFI_conn) lo definiscono a 0 prima dell'include:
+	// l'ADC non viene mai letto e il contrasto resta a defaultBrightness.
+	#ifndef LDR_ENABLED
+		#define LDR_ENABLED  1
+	#endif
+
+	// Contrasto senza LDR: 50% del registro di contrasto dell'SH1106 (0-255), l'unità di setContrast().
+	const uint8_t defaultBrightness = 128;
+
+	/** Il display reagisce a una variazione netta di luce con tempo di settling al 95% ≈ 18 / LDR_SAMPLE_HZ
+	 * secondi (EMA alpha=0.15), più i 2 campioni di ritardo del filtro mediano: a 10 Hz circa 2.0 s, a 4 Hz circa 5 s.
 	 */
 	#define LDR_SAMPLE_HZ    10
 	#define LDR_SAMPLE_MS    (1000 / LDR_SAMPLE_HZ)  // derivato: usato dal codice esistente
@@ -54,6 +66,13 @@
 	#define LDR_CALIBRATION_DECAY_STEP    2       // 2 unita' per tick -> ~40 unita'/min di decay
 	#define LDR_CALIBRATION_DECAY_MARGIN  20      // bound si riavvicina all'EMA solo se distante > 20
 
+	// Filtro mediano sui campioni ADC prima dell'EMA: elimina fino a 2 campioni anomali consecutivi.
+	#define LDR_MEDIAN_WINDOW             5
+
+	// Senza LDR il partitore interno del D1 Mini tiene A0 a massa: una lettura filtrata da questo valore in su,
+	// che un pin a massa non raggiunge, prova la presenza dell'LDR fino al riavvio.
+	#define LDR_PRESENT_MIN_ADC           12
+
 	enum BrightnessMode : uint8_t { BR_AUTO, BR_MANUAL, BR_FADING };
 
 	struct BrightnessState {
@@ -73,6 +92,11 @@
 		int ldrMaxObserved          = 0;
 		unsigned long calibrationStartMs     = 0;  // timestamp init (per warm-up)
 		unsigned long lastCalibrationDecayMs = 0;  // ultimo tick di decay
+
+		// Presenza dell'LDR provata in questa sessione: finchè è false vale defaultBrightness.
+		bool ldrPresent = false;
+		int ldrWindow[LDR_MEDIAN_WINDOW] = {0};  // ultimi campioni ADC per il filtro mediano
+		uint8_t ldrWindowIndex = 0;
 	};
 
 	inline BrightnessState br;
@@ -95,16 +119,54 @@
 		return (uint8_t)(BR_CONTRAST_MIN + g * (BR_CONTRAST_MAX - BR_CONTRAST_MIN));
 	}
 
+	/**
+	 * Restituisce il contrasto che la modalità automatica deve raggiungere: dalla luce misurata quando l'LDR
+	 * è presente, altrimenti defaultBrightness. Usata anche dal reset auto di web_dashboard.h.
+	 * @since 29/10/26 Mattia Alesi
+	 */
+	inline uint8_t autoContrastTarget() {
+		return br.ldrPresent ? adcToContrast((int)br.ldrEma) : defaultBrightness;
+	}
+
+	/**
+	 * Restituisce il nome della modalità di luminosità per il JSON della dashboard; "fixed" indica il
+	 * contrasto automatico fermo a defaultBrightness perchè la presenza dell'LDR non è provata. Usata da web_dashboard.h.
+	 */
+	inline const char* brightnessModeName() {
+		if (br.mode == BR_MANUAL) return "manual";
+		if (br.mode == BR_FADING) return "fading";
+		return br.ldrPresent ? "auto" : "fixed";
+	}
+
+	/**
+	 * Inserisce un campione ADC nella finestra circolare e ne restituisce la mediana: uno o due campioni
+	 * anomali consecutivi non arrivano all'EMA, mentre un cambio di luce persistente passa in 3 campioni.
+	 */
+	inline int _ldrMedianFilter(int raw) {
+		br.ldrWindow[br.ldrWindowIndex] = raw;
+		br.ldrWindowIndex = (br.ldrWindowIndex + 1) % LDR_MEDIAN_WINDOW;
+		int sorted[LDR_MEDIAN_WINDOW];
+		memcpy(sorted, br.ldrWindow, sizeof(sorted));
+		for (uint8_t i = 1; i < LDR_MEDIAN_WINDOW; i++) {
+			int value = sorted[i];
+			int j = i - 1;
+			while (j >= 0 && sorted[j] > value) {
+				sorted[j + 1] = sorted[j];
+				j--;
+			}
+			sorted[j + 1] = value;
+		}
+		return sorted[LDR_MEDIAN_WINDOW / 2];
+	}
+
 	inline void _tickFade(unsigned long now) {
 		if (now - br.lastFadeMs < BR_FADE_TICK_MS) return;
 		br.lastFadeMs = now;
 		int delta = (int)br.targetContrast - (int)br.currentContrast;
-		if (abs(delta) <= 1) {
-			br.currentContrast = br.targetContrast;
-			br.mode = BR_AUTO;
-		} else {
-			br.currentContrast += (delta > 0 ? BR_FADE_STEP : -BR_FADE_STEP);
-		}
+		// L'ultimo passo si limita alla distanza residua: con un passo fisso un residuo di 2 oscillerebbe all'infinito
+		int step = abs(delta) < BR_FADE_STEP ? abs(delta) : BR_FADE_STEP;
+		br.currentContrast += (delta > 0 ? step : -step);
+		if (br.currentContrast == br.targetContrast) br.mode = BR_AUTO;
 		u8g2.setContrast(br.currentContrast);
 	}
 
@@ -137,20 +199,38 @@
 		}
 	}
 
+	/**
+	 * Registra la presenza dell'LDR alla prima lettura filtrata di almeno LDR_PRESENT_MIN_ADC, da cui riparte
+	 * l'EMA. L'assenza non si distingue elettricamente dal buio totale, quindi si presume solo finchè la presenza
+	 * non è provata: da lì al riavvio una lettura vicina a 0 è buio e porta il contrasto al minimo.
+	 */
+	inline void _confirmLdrPresence(int filtered) {
+		if (br.ldrPresent || filtered < LDR_PRESENT_MIN_ADC) return;
+		br.ldrPresent = true;
+		br.ldrEma = (float)filtered;
+		if (br.mode != BR_MANUAL) {
+			br.targetContrast = adcToContrast(filtered);
+			br.mode = BR_FADING;
+		}
+	}
+
 	inline void updateBrightness() {
 		unsigned long now = millis();
 
 		// Il fade gira ad alta frequenza, indipendente dal sample LDR.
 		if (br.mode == BR_FADING) _tickFade(now);
 
+	#if LDR_ENABLED
 		if (now - br.lastSampleMs < LDR_SAMPLE_MS) return;
 		br.lastSampleMs = now;
 
-		int raw = analogRead(LDR_PIN);
-		// Clamp anti-spike: scarta sample isolati troppo lontani dall'EMA (es. EMI da SPI MCP2515).
-		if (abs(raw - (int)br.ldrEma) < 300) {
-			br.ldrEma = br.ldrEma * 0.85f + raw * 0.15f;  // EMA, alpha=0.15
-		}
+		// Il mediano scarta i campioni anomali isolati (es. EMI da SPI MCP2515) e lascia passare un cambio
+		// di luce persistente, così l'EMA non resta mai bloccata.
+		int filtered = _ldrMedianFilter(analogRead(LDR_PIN));
+		_confirmLdrPresence(filtered);
+		// Prima della prova di presenza una lettura bassa può essere buio o LDR assente: non entra nell'EMA nè nella calibrazione
+		if (!br.ldrPresent) return;
+		br.ldrEma = br.ldrEma * 0.85f + filtered * 0.15f;  // EMA, alpha=0.15
 
 		// Aggiorna i bounds della calibrazione live in base all'EMA appena ricalcolato.
 		_updateLdrCalibration(now);
@@ -176,14 +256,20 @@
 				br.targetContrast = adcToContrast((int)br.ldrEma);
 				break;
 		}
+	#endif
 	}
 
 	inline void initBrightness() {
 		br.calibrationStartMs     = millis();
 		br.lastCalibrationDecayMs = br.calibrationStartMs;
-		int raw = analogRead(LDR_PIN);
-		br.ldrEma = (float)raw;
-		br.currentContrast = adcToContrast(raw);  // usera' fallback (range osservato ancora vuoto)
+	#if LDR_ENABLED
+		// Riempie la finestra del mediano, così già la prima lettura filtrata decide se l'LDR c'è
+		int filtered = 0;
+		for (uint8_t i = 0; i < LDR_MEDIAN_WINDOW; i++) filtered = _ldrMedianFilter(analogRead(LDR_PIN));
+		br.ldrPresent = filtered >= LDR_PRESENT_MIN_ADC;
+		br.ldrEma = (float)filtered;
+	#endif
+		br.currentContrast = autoContrastTarget();  // con l'LDR usa il fallback, perchè il range osservato è ancora vuoto
 		br.targetContrast  = br.currentContrast;
 		u8g2.setContrast(br.currentContrast);
 	}

@@ -1,6 +1,6 @@
 ---
-name: Decisioni di scope sul firmware OBD2
-description: Mode e protocolli dentro e fuori ambito, con le ragioni dell'utente; easy wins non ancora implementati
+name: project_scope_obd2
+description: Mode e protocolli dentro e fuori ambito del firmware, con le ragioni dell'utente; easy wins non implementati
 metadata:
   type: project
 ---
@@ -20,7 +20,10 @@ Non rifare queste discussioni: l'utente ha già deciso.
 - **Mode 08**: forza attuatori, pericoloso in un firmware always-on.
 - **Lettura live da centraline diverse dal motore** (es. marcia `A4` dal cambio): non estendere senza richiesta esplicita.
 
-## Easy wins identificati ma NON implementati
+`tools/pid_scan.ps1` legge da PC anche le bitmap dei supportati dei Mode 02 e 06 come sola informazione: non cambia l'ambito
+del firmware.
+
+## Easy wins identificati e non implementati
 - **Mode 07 Pending DTC**: riusa la lettura Mode 03 cambiando servizio; early warning prima della spia.
 - **Mode 0A Permanent DTC**: idem; DTC non cancellabili.
 - **Mode 02 Freeze Frame**: snapshot al momento di un DTC.

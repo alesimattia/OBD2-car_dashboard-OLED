@@ -338,7 +338,7 @@ set('d_cool',d.coolant===null?'N/D':d.coolant,d.coolant>115,d.coolant>110);
 set('d_torq',d.torque===null?'N/D':d.torque,false,false);
 document.getElementById('u_torq').textContent=d.torque===null?'Nm':(d.torqueSrc==='ECU'?'Nm misurata':'Nm stimata');
 set('d_hyb',d.hybBatt===null?'N/D':d.hybBatt,false,false);
-document.getElementById('d_ldr').textContent=d.lightLevel;
+document.getElementById('d_ldr').textContent=d.lightLevel===null?'N/D':d.lightLevel;
 document.getElementById('d_ctr').textContent=d.contrast;
 document.getElementById('d_brm').textContent=d.brightnessMode;
 var sl=document.getElementById('brSld');if(document.activeElement!==sl)sl.value=d.contrast;

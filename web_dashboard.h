@@ -245,7 +245,7 @@ set('d_cool',d.coolant===null?'N/D':d.coolant,d.coolant>115,d.coolant>110);
 set('d_torq',d.torque===null?'N/D':d.torque,false,false);
 document.getElementById('u_torq').textContent=d.torque===null?'Nm':(d.torqueSrc==='ECU'?'Nm misurata':'Nm stimata');
 set('d_hyb',d.hybBatt===null?'N/D':d.hybBatt,false,false);
-document.getElementById('d_ldr').textContent=d.lightLevel;
+document.getElementById('d_ldr').textContent=d.lightLevel===null?'N/D':d.lightLevel;
 document.getElementById('d_ctr').textContent=d.contrast;
 document.getElementById('d_brm').textContent=d.brightnessMode;
 var sl=document.getElementById('brSld');if(document.activeElement!==sl)sl.value=d.contrast;
@@ -409,10 +409,8 @@ static void handleData(ESP8266WebServer &server)
 	jsonNumberField(json, PSTR("hybBatt"), hybBattAvailable, (float)hybBattPct, 0);
 	json.printfP(PSTR(",\"boostSrc\":\"%s\",\"torqueSrc\":\"%s\""), boostMeasured ? "ECU" : "stima",
 				 torqueMeasured ? "ECU" : "stima");
-	const char *brm = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual"
-																		 : "fading";
-	json.printfP(PSTR(",\"lightLevel\":%d,\"contrast\":%u,\"brightnessMode\":\"%s\""), (int)br.ldrEma,
-				 br.currentContrast, brm);
+	jsonNumberField(json, PSTR("lightLevel"), br.ldrPresent, br.ldrEma, 0);
+	json.printfP(PSTR(",\"contrast\":%u,\"brightnessMode\":\"%s\""), br.currentContrast, brightnessModeName());
 
 	json.rawP(PSTR(",\"dtc\":["));
 	for (uint8_t i = 0; i < dtcCount; i++)
@@ -525,14 +523,17 @@ void setupWebDashboard(ESP8266WebServer &server)
 			br.mode            = BR_MANUAL;
 			u8g2.setContrast((uint8_t)v);
 		} else if (server.hasArg("auto")) {
-			br.targetContrast = adcToContrast((int)br.ldrEma);
+			br.targetContrast = autoContrastTarget();
 			br.mode = BR_FADING;
 		}
-		const char* m = br.mode == BR_AUTO ? "auto" : br.mode == BR_MANUAL ? "manual" : "fading";
+		// Finchè la presenza dell'LDR non è provata il valore filtrato non ha significato e la dashboard mostra N/D
+		char ldr[8];
+		if (br.ldrPresent) snprintf(ldr, sizeof(ldr), "%d", (int)br.ldrEma);
+		else strcpy(ldr, "null");
 		char j[140];
 		snprintf(j, sizeof(j),
-			"{\"ldr\":%d,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
-			(int)br.ldrEma, br.currentContrast, m, br.ldrAtOverride);
+			"{\"ldr\":%s,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
+			ldr, br.currentContrast, brightnessModeName(), br.ldrAtOverride);
 		server.send(200, "application/json", j); });
 	// Cancellazione DTC di tutte le centraline (OBD2 Mode 04, obd_live.h), rifiutata durante le scansioni
 	server.on("/clear-dtc", HTTP_GET, [&server]()

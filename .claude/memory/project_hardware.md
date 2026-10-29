@@ -1,25 +1,28 @@
 ---
-name: Hardware setup
-description: Differenze hardware tra i due sketch, vincoli pin ESP-01, scelte cablaggio e flash partition
-type: project
+name: project_hardware
+description: CANbus_conn solo su LOLIN D1 Mini; WIFI_conn su D1 Mini o ESP-01 con profilo scelto dalla board (pulsante su RX e niente LDR sull'ESP-01); criteri di scelta dei pin e partizioni flash
+metadata:
+  type: project
 ---
 
-Il progetto ha due sketch paralleli per due hardware diversi:
+**CANbus_conn:** solo LOLIN D1 Mini (FQBN `esp8266:esp8266:d1_mini_clone`, 4 MB, `4M (no FS)`), per scelta dell'utente e
+perchè l'ESP-01 non espone l'SPI del MCP2515. MCP2515/TJA1050 a 8 MHz su CS=D8, MOSI=D7, MISO=D6, SCK=D5; OLED SDA=D2,
+SCL=D1; pulsante su D3 (GPIO0, pin di boot); LDR opzionale su A0. L'utente non vuole un `#error` che blocchi altre board.
 
-**WIFI_conn/WIFI_conn.ino → ESP-01 (1MB flash)**
-- Solo GPIO0 e GPIO2 disponibili → usati per I2C OLED (SDA=GPIO0, SCL=GPIO2)
-- Wire.begin(0, 2) — NON i pin standard D1/D2 di un D1 Mini
-- Niente SPI possibile (mancano i pin) → impossibile usare MCP2515 su ESP-01
-- Connessione OBD2 via WiFi a un adattatore ELM327
-- Flash partition consigliata: 1M (no FS) per massimizzare lo spazio sketch + OTA
+**WIFI_conn:** gira su LOLIN D1 Mini e su ESP-01, con il profilo scelto dalla macro della board selezionata nell'IDE.
+- `ARDUINO_ESP8266_GENERIC` ("Generic ESP8266 Module", `eesz=1M`, `FlashMode=dout`) attiva il profilo ESP-01: pulsante su
+  GPIO3 (RX) con la seriale `SERIAL_TX_ONLY`, possibile perchè il firmware non legge mai la seriale; `LDR_ENABLED` a 0,
+  perchè l'ESP-01 non porta fuori l'ADC e il pin TOUT fluttuerebbe. Sul pulsante va una resistenza da 1 kΩ in serie, che
+  protegge l'adattatore USB-seriale se viene premuto durante il flash.
+- Ogni altra board usa il profilo D1 Mini: pulsante su D5 (GPIO14), LDR su A0.
+- OLED su GPIO0/GPIO2 (`Wire.begin(0, 2)`) su entrambe le board. La variante `generic` del core non definisce i nomi `D0`-`D8`.
 
-**CANbus_conn/CANbus_conn.ino → LOLIN D1 Mini (4MB flash)**
-- Lettura OBD2 diretta via CAN bus con modulo MCP2515+TJA1050 integrato (8MHz)
-- Pin SPI: CS=D8, MOSI=D7, MISO=D6, SCK=D5
-- I2C OLED: SDA=GPIO4(D2), SCL=GPIO5(D1)
-- WiFi usato SOLO per SoftAP OTA/dashboard (non c'è STA)
-- Flash partition: 4M (no FS)
+**Scelta del pulsante sul D1 Mini:** esclusi D0 (GPIO16 senza pull-up interno), D3/D4 (I²C e strapping di boot), D8 (GPIO15,
+deve stare basso al boot, pull-down sulla scheda), RX/TX (convertitore USB), A0 (solo analogico). D1, D2, D5, D6 e D7 sono
+equivalenti; resta D5 perchè già cablato.
 
-**Why:** L'ESP-01 era già disponibile e basta per la versione WiFi; il D1 Mini serve perché solo lui espone i pin SPI necessari al MCP2515.
+**Flash ESP-01:** il binario di WIFI_conn deve restare sotto circa 502 KB, il limite OTA della flash da 1 MB. Si misura con
+le librerie stub di [[reference_build]] compilando per `generic`; U8g2 reale aggiunge una quota stimata di 15-30 KB.
 
-**How to apply:** Quando l'utente fa modifiche al display o al cablaggio, ricorda che i pin I2C sono diversi tra i due sketch. Quando si parla di vincoli flash/spazio sketch, i limiti dell'ESP-01 sono molto più stretti del D1 Mini.
+**How to apply:** pin del pulsante e I²C differiscono fra gli sketch e fra i due profili di WIFI_conn; nuove periferiche su
+ESP-01 possono andare solo sul bus I²C. Gestione dell'LDR assente in [[project_architecture]].

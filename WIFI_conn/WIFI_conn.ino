@@ -1,5 +1,5 @@
 /**
- * OBD2 WiFi Monitor per ESP8266 D1 Mini
+ * OBD2 WiFi Monitor per ESP8266 LOLIN D1 Mini ed ESP-01
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
  * - Pressione boost (bar), letta dalla centralina (PID 0x70) o stimata da BoostModel
@@ -12,17 +12,16 @@
  * e InfoType Mode 09 (report su Serial e pagina /scan); la scansione approfondita parte dal web.
  *
  * Hardware:
- *   ESP8266 D1 Mini + OLED SH1106 1.3" (I2C)
+ *   ESP8266 LOLIN D1 Mini oppure ESP-01 (board "Generic ESP8266 Module", 1 MB) + OLED SH1106 1.3" (I2C)
  *   Adattatore ELM327 WiFi (inserito nella presa OBD2 del veicolo)
+ *   Il profilo hardware si sceglie da solo in base alla board selezionata nell'IDE.
  *
- * Cablaggio (solo display OLED):
- *   OLED VCC -> 3.3V
- *   OLED GND -> GND
- *   OLED SDA -> GPIO0
- *   OLED SCL -> GPIO2
- *   Pulsante: NA tra D5 (GPIO14) e GND. Click breve = scorri schermate;
- *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04 via ELM327).
- *             Pin diverso dal CAN sketch (lì D3) perché qui D3/D4 sono I2C.
+ * Cablaggio:
+ *   OLED VCC -> 3.3V, GND -> GND, SDA -> GPIO0, SCL -> GPIO2 (uguale sulle due board)
+ *   Pulsante: NA verso GND, su D5 (GPIO14) nel D1 Mini e su GPIO3 (RX) nell'ESP-01, dove una resistenza
+ *             da 1 kΩ in serie protegge l'adattatore USB-seriale se il pulsante è premuto durante il flash.
+ *             Click breve = scorri schermate; pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04 via ELM327).
+ *   LDR (solo D1 Mini, opzionale): 3.3V -> LDR -> A0 -> 10k -> GND; senza, contrasto fisso a defaultBrightness.
  *
  * Acquisizione: una richiesta multi-PID al motore per ciclo, con ripiego a un PID per ciclo se la
  * centralina o l'adattatore non accettano richieste multiple; aggiornamento parziale del display.
@@ -40,8 +39,16 @@
 #include "dtc_descriptions.h"
 #include "TorqueModel.h"
 #include "BoostModel.h"
-// D3/D4 occupati dall'I2C OLED su questo sketch → usa D5
-#define BUTTON_PIN D5
+// "Generic ESP8266 Module" è il profilo ESP-01: liberi solo GPIO0/GPIO2 (I2C OLED) e RX/TX, nessun ADC,
+// quindi pulsante su RX con la seriale in sola trasmissione e niente LDR.
+#if defined(ARDUINO_ESP8266_GENERIC)
+  #define WIFI_BOARD_ESP01
+  #define BUTTON_PIN 3
+  #define LDR_ENABLED 0
+#else
+  // D1 Mini: D3/D4 sono l'I2C dell'OLED; D5 ha il pull-up interno e nessun ruolo al boot
+  #define BUTTON_PIN D5
+#endif
 #include "button_handler.h"
 #include "light_sensor.h"
 #include "pid_descriptions.h"  // getPIDFullName() per stampa descrizioni SAE
@@ -155,7 +162,12 @@ unsigned long lastDiagPrint = 0;
 // ============================================================
 
 void setup() {
+#ifdef WIFI_BOARD_ESP01
+  // RX resta libero per il pulsante: il firmware non legge mai dalla seriale
+  Serial.begin(115200, SERIAL_8N1, SERIAL_TX_ONLY);
+#else
   Serial.begin(115200);
+#endif
   Serial.println(F("\n=== OBD2 WiFi Monitor ==="));
   Serial.println(F("Audi A5 F5 (B9.5) 40 TFSI DMSA S tronic"));
 
@@ -791,8 +803,10 @@ void drawBoostValue() {
   if (boostAvailable) {
     int bc = (int)(boostBar * 100.0f);
     char s = (bc >= 0) ? '+' : '-';
-    int a = abs(bc);
-    snprintf(val, sizeof(val), "%c%d.%02d Bar", s, a / 100, a % 100);
+    // Il limite a 99.99 bar supera ogni valore decodificabile da 0x70 e tiene la stringa nel buffer e nella colonna
+    unsigned a = (unsigned)abs(bc);
+    if (a > 9999) a = 9999;
+    snprintf(val, sizeof(val), "%c%u.%02u Bar", s, a / 100, a % 100);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -949,7 +963,8 @@ void drawDTCScreen(uint8_t page) {
 
   uint8_t perPage = DTC_PER_PAGE;
   uint8_t dtcPages = (dtcCount + perPage - 1) / perPage;
-  char title[22];
+  // Spazio per i massimi dei contatori uint8_t, non solo per i 12 DTC di OBD_MAX_DTC
+  char title[25];
   if (dtcPages > 1) {
     snprintf(title, sizeof(title), "ERRORI (%d) pag.%d/%d", dtcCount, page + 1, dtcPages);
   } else {

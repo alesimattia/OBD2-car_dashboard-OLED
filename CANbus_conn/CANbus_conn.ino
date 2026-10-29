@@ -19,6 +19,7 @@
  *   OBD2:    CANH->Pin6, CANL->Pin14, GND->Pin4/5
  *   Pulsante: NA tra D3 (GPIO0) e GND. Click breve = scorri schermate;
  *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04).
+ *   LDR (opzionale): 3.3V -> LDR -> A0 -> 10k -> GND; senza, contrasto fisso a defaultBrightness.
  *
  * Acquisizione: una richiesta multi-PID al motore per ciclo (fino a 6 PID), con ripiego automatico
  * a un PID per ciclo se la centralina non accetta le richieste multiple; aggiornamento parziale del display.
@@ -541,8 +542,10 @@ void drawBoostValue() {
   if (boostAvailable) {
     int bc = (int)(boostBar * 100.0f);
     char s = (bc >= 0) ? '+' : '-';
-    int a = abs(bc);
-    snprintf(val, sizeof(val), "%c%d.%02d Bar", s, a / 100, a % 100);
+    // Il limite a 99.99 bar supera ogni valore decodificabile da 0x70 e tiene la stringa nel buffer e nella colonna
+    unsigned a = (unsigned)abs(bc);
+    if (a > 9999) a = 9999;
+    snprintf(val, sizeof(val), "%c%u.%02u Bar", s, a / 100, a % 100);
   } else {
     snprintf(val, sizeof(val), "N/D");
   }
@@ -699,7 +702,8 @@ void drawDTCScreen(uint8_t page) {
 
   uint8_t perPage = DTC_PER_PAGE;
   uint8_t dtcPages = (dtcCount + perPage - 1) / perPage;
-  char title[22];
+  // Spazio per i massimi dei contatori uint8_t, non solo per i 12 DTC di OBD_MAX_DTC
+  char title[25];
   if (dtcPages > 1) {
     snprintf(title, sizeof(title), "ERRORI (%d) pag.%d/%d", dtcCount, page + 1, dtcPages);
   } else {

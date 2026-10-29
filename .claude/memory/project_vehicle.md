@@ -1,14 +1,14 @@
 ---
-name: Veicolo target
-description: Audi A5 F5 B9.5 40 TFSI DMSA mild hybrid 12 V, S tronic 0CK FWD: dati motore e cambio, centraline OBD osservate sulle B9, PID attesi e assenti, limiti del mild hybrid
+name: project_vehicle
+description: Audi A5 F5 B9.5 40 TFSI DMSA mild hybrid 12 V, S-tronic 0CK FWD: dati motore e cambio, centraline OBD osservate sulle B9, PID attesi e assenti, limiti del mild hybrid
 metadata:
   type: project
 ---
 
 **Veicolo:** Audi A5 F5 (B9.5) 40 TFSI, motore **DMSA** (2.0 TFSI EA888, 1984 cm³, 82.5 × 92.8 mm, compressione 12.2),
-150 kW a 4475-6000 rpm, 320 Nm a 1450-4475 rpm, benzina 95 EN 228, GPF, Euro 6d/6e. Cambio **S tronic DL382 `0CK`**,
+150 kW a 4475-6000 rpm, 320 Nm a 1450-4475 rpm, benzina 95 EN 228, GPF, Euro 6d/6e. Cambio **S-tronic DL382 `0CK`**,
 trazione anteriore, rapporti 3.188 / 2.190 / 1.517 / 1.057 / 0.738 / 0.557 / 0.433, coppia finale 4.234, pneumatico di serie
-225/50 R17. Fonte: scheda tecnica Audi eTD della A5 Sportback 40 TFSI S tronic 150 kW MHEV.
+225/50 R17. Fonte: scheda tecnica Audi eTD della A5 Sportback 40 TFSI S-tronic 150 kW MHEV.
 
 **Mild hybrid 12 V:** BAS (slave LIN della centralina motore) e batteria Li-ion 12 V 10 Ah. Veleggio a motore spento fra
 55 e 160 km/h, start-stop sotto 22 km/h: la centralina motore risponde con RPM, carico e MAF a zero. Potenza del BAS e carica
@@ -21,8 +21,8 @@ della batteria non sono esposte dall'OBD standard (batteria leggibile solo via U
 - Mai visti sulle B9 termiche: `5B`, `9A`, `A4`, `7A`-`7C`, EGR `2C`/`2D`.
 - `0x70` sensore A è pressione assoluta (verificato con BARO sulle catture); l'indirizzamento fisico `7E0` funziona attraverso il gateway; SFD non blocca Mode 01/03/09.
 
-**Dato reale ancora da acquisire:** lo scan e la scansione approfondita eseguiti dall'utente sull'auto; in `DOCS/` ci sono la
-scheda eTD Audi e `references.lnk` con le fonti web, il report dello scan va salvato lì. Vedi [[project_scan_state]].
+**Fonti nel repo:** in `DOCS/` la scheda eTD Audi e `references.lnk` con le fonti web; il report dello scan reale va salvato
+lì ([[project_scan_state]]).
 
 **How to apply:** prima di proporre PID nuovi verificare che il motore li dichiari nel report dello scan; per coppia e boost la
 centralina è la fonte primaria, `TorqueModel.h`/`BoostModel.h` sono il ripiego (vedi [[feedback_helpers_readonly]]).
