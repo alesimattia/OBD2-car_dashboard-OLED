@@ -8,8 +8,9 @@
  * - Carica batteria ibrida (%, PID 0x5B se la vettura lo espone)
  *
  * Comunica con un adattatore ELM327 WiFi tramite comandi AT su TCP, con gli header CAN attivi
- * per distinguere le risposte delle diverse centraline. All'avvio scopre centraline, PID Mode 01
- * e InfoType Mode 09 (report su Serial e pagina /scan); la scansione approfondita parte dal web.
+ * per distinguere le risposte delle diverse centraline. Dopo la connessione va subito al monitor con il
+ * profilo vettura di obd_live.h, senza discovery; la scansione completa di centraline OBD e UDS si avvia
+ * solo dalla pagina web /scan (report su Serial e riepilogo nella pagina) e si interrompe con il pulsante.
  *
  * Hardware:
  *   ESP8266 LOLIN D1 Mini oppure ESP-01 (board "Generic ESP8266 Module", 1 MB) + OLED SH1106 1.3" (I2C)
@@ -20,7 +21,9 @@
  *   OLED VCC -> 3.3V, GND -> GND, SDA -> GPIO0, SCL -> GPIO2 (uguale sulle due board)
  *   Pulsante: NA verso GND, su D5 (GPIO14) nel D1 Mini e su GPIO3 (RX) nell'ESP-01, dove una resistenza
  *             da 1 kΩ in serie protegge l'adattatore USB-seriale se il pulsante è premuto durante il flash.
- *             Click breve = scorri schermate; pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04 via ELM327).
+ *             Click breve = scorri schermate, oppure interrompe la scansione completa; pressione lunga
+ *             (>=2.5s) = cancella DTC (OBD2 Mode 04 via ELM327), ignorata a fine scansione finchè il pulsante
+ *             non è rilasciato e per altri 5 s.
  *   LDR (solo D1 Mini, opzionale): 3.3V -> LDR -> A0 -> 10k -> GND; senza, contrasto fisso a defaultBrightness.
  *
  * Acquisizione: una richiesta multi-PID al motore per ciclo, con ripiego a un PID per ciclo se la
@@ -75,8 +78,10 @@
 
 // Tentativi massimi di connessione
 #define MAX_RETRIES 3
-// Cicli consecutivi senza risposta dal motore prima della riconnessione all'ELM327
+// Cicli consecutivi senza risposta dal motore prima della schermata "Motore non risponde" e della
+// riconnessione all'ELM327, che parte dopo ENGINE_SILENT_RETRY_MS
 #define SILENT_CYCLES_BEFORE_RECOVERY 10
+#define ENGINE_SILENT_RETRY_MS 10000
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/ota)
 #define OTA_SSID "OBD2_UPDATE"  // SSID del SoftAP per OTA
@@ -114,9 +119,10 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // ============================================================
 
 enum AppMode { MODE_CONNECT,
-               MODE_SCAN,
                MODE_MONITOR };
 AppMode currentMode = MODE_CONNECT;
+// Fine dell'attesa dopo "Motore non risponde": fino ad allora la riconnessione non parte
+unsigned long engineRetryAt = 0;
 
 unsigned long lastScreenSwitch = 0;
 // Schermata corrente: 0 = dati, 1 = pagina DTC 1, 2 = pagina DTC 2, etc.
@@ -126,8 +132,11 @@ uint8_t totalScreens = 1;
 uint8_t lastDrawnDtcScreen = 0xFF;
 
 // Stato dell'adattatore ELM327
-uint16_t elmCurrentHeader = 0x7DF;  // header CAN impostato con ATSH (0x7DF = funzionale, default)
+uint32_t elmCurrentHeader = 0x7DF;  // header CAN impostato con ATSH (0x7DF = funzionale, default), 0 = da reimpostare
 bool elmCountSuffixOk = false;      // accetta il numero di risposte attese dopo la richiesta (v1.3+)
+uint32_t elmFlowControlHeader = 0;      // ID impostato con ATFCSH, 0 = nessuno
+bool elmFlowControlUserMode = false;    // ATFCSM1 attivo
+bool elmLongTimeout = false;            // ATSTFF attivo: adattatore che non gestisce da sè i 7F xx 78
 unsigned long elmNextTimeout = ELM327_FIRST_TIMEOUT;
 char elmResponse[1024];             // risposta dell'ultimo comando, righe separate da '\n'
 
@@ -149,10 +158,17 @@ unsigned long lastDiagPrint = 0;
 // rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
 #include "serial_logger.h"
 
-// Discovery e lettura OBD condivise con la build CAN; il trasporto è obdTransact() più sotto
+// Scansione completa e lettura OBD condivise con la build CAN; il trasporto è obdTransact() più sotto
 #include "obd_proto.h"
 #include "obd_scan.h"
 #include "obd_live.h"
+
+// Modo di ricezione configurato sull'ELM327 (protocollo, filtri, flow control): qui perchè usa le costanti OBD_RX_*;
+// OBD_RX_UNSET dopo un filtro rifiutato, così la richiesta successiva riapplica tutto
+static constexpr uint8_t OBD_RX_UNSET = 0xFF;
+uint8_t elmReceiveMode = OBD_RX_OBD11;
+// Protocollo attivo sull'adattatore, a 29 bit dopo ATSP7: guida il cambio di protocollo e il parser delle righe
+bool elmExtendedProtocol = false;
 
 #define OBD_CONN_WIFI
 #include "web_dashboard.h"
@@ -161,6 +177,10 @@ unsigned long lastDiagPrint = 0;
 // SETUP
 // ============================================================
 
+/**
+ * Avvia seriale, display e web server; connessione all'ELM327 e lettura live partono dal loop.
+ * @since 29/10/26 Mattia Alesi
+ */
 void setup() {
 #ifdef WIFI_BOARD_ESP01
   // RX resta libero per il pulsante: il firmware non legge mai dalla seriale
@@ -199,6 +219,8 @@ void setup() {
   // Pulsante fisico (clear DTC + cycle schermate)
   buttonInit();
 
+  // Fino a fine executeConnectMode() nè la dashboard nè la scansione devono interrogare l'adattatore
+  obdTransportReady = false;
   currentMode = MODE_CONNECT;
 }
 
@@ -223,7 +245,8 @@ void loop() {
       otaClientWasConnected = false;
       Serial.println(F("OTA: client disconnesso, timeout ripartito"));
     }
-    if (!clientNow && millis() > otaDeadline) {
+    // Durante la scansione completa il SoftAP resta acceso: su ESP-01 il report si legge solo dal web
+    if (!clientNow && millis() > otaDeadline && !obdProbeRunning()) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
@@ -234,9 +257,6 @@ void loop() {
   switch (currentMode) {
     case MODE_CONNECT:
       executeConnectMode();
-      break;
-    case MODE_SCAN:
-      executeScanMode();
       break;
     case MODE_MONITOR:
       if (obdProbeRunning()) {
@@ -261,11 +281,27 @@ void waitServingHttp(unsigned long ms) {
   }
 }
 
+/** Cifre dell'ID nelle righe con header per il protocollo configurato: 8 a 29 bit, 3 a 11 bit. */
+uint8_t elmIdDigits() {
+  return elmExtendedProtocol ? 8 : 3;
+}
+
+/** Vero se la riga con header è una risposta 7F xx 78: la centralina chiede altro tempo prima della risposta. */
+bool elmIsPendingLine(const char* line) {
+  uint32_t id;
+  uint8_t frame[8];
+  uint8_t frameLen;
+  return obdElmParseHeaderLine(line, &id, frame, &frameLen, elmIdDigits()) && frameLen >= 4 && frame[0] == 0x03 &&
+         frame[1] == 0x7F && frame[3] == OBD_NRC_RESPONSE_PENDING;
+}
+
 /**
  * Invia un comando all'ELM327 e legge la risposta fino al prompt '>' nel buffer statico elmResponse,
  * con le righe separate da '\n': servono a distinguere le centraline quando gli header sono attivi.
- * Senza prompt entro il timeout continua a scartare dati per 1 s, perchè un comando inviato mentre
- * l'adattatore lavora ancora interromperebbe la richiesta in corso (STOPPED).
+ * Una riga 7F xx 78 prolunga l'attesa di 5 s, come fa l'ELM327 dalla v2.1, mai oltre OBD_RESPONSE_PENDING_CAP_MS.
+ * Senza prompt continua a scartare dati per 1 s, perchè un comando inviato mentre l'adattatore lavora ancora
+ * interromperebbe la richiesta in corso; poi lo interrompe con uno spazio, che a riposo l'ELM ignora (un CR
+ * ripeterebbe l'ultimo comando), e attende STOPPED e il prompt.
  * @since 23/10/26 Mattia Alesi
  */
 const char* elmCommand(const char* cmd, unsigned long timeout) {
@@ -281,10 +317,13 @@ const char* elmCommand(const char* cmd, unsigned long timeout) {
   elmClient.print('\r');
 
   size_t len = 0;
+  size_t lineStart = 0;
   bool atLineStart = true;
   bool prompt = false;
-  unsigned long start = millis();
-  while (millis() - start < timeout) {
+  const unsigned long start = millis();
+  const unsigned long pendingCap = start + OBD_RESPONSE_PENDING_CAP_MS;
+  unsigned long deadline = start + timeout;
+  while ((long)(millis() - deadline) < 0) {
     if (!elmClient.available()) {
       yield();
       continue;
@@ -295,7 +334,16 @@ const char* elmCommand(const char* cmd, unsigned long timeout) {
       break;
     }
     if (c == '\r' || c == '\n') {
-      if (!atLineStart && len < sizeof(elmResponse) - 1) elmResponse[len++] = '\n';
+      if (!atLineStart && len < sizeof(elmResponse) - 1) {
+        elmResponse[len] = '\0';
+        if (elmIsPendingLine(elmResponse + lineStart)) {
+          unsigned long extended = millis() + 5000;
+          if ((long)(extended - pendingCap) > 0) extended = pendingCap;
+          if ((long)(extended - deadline) > 0) deadline = extended;
+        }
+        elmResponse[len++] = '\n';
+        lineStart = len;
+      }
       atLineStart = true;
       continue;
     }
@@ -307,14 +355,23 @@ const char* elmCommand(const char* cmd, unsigned long timeout) {
   elmResponse[len] = '\0';
   if (!prompt) {
     unsigned long drainStart = millis();
-    while (millis() - drainStart < 1000) {
+    while (millis() - drainStart < 1000 && !prompt) {
+      if (elmClient.available() && elmClient.read() == '>') prompt = true;
+      yield();
+    }
+  }
+  if (!prompt) {
+    elmClient.print(' ');
+    unsigned long stopStart = millis();
+    while (millis() - stopStart < 1000) {
       if (elmClient.available() && elmClient.read() == '>') break;
       yield();
     }
   }
 
-  // Traccia completa durante connessione e scan; a regime saturerebbe il buffer del Serial monitor web
-  if (currentMode != MODE_MONITOR) {
+  // Traccia completa solo durante la connessione: a regime e nella scansione completa saturerebbe il buffer del
+  // Serial monitor web
+  if (currentMode == MODE_CONNECT) {
     Serial.print(F("TX: "));
     Serial.print(cmd);
     Serial.print(F("  RX: "));
@@ -334,14 +391,79 @@ bool elmCommandOk(const char* cmd) {
   return ok;
 }
 
-/** Imposta l'header CAN delle richieste (ATSH) solo se diverso da quello corrente. */
-bool elmSetHeader(uint16_t requestId) {
+/**
+ * Imposta l'header CAN delle richieste solo se diverso da quello corrente: a 11 bit ATSH con 3 cifre, a 29 bit
+ * ATCP con i 5 bit di priorità e ATSH con i 24 bit bassi (17FC007B = ATCP17 + ATSHFC007B).
+ */
+bool elmSetHeader(uint32_t requestId) {
   if (requestId == elmCurrentHeader) return true;
-  char cmd[10];
-  snprintf(cmd, sizeof(cmd), "ATSH%03X", requestId);
+  char cmd[16];
+  if (requestId & OBD_ID_EXTENDED) {
+    const uint32_t raw = requestId & 0x1FFFFFFFUL;
+    snprintf(cmd, sizeof(cmd), "ATCP%02X", (unsigned)((raw >> 24) & 0x1F));
+    if (!elmCommandOk(cmd)) return false;
+    snprintf(cmd, sizeof(cmd), "ATSH%06lX", (unsigned long)(raw & 0xFFFFFFUL));
+  } else {
+    snprintf(cmd, sizeof(cmd), "ATSH%03X", (unsigned)requestId);
+  }
   if (!elmCommandOk(cmd)) return false;
   elmCurrentHeader = requestId;
   return true;
+}
+
+/**
+ * Indirizza il flow control all'ID di richiesta, come vogliono le coppie UDS VAG: in modo 0 l'ELM lo manderebbe a
+ * risposta - 8 (772 invece di 710). L'ordine è vincolato dal datasheet: ATFCSH e ATFCSD prima di ATFCSM1, altrimenti
+ * risponde '?'. Se l'adattatore rifiuta i comandi le risposte multi-frame restano incomplete e lo si dichiara.
+ */
+bool elmSetFlowControlHeader(uint32_t requestId) {
+  if (!obdTransportFlowControlAvailable) return false;
+  if (requestId == elmFlowControlHeader && elmFlowControlUserMode) return true;
+  char cmd[16];
+  if (requestId & OBD_ID_EXTENDED) snprintf(cmd, sizeof(cmd), "ATFCSH%08lX", (unsigned long)(requestId & 0x1FFFFFFFUL));
+  else snprintf(cmd, sizeof(cmd), "ATFCSH%03X", (unsigned)requestId);
+  if (!elmCommandOk(cmd) || (!elmFlowControlUserMode && !elmCommandOk("ATFCSM1"))) {
+    obdTransportFlowControlAvailable = false;
+    return false;
+  }
+  elmFlowControlUserMode = true;
+  elmFlowControlHeader = requestId;
+  return true;
+}
+
+/**
+ * Configura l'adattatore per il modo di ricezione: protocollo a 11 (ATSP6) o 29 bit (ATSP7), filtri di ricezione
+ * sull'intervallo delle risposte UDS (ATCF/ATCM) oppure ricezione automatica (ATAR, che il datasheet indica per
+ * annullare CF e CM), dati del flow control con STmin 5 ms. Dopo ATSP header e flow control vanno reimpostati.
+ * Ritorna false se il protocollo a 29 bit o i filtri non sono accettati.
+ */
+bool elmApplyReceiveMode(uint8_t receiveMode) {
+  if (receiveMode == elmReceiveMode) return true;
+  const bool extended = receiveMode == OBD_RX_OBD29 || receiveMode == OBD_RX_UDS29;
+  if (extended != elmExtendedProtocol) {
+    if (extended && !obdTransportExtendedAvailable) return false;
+    if (!elmCommandOk(extended ? "ATSP7" : ELM327_PROTOCOL)) {
+      if (extended) obdTransportExtendedAvailable = false;
+      return false;
+    }
+    elmExtendedProtocol = extended;
+    elmCurrentHeader = 0;
+    elmFlowControlHeader = 0;
+  }
+  bool ok = true;
+  if (receiveMode == OBD_RX_UDS11) ok = elmCommandOk("ATCF700") && elmCommandOk("ATCM700");
+  else if (receiveMode == OBD_RX_UDS29) ok = elmCommandOk("ATCF17FE0000") && elmCommandOk("ATCM1FFFFF00");
+  else ok = elmCommandOk("ATAR");
+  if (receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29) {
+    if (obdTransportFlowControlAvailable && !elmCommandOk("ATFCSD300005")) obdTransportFlowControlAvailable = false;
+  } else if (elmFlowControlUserMode) {
+    elmCommandOk("ATFCSM0");
+    elmFlowControlUserMode = false;
+    elmFlowControlHeader = 0;
+  }
+  // Con un filtro rifiutato il modo resta da applicare: la richiesta successiva lo ritenta invece di lavorare senza filtri
+  elmReceiveMode = ok ? receiveMode : OBD_RX_UNSET;
+  return ok;
 }
 
 /**
@@ -362,8 +484,16 @@ void elmInit() {
 
   elmCurrentHeader = 0x7DF;
   elmCountSuffixOk = false;
+  elmReceiveMode = OBD_RX_OBD11;
+  elmExtendedProtocol = false;
+  elmFlowControlHeader = 0;
+  elmFlowControlUserMode = false;
+  elmLongTimeout = false;
   obdTransportHeadersAvailable = true;
   obdTransportPhysicalAvailable = true;
+  obdTransportFlowControlAvailable = true;
+  obdTransportExtendedAvailable = true;
+  obdTransportPendingHandled = true;
 
   // Prima richiesta OBD: con gli header ogni riga inizia con l'ID della centralina (7E8...)
   const char* cursor = elmCommand("0100", ELM327_FIRST_TIMEOUT);
@@ -371,7 +501,7 @@ void elmInit() {
   bool withoutHeader = false;
   char line[64];
   while (elmNextLineAt(cursor, line, sizeof(line))) {
-    uint16_t id;
+    uint32_t id;
     uint8_t frame[8];
     uint8_t frameLen;
     if (obdElmParseHeaderLine(line, &id, frame, &frameLen) && obdIsResponseId(id)) withHeader = true;
@@ -421,41 +551,32 @@ uint8_t expectedMode01ResponseLength(const uint8_t* request, uint8_t requestLen)
   return total > 0xFE ? 0xFF : (uint8_t)total;
 }
 
+/** Vero se la risposta contiene una riga di errore dell'adattatore, diversa dalla semplice assenza di risposta. */
+bool elmResponseHasTransportError(const char* response) {
+  return strstr(response, "CAN ERROR") != nullptr || strstr(response, "BUFFER FULL") != nullptr ||
+         strstr(response, "STOPPED") != nullptr || strstr(response, "?") != nullptr;
+}
+
 /**
- * Trasporto OBD via ELM327: imposta l'header (funzionale 7DF o fisico), invia la richiesta in
- * esadecimale e riassembla le righe della risposta per centralina; il flow control ISO-TP lo invia
- * l'adattatore. Con il suffisso di conteggio accettato aggiunge "1" alle richieste fisiche con risposta
- * in un solo frame, così l'ELM327 risponde senza attendere il proprio timeout. windowMs non serve:
- * l'adattatore applica i propri tempi.
- * @see obd_scan.h obdTransact()
+ * Invia la richiesta già impostata e riassembla le righe della risposta per centralina. Con 7F xx 78 l'adattatore
+ * continua ad attendere la risposta definitiva sulla riga successiva; ritorna true se una centralina ha chiesto altro
+ * tempo senza poi rispondere, segno di un adattatore che non gestisce da sè i 78.
  */
-uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
-                    uint16_t waitForEcuId) {
-  (void)windowMs;
-  obdCollectorReset(obdCollector);
-  if (requestLen == 0 || requestLen > 7 || !elmClient.connected()) return 0;
-  if (requestId != OBD_FUNCTIONAL_REQUEST_ID && !obdTransportPhysicalAvailable) return 0;
-  if (!elmSetHeader(requestId)) return 0;
-
-  char cmd[18];
-  size_t pos = 0;
-  for (uint8_t i = 0; i < requestLen; i++) pos += snprintf(cmd + pos, sizeof(cmd) - pos, "%02X", request[i]);
-  if (elmCountSuffixOk && requestId != OBD_FUNCTIONAL_REQUEST_ID && request[0] == 0x01 &&
-      expectedMode01ResponseLength(request, requestLen) <= 7) {
-    cmd[pos++] = '1';
-    cmd[pos] = '\0';
-  }
-
+bool elmExchange(const char* cmd, uint32_t requestId, uint32_t waitForEcuId, uint8_t receiveMode) {
   const char* response = elmCommand(cmd, elmNextTimeout);
   elmNextTimeout = ELM327_TIMEOUT;
+  if (!elmClient.connected() || elmResponseHasTransportError(response)) obdTransportLastStatus = OBD_TRANSPORT_ERROR;
+  uint32_t pendingIds[OBD_MAX_ECUS];
+  uint8_t pendingCount = 0;
   const char* cursor = response;
   char line[64];
   while (elmNextLineAt(cursor, line, sizeof(line))) {
-    uint16_t id;
+    uint32_t id;
     uint8_t frame[8];
     uint8_t frameLen;
     if (obdTransportHeadersAvailable) {
-      if (!obdElmParseHeaderLine(line, &id, frame, &frameLen) || !obdIsResponseId(id)) continue;
+      if (!obdElmParseHeaderLine(line, &id, frame, &frameLen, elmIdDigits()) ||
+          !obdAcceptsResponse(receiveMode, requestId, id)) continue;
     } else {
       if (!obdElmParsePayloadLine(line, frame, &frameLen)) continue;
       id = waitForEcuId != 0 ? waitForEcuId : OBD_ENGINE_RESPONSE_ID;
@@ -464,13 +585,90 @@ uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestL
     if (!slot) continue;
     obdIsoTpFeed(*slot, frame, frameLen);
     uint8_t service, nrc;
-    // Con 7F xx 78 l'adattatore continua ad attendere la risposta definitiva sulla riga successiva
     if (slot->state == OBD_ISOTP_COMPLETE && obdIsNegativeResponse(slot->data, slot->receivedLen, &service, &nrc) &&
         nrc == OBD_NRC_RESPONSE_PENDING) {
       obdIsoTpReset(*slot, id);
+      if (pendingCount < OBD_MAX_ECUS) pendingIds[pendingCount++] = id;
+    }
+  }
+  for (uint8_t i = 0; i < pendingCount; i++) {
+    if (!obdCollectorFind(obdCollector, pendingIds[i])) return true;
+  }
+  return false;
+}
+
+/**
+ * Trasporto via ELM327: configura il modo di ricezione, imposta l'header (funzionale o fisico, a 11 o 29 bit) e nei
+ * modi UDS il flow control verso l'ID di richiesta, invia la richiesta in esadecimale e riassembla le righe per
+ * centralina. Il suffisso di conteggio si usa solo per i Mode 01 fisici a 11 bit con risposta in un frame, mai in
+ * UDS, dove una riga 78 chiuderebbe il comando. Se una centralina chiede altro tempo e l'adattatore chiude senza
+ * risposta, attiva ATSTFF (circa 1 s) e ripete la richiesta una volta. windowMs non serve: l'ELM applica i suoi tempi.
+ * @see obd_scan.h obdTransact()
+ */
+uint8_t obdTransact(uint32_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
+                    uint32_t waitForEcuId, uint8_t receiveMode) {
+  (void)windowMs;
+  obdCollectorReset(obdCollector);
+  obdTransportLastStatus = OBD_TRANSPORT_OK;
+  if (requestLen == 0 || requestLen > 7 || !elmClient.connected()) {
+    obdTransportLastStatus = OBD_TRANSPORT_ERROR;
+    return 0;
+  }
+  const bool uds = receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29;
+  if (!obdIsFunctionalId(requestId) && !obdTransportPhysicalAvailable) return 0;
+  // Senza header nelle righe non si distinguono le centraline UDS
+  if (uds && !obdTransportHeadersAvailable) return 0;
+  if (!elmApplyReceiveMode(receiveMode) || !elmSetHeader(requestId)) {
+    obdTransportLastStatus = OBD_TRANSPORT_ERROR;
+    return 0;
+  }
+  if (uds) elmSetFlowControlHeader(requestId);
+
+  char cmd[18];
+  size_t pos = 0;
+  for (uint8_t i = 0; i < requestLen; i++) pos += snprintf(cmd + pos, sizeof(cmd) - pos, "%02X", request[i]);
+  if (elmCountSuffixOk && receiveMode == OBD_RX_OBD11 && !obdIsFunctionalId(requestId) && request[0] == 0x01 &&
+      expectedMode01ResponseLength(request, requestLen) <= 7) {
+    cmd[pos++] = '1';
+    cmd[pos] = '\0';
+  }
+
+  bool pendingWithoutAnswer = elmExchange(cmd, requestId, waitForEcuId, receiveMode);
+  if (pendingWithoutAnswer && uds && !elmLongTimeout) {
+    obdTransportPendingHandled = false;
+    if (elmCommandOk("ATSTFF")) {
+      elmLongTimeout = true;
+      obdCollectorReset(obdCollector);
+      elmExchange(cmd, requestId, waitForEcuId, receiveMode);
     }
   }
   return obdCollectorCompleteCount(obdCollector);
+}
+
+/**
+ * Discovery a raffica non disponibile sull'ELM327, che invia una richiesta per comando: la scansione procede in
+ * sequenza.
+ * @see obd_scan.h obdTransportDiscoveryBurst()
+ */
+uint8_t obdTransportDiscoveryBurst(const uint32_t* requestIds, uint16_t count, uint32_t* responders,
+                                   uint8_t maxResponders) {
+  (void)requestIds;
+  (void)count;
+  (void)responders;
+  (void)maxResponders;
+  return OBD_BURST_UNAVAILABLE;
+}
+
+/**
+ * Riporta l'ELM327 allo stato della lettura live dopo la scansione completa: la reinizializzazione rimette protocollo
+ * a 11 bit, ricezione automatica, flow control automatico e timeout di default, più semplice e sicura di annullare i
+ * singoli comandi.
+ * @see obd_scan.h obdTransportRestore()
+ */
+void obdTransportRestore() {
+  if (!elmClient.connected()) return;
+  elmInit();
+  elmTestCountSuffix();
 }
 
 /**
@@ -479,12 +677,12 @@ uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestL
  */
 void elmTestCountSuffix() {
   elmCountSuffixOk = false;
-  if (engineEcuIndex < 0 || !obdTransportPhysicalAvailable || !ecuResults[engineEcuIndex].respondsPhysical) return;
+  if (!obdTransportPhysicalAvailable) return;
   if (!elmSetHeader(obdPhysicalRequestId(OBD_ENGINE_RESPONSE_ID))) return;
   const char* cursor = elmCommand("01001", ELM327_TIMEOUT);
   char line[64];
   while (elmNextLineAt(cursor, line, sizeof(line))) {
-    uint16_t id;
+    uint32_t id;
     uint8_t frame[8];
     uint8_t frameLen;
     if (obdElmParseHeaderLine(line, &id, frame, &frameLen) && id == OBD_ENGINE_RESPONSE_ID && frameLen >= 3 &&
@@ -501,10 +699,17 @@ void elmTestCountSuffix() {
 // ============================================================
 
 /**
- * Connette l'ESP8266 alla rete WiFi dell'ELM327, stabilisce la
- * connessione TCP e inizializza l'ELM327 con i comandi AT.
+ * Connette l'ESP8266 alla rete WiFi dell'ELM327, stabilisce la connessione TCP, inizializza l'ELM327 con
+ * i comandi AT e passa al monitor con il profilo vettura. Dopo "Motore non risponde" parte solo allo
+ * scadere dell'attesa, servendo intanto il web server dal loop.
  */
 void executeConnectMode() {
+  if ((long)(millis() - engineRetryAt) < 0) {
+    yield();
+    return;
+  }
+  obdTransportReady = false;
+
   // --- Fase 1: Connessione WiFi ---
   String ssidLine = String("SSID: ") + ELM327_SSID;
   String pswLine = String("PSW: ") + (strlen(ELM327_PASS) > 0 ? ELM327_PASS : "(aperta)");
@@ -578,109 +783,50 @@ void executeConnectMode() {
   Serial.println(F("Inizializzazione ELM327..."));
   elmNextTimeout = ELM327_FIRST_TIMEOUT;
   elmInit();
+  elmTestCountSuffix();
   Serial.println(F("ELM327 inizializzato"));
   drawConnectScreen("ELM327 OK!", obdTransportHeadersAvailable ? "" : "senza header");
   delay(1000);
 
-  // Reset stato per nuova sessione (utile in caso di riconnessione)
-  labelsDrawn = false;
-  currentMode = MODE_SCAN;
-}
-
-// ============================================================
-// MODALITA' SCANSIONE
-// ============================================================
-
-/**
- * Mostra l'avanzamento dello scan sul display.
- * @see obd_scan.h obdShowScanProgress()
- */
-void obdShowScanProgress(const char* status, const char* detail) {
-  drawScanScreen(status, detail);
-}
-
-/** Mostra su OLED il riepilogo dello scan: numero di centraline e PID dichiarati dalle prime due. */
-void drawScanSummaryOLED() {
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tr);
-  drawStrCentered(0, "SCAN COMPLETA");
-
-  char buf[32];
-  snprintf(buf, sizeof(buf), "Centraline: %u", (unsigned)ecuCount);
-  u8g2.drawStr(0, 16, buf);
-
-  // Una riga per centralina, max 2 (le restanti sono solo su Serial)
-  uint8_t shown = ecuCount > 2 ? 2 : ecuCount;
-  for (uint8_t e = 0; e < shown; e++) {
-    char name[16];
-    obdEcuShortName(e, name, sizeof(name));
-    snprintf(buf, sizeof(buf), "%s: %u PID", name, (unsigned)obdCountDataIds(ecuResults[e].mode01, 0xFF));
-    u8g2.drawStr(0, 32 + 12 * e, buf);
-  }
-  if (ecuCount > 2) {
-    snprintf(buf, sizeof(buf), "+%u altre (Serial)", (unsigned)(ecuCount - 2));
-    u8g2.drawStr(0, 56, buf);
-  } else if (!obdTransportHeadersAvailable) {
-    u8g2.drawStr(0, 56, "ELM senza header");
-  }
-  u8g2.sendBuffer();
-}
-
-/**
- * Esegue lo scan delle centraline e dei PID (obd_scan.h), verifica il suffisso di conteggio
- * dell'adattatore, stampa il report e prepara la lettura live. Se nessuno risponde o manca il
- * motore 0x7E8 riprova dopo 10 s reinizializzando l'ELM327.
- */
-void executeScanMode() {
-  uint8_t outcome = obdRunBootScan();
-  if (outcome != OBD_SCAN_OK) {
-    if (outcome == OBD_SCAN_NO_ENGINE) {
-      obdPrintScanReport();
-      showError("Motore non risponde", "Quadro acceso?");
-    } else {
-      showError("ECU non risp.", "Quadro acceso?");
-    }
-    Serial.println(F("Scan fallito, nuova connessione tra 10 s"));
-    waitServingHttp(10000);
-    currentMode = MODE_CONNECT;
-    return;
-  }
-
-  elmTestCountSuffix();
-  obdPrintScanReport();
+  // Nuova sessione monitor, anche dopo una riconnessione
   obdLiveConfigure();
-  drawScanSummaryOLED();
-  waitServingHttp(2000);
-
-  // Reset stato display e DTC per la nuova sessione monitor
   labelsDrawn = false;
   currentScreen = 0;
   totalScreens = 1;
+  lastDrawnDtcScreen = 0xFF;
   dtcCheckRequested = true;
+  obdTransportReady = true;
   currentMode = MODE_MONITOR;
 }
 
+// ============================================================
+// SCANSIONE COMPLETA
+// ============================================================
+
 /**
- * Esegue un passo della scansione approfondita avviata dal web e ne mostra l'avanzamento sul display;
- * al termine il monitor riprende con un ridisegno completo.
+ * Esegue un passo della scansione completa avviata dal web e ne mostra fase e avanzamento sul display; una
+ * pressione del pulsante la interrompe, la caduta del TCP la chiude con il riepilogo parziale. Al termine blocca
+ * la pressione lunga, che altrimenti cancellerebbe i DTC a chi tiene premuto, fa ripartire la finestra OTA e fa
+ * riprendere il monitor con un ridisegno completo.
  */
 void executeProbeStep() {
   static unsigned long lastDraw = 0;
-  if (!elmClient.connected()) {
-    obdProbe.phase = OBD_PROBE_IDLE;
-    obdBusy = false;
-    currentMode = MODE_CONNECT;
-    return;
-  }
+  ButtonEvent ev = buttonPoll();
+  if (ev == BTN_SHORT || ev == BTN_LONG || !elmClient.connected()) obdProbeStop();
   obdProbeStep();
   bool running = obdProbeRunning();
   if (!running || millis() - lastDraw > 500) {
+    char phase[22];
     char line[22];
-    snprintf(line, sizeof(line), "%u%%", (unsigned)obdProbePercent());
-    drawStatusScreen("SCANSIONE APPROF.", running ? line : "Completata");
+    strncpy_P(phase, obdProbePhaseName(), sizeof(phase) - 1);
+    phase[sizeof(phase) - 1] = '\0';
+    snprintf(line, sizeof(line), "%u%% - click: ferma", (unsigned)obdProbePercent());
+    drawScanScreen(phase, running ? line : "Report su /scan");
     lastDraw = millis();
   }
   if (!running) {
+    buttonBlockLongPress();
+    otaDeadline = millis() + OTA_WINDOW_MS;
     labelsDrawn = false;
     lastDrawnDtcScreen = 0xFF;
   }
@@ -700,7 +846,8 @@ void updateScreenCount() {
 /**
  * Esegue un ciclo del monitor: controllo della connessione TCP, pulsante, controllo periodico dei DTC,
  * una lettura live (obd_live.h) anche mentre sono visibili le pagine DTC, aggiornamento del display e
- * diagnostica seriale. Se il motore resta muto per SILENT_CYCLES_BEFORE_RECOVERY cicli si riconnette.
+ * diagnostica seriale. Se il motore resta muto per SILENT_CYCLES_BEFORE_RECOVERY cicli mostra "Motore non
+ * risponde" e si riconnette dopo ENGINE_SILENT_RETRY_MS.
  */
 void executeMonitorMode() {
   // Verifica connessione TCP attiva
@@ -708,6 +855,7 @@ void executeMonitorMode() {
     Serial.println(F("Connessione TCP persa! Riconnessione..."));
     drawConnectScreen("Riconnessione..", "");
     elmClient.stop();
+    obdTransportReady = false;
     delay(1000);
     labelsDrawn = false;
     currentMode = MODE_CONNECT;
@@ -720,7 +868,7 @@ void executeMonitorMode() {
     currentScreen = (currentScreen + 1) % totalScreens;
     lastScreenSwitch = millis();
     labelsDrawn = false;
-  } else if (ev == BTN_LONG) {
+  } else if (ev == BTN_LONG && buttonLongPressAllowed()) {
     drawStatusScreen("CLEAR DTC", "Invio Mode 04...");
     char message[64];
     uint8_t result = obdLiveClearDtcs(message, sizeof(message));
@@ -747,10 +895,13 @@ void executeMonitorMode() {
 
   obdLiveStep();
   if (obdLiveSilentStreak >= SILENT_CYCLES_BEFORE_RECOVERY) {
-    // Recovery: l'ELM327 non ottiene risposte dal motore, si ripete connessione e inizializzazione
-    Serial.println(F("ELM327 senza risposte dal motore, riconnessione TCP"));
+    // Recovery: l'ELM327 non ottiene risposte dal motore, connessione e inizializzazione si ripetono dopo l'attesa
+    Serial.println(F("ELM327 senza risposte dal motore, riconnessione TCP tra 10 s"));
+    showError("Motore non risponde", "Quadro acceso?");
     obdLiveSilentStreak = 0;
     elmClient.stop();
+    obdTransportReady = false;
+    engineRetryAt = millis() + ENGINE_SILENT_RETRY_MS;
     labelsDrawn = false;
     currentMode = MODE_CONNECT;
     return;
@@ -981,7 +1132,7 @@ void drawDTCScreen(uint8_t page) {
     char owner[16];
     char line[24];
     decodeDTC(dtcCodes[startIdx + i], codeStr);
-    obdEcuShortName(dtcEcuIndex[startIdx + i], owner, sizeof(owner));
+    obdEcuShortName(dtcEcuId[startIdx + i], owner, sizeof(owner));
     snprintf(line, sizeof(line), "%s %s", codeStr, owner);
     u8g2.drawStr(0, yBase, line);
 
@@ -1023,11 +1174,11 @@ void drawConnectScreen(const char* status, const char* detail) {
   u8g2.sendBuffer();
 }
 
-/** Disegna la schermata di scansione PID con stato e dettaglio, centrati come nella build CAN. */
+/** Disegna la schermata della scansione completa con fase e avanzamento, centrati come nella build CAN. */
 void drawScanScreen(const char* status, const char* detail) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  drawStrCentered(11, "SCANSIONE PID");
+  drawStrCentered(11, "SCANSIONE COMPLETA");
   drawStrCentered(27, status);
   drawStrCentered(43, detail);
   u8g2.sendBuffer();

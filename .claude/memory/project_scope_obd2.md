@@ -1,31 +1,31 @@
 ---
 name: project_scope_obd2
-description: Mode e protocolli dentro e fuori ambito del firmware, con le ragioni dell'utente; easy wins non implementati
+description: Ambito deciso dall'utente: boot senza scansione con profilo statico, scansione completa OBD2 + UDS in sola lettura solo dal web, servizi ammessi e vietati, lettura live solo sul motore
 metadata:
   type: project
 ---
 
 Non rifare queste discussioni: l'utente ha già deciso.
 
-**Why:** evitare proposte che producono dati non interpretabili o di valore basso (vedi [[feedback_data_must_be_interpretable]]).
+**Why:** dati solo interpretabili e firmware always-on sicuro (vedi [[feedback_data_must_be_interpretable]]).
 
-## In ambito
-- **Mode 01** su tutte le centraline in discovery; lettura live solo sul motore `0x7E8`.
-- **Mode 03 / Mode 04** su tutte le centraline (DTC anche a MIL spenta).
-- **Mode 09**: bitmap InfoType, nome ECU `0A`, OBFCM `17` (consumo reale di vita); gli altri InfoType solo nella scansione approfondita.
+## Boot e lettura live
+- Al boot nessuna scansione nè discovery, mai: il monitor parte dal blocco "Profilo vettura" di `obd_live.h`
+  (`OBD_ENGINE_PIDS`, `OBD_ENGINE_MULTI_PID`), che l'utente codifica a mano dal profilo suggerito dalla scansione completa.
+- Lettura live solo sul motore `0x7E8`; dalle altre centraline solo i DTC (Mode 03 a chi risponde al `0101`) e il clear DTC
+  (Mode 04 dal pulsante o da `/clear-dtc`). Non estendere la lettura live ad altre centraline senza richiesta esplicita.
 
-## Esclusioni
-- **UDS (Mode `0x10`+)**: DID applicativi VAG proprietari; brute force dei DID 16 bit escluso per tempo e interpretabilità.
-- **Mode 06**: TID opachi senza label costruttore.
-- **Mode 08**: forza attuatori, pericoloso in un firmware always-on.
-- **Lettura live da centraline diverse dal motore** (es. marcia `A4` dal cambio): non estendere senza richiesta esplicita.
+## Scansione completa (firmware dal web, e `tools/pid_scan.ps1` da PC)
+- Parte solo dal web (`/scan`), risultati su Serial più riepilogo per nome in `/scan`; si interrompe da web o con un click.
+- Servizi ammessi: OBD `01 02 03 06 07 09 0A`, OBD a 29 bit solo per vedere se qualcuno risponde, UDS `3E 00`, `22` e
+  `19 01` nella sola default session. Mai Mode `04`/`08` dalla scansione, mai UDS `10 11 14 27 28 2E 2F 31 85`, mai il VIN
+  (`0902`, `F190`).
+- Mode 06 solo per i MID con nome standard; Mode 09 solo `04 08 0A 0B 17`; DID UDS solo identificazione con significato
+  pubblico e DID VAG con decodifica OBDb selezionata da `tools/obdb_select.ps1`; brute force dei DID escluso.
+- Failsafe: le centraline che non rispondono si saltano senza bloccare il resto.
+- Anno modello per i filtri OBDb: 2022, parametro del solo generatore.
+- Inclusi per scelta dell'utente quattro segnali di confine: Torque transmitting ratio, Cat OSC age factor, Oil pressure
+  valve control, Piston cooling nozzles.
 
-`tools/pid_scan.ps1` legge da PC anche le bitmap dei supportati dei Mode 02 e 06 come sola informazione: non cambia l'ambito
-del firmware.
-
-## Easy wins identificati e non implementati
-- **Mode 07 Pending DTC**: riusa la lettura Mode 03 cambiando servizio; early warning prima della spia.
-- **Mode 0A Permanent DTC**: idem; DTC non cancellabili.
-- **Mode 02 Freeze Frame**: snapshot al momento di un DTC.
-
-**How to apply:** a richieste di "altre estensioni OBD2" proporre gli easy wins in quest'ordine.
+**How to apply:** nuove letture vanno nella scansione completa (`obd_scan.h` e `pid_scan.ps1` insieme), mai al boot; prima di
+proporre un servizio verificare che non sia fra quelli vietati. Vedi [[project_obd2_vag]] e [[project_scan_state]].

@@ -273,6 +273,7 @@ function buildFont6x10() {
     56: [0b011100,0b100010,0b100010,0b011100,0b100010,0b100010,0b011100,0b000000,0b000000,0b000000],
     57: [0b011100,0b100010,0b100010,0b011110,0b000010,0b000100,0b011000,0b000000,0b000000,0b000000],
     58: [0b000000,0b001000,0b000000,0b000000,0b001000,0b000000,0b000000,0b000000,0b000000,0b000000],
+    63: [0b011100,0b100010,0b000010,0b000100,0b001000,0b000000,0b001000,0b000000,0b000000,0b000000],
     65: [0b011100,0b100010,0b100010,0b111110,0b100010,0b100010,0b100010,0b000000,0b000000,0b000000],
     66: [0b111100,0b100010,0b100010,0b111100,0b100010,0b100010,0b111100,0b000000,0b000000,0b000000],
     67: [0b011100,0b100010,0b100000,0b100000,0b100000,0b100010,0b011100,0b000000,0b000000,0b000000],
@@ -308,6 +309,7 @@ function buildFont6x10() {
     103:[0b000000,0b011110,0b100010,0b100010,0b011110,0b000010,0b011100,0b000000,0b000000,0b000000],
     104:[0b100000,0b100000,0b101100,0b110010,0b100010,0b100010,0b100010,0b000000,0b000000,0b000000],
     105:[0b001000,0b000000,0b011000,0b001000,0b001000,0b001000,0b011100,0b000000,0b000000,0b000000],
+    107:[0b100000,0b100000,0b100100,0b101000,0b110000,0b101000,0b100100,0b000000,0b000000,0b000000],
     108:[0b011000,0b001000,0b001000,0b001000,0b001000,0b001000,0b011100,0b000000,0b000000,0b000000],
     109:[0b000000,0b000000,0b110100,0b101010,0b101010,0b101010,0b100010,0b000000,0b000000,0b000000],
     110:[0b000000,0b000000,0b101100,0b110010,0b100010,0b100010,0b100010,0b000000,0b000000,0b000000],
@@ -466,48 +468,16 @@ const screens = [
   {
     title: '6. ELM327 OK',
     tag: 'connect', tagLabel: 'CONNECT',
-    desc: 'Solo build WiFi. Con un clone che ignora ATH1 la seconda riga mostra "senza header": la discovery vede una sola centralina.',
+    desc: 'Solo build WiFi. Con un clone che ignora ATH1 la seconda riga mostra "senza header": la scansione completa vede una sola centralina. Subito dopo parte il monitor con il profilo vettura, senza discovery.',
     drawLand(o) {
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(34, 27, "ELM327 OK!");
     },
   },
   {
-    title: '7. Ricerca centraline',
-    tag: 'scan', tagLabel: 'SCAN',
-    desc: 'Richiesta 0100 in broadcast ripetuta due volte: risponde ogni centralina OBD (motore, cambio, altre).',
-    drawLand(o) {
-      o.draw6x10(25, 11, "SCANSIONE PID");
-      o.draw6x10(10, 27, "Ricerca centraline");
-      o.draw6x10(31, 43, "Tentativo 1");
-    },
-  },
-  {
-    title: '8. Lettura PID dichiarati',
-    tag: 'scan', tagLabel: 'SCAN',
-    desc: 'Catena delle bitmap di supporto Mode 01 (0x20 ... 0xE0) e Mode 09, per tutte le centraline insieme.',
-    drawLand(o) {
-      o.draw6x10(25, 11, "SCANSIONE PID");
-      o.draw6x10(31, 27, "Lettura PID");
-      o.draw6x10(16, 43, "Mode 01 range 20");
-    },
-  },
-  {
-    title: '9. Scansione completata',
-    tag: 'scan', tagLabel: 'SCAN',
-    desc: 'Riepilogo: centraline rilevate e PID dichiarati dalle prime due. Il report completo con i codici va su Serial.',
-    drawLand(o) {
-      o.draw6x10(25, 0, "SCAN COMPLETA");
-      o.draw6x10(0, 16, "Centraline: 3");
-      o.draw6x10(0, 32, "Motore: 54 PID");
-      o.draw6x10(0, 44, "Cambio: 8 PID");
-      o.draw6x10(0, 56, "+1 altre (Serial)");
-    },
-  },
-  {
-    title: '10. Monitor dati (principale)',
+    title: '7. Monitor dati (principale)',
     tag: 'monitor', tagLabel: 'MONITOR',
-    desc: 'Boost dal PID 0x70 e coppia all\'albero da 0x62/0x8E/0x63. BATT (PID 0x5B) è N/D se la centralina non lo espone, come atteso sulle B9 termiche.',
+    desc: 'Boost dal PID 0x70 e coppia all\'albero da 0x62/0x8E rispetto alla coppia di targa. BATT (PID 0x5B) è N/D se la centralina non lo espone, come atteso sulle B9 termiche.',
     drawLand(o) {
       const rx = 100;
       o.draw7x14B(0, 0, "BOOST");
@@ -521,7 +491,7 @@ const screens = [
     },
   },
   {
-    title: '11. Monitor (pieno carico)',
+    title: '8. Monitor (pieno carico)',
     tag: 'monitor', tagLabel: 'MONITOR',
     desc: 'Coppia piena 320 Nm. "100%" a x=100 tocca il bordo, come succederebbe con una batteria ibrida esposta via OBD.',
     drawLand(o) {
@@ -537,7 +507,7 @@ const screens = [
     },
   },
   {
-    title: '12. Monitor (rilascio)',
+    title: '9. Monitor (rilascio)',
     tag: 'monitor', tagLabel: 'MONITOR',
     desc: 'In rilascio la coppia all\'albero è negativa (freno motore) e il collettore è in depressione. TEMP "-40 C" trasla a x=93.',
     drawLand(o) {
@@ -553,7 +523,7 @@ const screens = [
     },
   },
   {
-    title: '13. Monitor (veleggio mild hybrid)',
+    title: '10. Monitor (veleggio mild hybrid)',
     tag: 'monitor', tagLabel: 'MONITOR',
     desc: 'Motore spento fra 55 e 160 km/h o in start-stop: la centralina risponde, boost e coppia vanno a zero senza che sia un errore di lettura.',
     drawLand(o) {
@@ -569,9 +539,9 @@ const screens = [
     },
   },
   {
-    title: '14. Errori DTC (pagina 1)',
+    title: '11. Errori DTC (pagina 1)',
     tag: 'dtc', tagLabel: 'DTC',
-    desc: 'Codici letti da tutte le centraline, anche a MIL spenta, con la centralina che li ha memorizzati.',
+    desc: 'Codici letti da tutte le centraline che rispondono al PID 01, anche a MIL spenta, con la centralina che li ha memorizzati.',
     drawLand(o) {
       o.draw7x14B(0, 0, "ERRORI (3) pag.1/2");
       o.draw6x10(0, 20, "P0420 Motore");
@@ -581,7 +551,7 @@ const screens = [
     },
   },
   {
-    title: '15. Errori DTC (pagina 2)',
+    title: '12. Errori DTC (pagina 2)',
     tag: 'dtc', tagLabel: 'DTC',
     desc: 'Seconda pagina DTC. Alterna automaticamente ogni 5 secondi; la lettura OBD continua anche su queste pagine.',
     drawLand(o) {
@@ -591,16 +561,16 @@ const screens = [
     },
   },
   {
-    title: '16a. Clear DTC: invio',
+    title: '13a. Clear DTC: invio',
     tag: 'monitor', tagLabel: 'BUTTON',
-    desc: 'Pulsante fisico tenuto premuto >=2.5s: OBD2 Mode 04 in broadcast a tutte le centraline.',
+    desc: 'Pulsante fisico tenuto premuto >=2.5s: OBD2 Mode 04 in broadcast a tutte le centraline. A fine scansione completa la pressione lunga resta ignorata finchè il pulsante non è rilasciato e per altri 5 s.',
     drawLand(o) {
       o.draw6x10(37, 11, "CLEAR DTC");
       o.draw6x10(16, 32, "Invio Mode 04...");
     },
   },
   {
-    title: '16b. Clear DTC: successo',
+    title: '13b. Clear DTC: successo',
     tag: 'monitor', tagLabel: 'BUTTON',
     desc: 'Tutte le centraline hanno confermato (servizio 0x44). Rilettura dei DTC forzata.',
     drawLand(o) {
@@ -609,7 +579,7 @@ const screens = [
     },
   },
   {
-    title: '16c. Clear DTC: motore acceso',
+    title: '13c. Clear DTC: motore acceso',
     tag: 'monitor', tagLabel: 'BUTTON',
     desc: 'Le centraline rifiutano con 7F 04 22 (condizioni non corrette): va spento il motore lasciando il quadro acceso.',
     drawLand(o) {
@@ -618,16 +588,17 @@ const screens = [
     },
   },
   {
-    title: '17. Scansione approfondita',
+    title: '14. Scansione completa',
     tag: 'scan', tagLabel: 'SCAN',
-    desc: 'Avviata dalla pagina /scan: interroga ogni PID Mode 01 e InfoType Mode 09 su tutte le centraline. Il monitor riprende al termine.',
+    desc: 'Avviata solo dalla pagina /scan: centraline OBD2 e UDS in sola lettura, con la fase in corso. Un click del pulsante la interrompe e passa al riepilogo; al termine il monitor riprende.',
     drawLand(o) {
-      o.draw6x10(13, 11, "SCANSIONE APPROF.");
-      o.draw6x10(55, 32, "42%");
+      o.draw6x10(10, 11, "SCANSIONE COMPLETA");
+      o.draw6x10(31, 27, "Letture UDS");
+      o.draw6x10(10, 43, "65% - click: ferma");
     },
   },
   {
-    title: '18. Errore: rete non trovata',
+    title: '15. Errore: rete non trovata',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'Solo build WiFi. La rete WiFi dell\'ELM327 non è raggiungibile dopo 30 tentativi.',
     drawLand(o) {
@@ -637,7 +608,7 @@ const screens = [
     },
   },
   {
-    title: '19. Errore: TCP fallito',
+    title: '16. Errore: TCP fallito',
     tag: 'error', tagLabel: 'ERRORE',
     desc: 'Solo build WiFi. Connessione TCP all\'ELM327 fallita dopo 3 tentativi.',
     drawLand(o) {
@@ -647,19 +618,9 @@ const screens = [
     },
   },
   {
-    title: '20. Errore: nessuna centralina',
+    title: '17. Errore: motore non risponde',
     tag: 'error', tagLabel: 'ERRORE',
-    desc: 'Nessuna risposta alla richiesta 0100 in broadcast. Quadro acceso?',
-    drawLand(o) {
-      o.draw6x10(43, 11, "ERRORE:");
-      o.draw6x10(25, 27, "ECU non risp.");
-      o.draw6x10(22, 43, "Quadro acceso?");
-    },
-  },
-  {
-    title: '21. Errore: motore assente',
-    tag: 'error', tagLabel: 'ERRORE',
-    desc: 'Rispondono altre centraline ma non il motore (0x7E8), da cui dipende tutta la lettura live: lo scan si ripete.',
+    desc: 'Il motore (0x7E8) tace per 10 cicli di lettura: dopo 10 s la lettura riprende (build CAN, con re-init del MCP2515 se in bus-off) o parte una nuova connessione all\'ELM327 (build WiFi). Nessuna scansione si ripete.',
     drawLand(o) {
       o.draw6x10(43, 11, "ERRORE:");
       o.draw6x10(7, 27, "Motore non risponde");
@@ -667,9 +628,9 @@ const screens = [
     },
   },
   {
-    title: '22. Riconnessione',
+    title: '18. Riconnessione',
     tag: 'connect', tagLabel: 'CONNECT',
-    desc: 'Solo build WiFi. Connessione TCP persa o motore muto per 10 cicli: nuova connessione e inizializzazione.',
+    desc: 'Solo build WiFi. Connessione TCP persa: nuova connessione e inizializzazione, poi il monitor riparte con il profilo vettura.',
     drawLand(o) {
       o.draw6x10(31, 11, "CONNESSIONE");
       o.draw6x10(16, 27, "Riconnessione..");

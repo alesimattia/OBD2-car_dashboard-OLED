@@ -37,6 +37,28 @@
 		pinMode(BUTTON_PIN, INPUT_PULLUP);
 	}
 
+	// Blocco della pressione lunga dopo la scansione completa: BTN_LONG scatta a tasto ancora premuto, quindi chi
+	// tiene premuto per interromperla cancellerebbe i DTC (Mode 04) appena il monitor riprende
+	inline bool buttonLongPressAwaitRelease = false;
+	inline unsigned long buttonLongPressBlockedUntil = 0;
+
+	/**
+	 * Ignora la pressione lunga finchè il pulsante non risulta rilasciato e per altri 5 s; il rilascio lo rileva
+	 * buttonPoll().
+	 * @since 29/10/26 Mattia Alesi
+	 */
+	inline void buttonBlockLongPress()
+	{
+		buttonLongPressAwaitRelease = true;
+		buttonLongPressBlockedUntil = millis() + 5000;
+	}
+
+	/** Vero se una BTN_LONG va eseguita, cioè se il blocco di buttonBlockLongPress() è scaduto. */
+	inline bool buttonLongPressAllowed()
+	{
+		return !buttonLongPressAwaitRelease && (long)(millis() - buttonLongPressBlockedUntil) >= 0;
+	}
+
 	inline ButtonEvent buttonPoll()
 	{
 		// Stato interno persistente
@@ -72,6 +94,13 @@
 					return BTN_SHORT;
 				}
 			}
+		}
+
+		// Il blocco della pressione lunga si scioglie al primo livello stabile di rilascio, anche senza pressioni
+		if (buttonLongPressAwaitRelease && stableLevel == HIGH)
+		{
+			buttonLongPressAwaitRelease = false;
+			buttonLongPressBlockedUntil = now + 5000;
 		}
 
 		// Mentre il pulsante è premuto, controlla soglia long-press una sola volta

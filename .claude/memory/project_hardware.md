@@ -21,8 +21,10 @@ SCL=D1; pulsante su D3 (GPIO0, pin di boot); LDR opzionale su A0. L'utente non v
 deve stare basso al boot, pull-down sulla scheda), RX/TX (convertitore USB), A0 (solo analogico). D1, D2, D5, D6 e D7 sono
 equivalenti; resta D5 perchè già cablato.
 
-**Flash ESP-01:** il binario di WIFI_conn deve restare sotto circa 502 KB, il limite OTA della flash da 1 MB. Si misura con
-le librerie stub di [[reference_build]] compilando per `generic`; U8g2 reale aggiunge una quota stimata di 15-30 KB.
+**Flash ESP-01:** il binario di WIFI_conn deve restare sotto 512.000 byte per l'OTA: nel core 3.1.2 con `eesz=1M`
+`FS_start` è a 0xFB000 e l'Updater vuole firmware vecchio e nuovo arrotondati a 4 KB dentro quello spazio (l'etichetta "OTA
+~502KB" del menu sono 502 KiB). Si misura con le librerie stub di [[reference_build]] compilando per `generic`; U8g2 reale
+aggiunge una quota stimata di 15-30 KB, da sommare. Le tabelle OBDb della scansione completa occupano circa 80 KB di PROGMEM.
 
 **How to apply:** pin del pulsante e I²C differiscono fra gli sketch e fra i due profili di WIFI_conn; nuove periferiche su
 ESP-01 possono andare solo sul bus I²C. Gestione dell'LDR assente in [[project_architecture]].

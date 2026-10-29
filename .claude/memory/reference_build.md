@@ -1,6 +1,6 @@
 ---
 name: reference_build
-description: build.ps1 di A:\obd verifica la compilazione con la toolchain portable in C:\tmp\arduino; board e opzioni ESP8266, -I sulla radice, librerie non installate e verifica con librerie stub
+description: build.ps1 di A:\obd verifica la compilazione con la toolchain portable in C:\tmp\arduino; board e opzioni ESP8266, -I sulla radice, librerie non installate, verifica con librerie stub; test C++ su PC con MSVC e test PowerShell
 metadata:
   type: reference
 ---
@@ -32,5 +32,12 @@ controllo delle librerie.
 scratchpad e `--library` verso due stub nello scratchpad (`mcp_can/src/mcp_can.h` e `U8g2/src/U8g2lib.h`, ciascuno con un
 `library.properties`) che dichiarano solo ciò che il codice usa: `MCP_CAN`, `U8G2_SH1106_128X64_NONAME_F_HW_I2C`, i font
 `u8g2_font_6x10_tr` e `u8g2_font_7x14B_tr`. Verifica tutto il progetto tranne le librerie e stampa l'occupazione di RAM, IRAM
-e flash. Non c'è un compilatore host: il C++ da eseguire su PC (per esempio test di `obd_proto.h`) qui si controlla solo con
-`xtensa-lx106-elf-g++ -std=gnu++17 -fsyntax-only` e si esegue sul Mac.
+e flash. Lo stub di `mcp_can` deve dichiarare `sendMsgBuf` con 3 e 4 argomenti, `readMsgBuf`, `checkReceive` e `getError`
+con `INT32U` = unsigned long; per l'ESP-01 la board è `generic` con `eesz=1M` ([[project_hardware]]).
+
+**Test su PC:** su `pc-030` c'è MSVC di Visual Studio 2022 Community, senza `vswhere` nel PATH: per compilare ed eseguire
+C++ di verifica (per esempio prove di `obd_proto.h`, che compila senza Arduino) un `.bat` nello scratchpad chiama
+`C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat` e poi `cl /std:c++17 /utf-8 /W4
+/EHsc` (`/utf-8` serve per gli accenti dei sorgenti). Gli script PowerShell di verifica girano con `powershell -NoProfile
+-ExecutionPolicy Bypass -File`. Tutti i test di verifica, C++ e PowerShell, restano nello scratchpad: l'utente non li esegue
+e nel repository vuole solo file usati da lui o dal firmware.

@@ -5,14 +5,15 @@
  *   /dashboard:    pagina HTML dashboard con auto-refresh 500ms
  *   /scan:         stessa pagina, aperta sulla tab "PID supportati"
  *   /data:         JSON con i valori principali e, in debug, l'istantanea diagnostica completa
- *   /scan-data:    JSON dello scan: centraline, PID, InfoType Mode 09, OBFCM, scansione approfondita
- *   /probe:        avvio (?start) e stato della scansione approfondita
- *   /probe-status: avanzamento della scansione approfondita
+ *   /scan-data:    JSON della scansione completa: adattatore, centraline OBD e UDS, PID, DTC, OBFCM
+ *   /probe:        avvio (?start), interruzione (?stop) e stato della scansione completa
+ *   /probe-status: avanzamento e fase della scansione completa
+ *   /serial-data:  Serial monitor web, letto dalla pagina anche fuori dalla sua tab durante la scansione
  *   /debug:        toggle diagnostica seriale (?on/?off)
  *   /brightness:   stato/override luminosità OLED (?set=N | ?auto)
  *   /clear-dtc:    cancella i DTC di tutte le centraline (OBD2 Mode 04)
  *
- * Gli handler non interrogano il bus mentre obdBusy è attivo (scan o scansione approfondita)
+ * Gli handler non interrogano il bus durante la scansione completa e la connessione all'adattatore
  * e non richiamano mai handleClient(), che non è rientrante. Richiede che lo .ino definisca
  * OBD_CONN_WIFI o OBD_CONN_CAN e includa obd_scan.h e obd_live.h prima di questo header.
  *
@@ -194,8 +195,8 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="sb">Auto-refresh 500ms</div>
 </div>
 <div class="tabC" id="tcS">
-<div id="scR" class="empty">Carico elenco PID...</div>
-<p class="fnote">Elenco dei parametri OBD2 standard (SAE J1979) dichiarati da ogni centralina. Il report completo, con i codici, &egrave; nel Serial monitor.</p>
+<div id="scR" class="empty">Carico lo stato della scansione...</div>
+<p class="fnote">Riepilogo per nome: parametri OBD2 standard (SAE J1979) letti da ogni centralina, conteggi per le centraline UDS. Valori e unit&agrave; sono nel report del Serial monitor, da salvare con "Salva log".</p>
 </div>
 <div class="tabC" id="tcL">
 <div class="s">
@@ -205,37 +206,56 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </div>
 </div>
 <script>
-var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']},prT=null;
-function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s')loadScan();if(w==='l')logStart();else logStop();}
+var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']},prT=null,scanRun=false,KIND=['confermato','in attesa','permanente'];
+function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s')loadScan();if(w==='l')logStart();else if(!scanRun)logStop();}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function list(a,cls){if(!a||a.length===0)return '';var h='<div class="pl'+(cls?' '+cls:'')+'">';a.forEach(function(p){h+='<span>'+esc(p)+'</span>';});return h+'</div>';}
 function loadScan(){fetch('/scan-data').then(function(r){return r.json();}).then(renderScan).catch(function(){document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
-function renderScan(d){var h='',p=d.probe||{};
-if(d.adapter&&!d.adapter.headers)h+='<p class="note w">Adattatore senza header CAN: elenco limitato a una centralina.</p>';
-if(d.engine){h+='<div class="s"><div class="st">Motore</div><p class="note">Coppia '+(d.engine.torque==='ECU'?'letta dalla centralina':'stimata dal modello')+' &middot; Boost '+(d.engine.boost==='ECU'?'letto dalla centralina':'stimato dal modello')+' &middot; Lettura '+(d.engine.multiPid?'multi-PID':'a PID singolo')+(d.engine.refTorque>0?' &middot; Coppia di riferimento '+d.engine.refTorque+' Nm':'')+'</p></div>';}
-if(d.obfcm){var o=d.obfcm;h+='<div class="s"><div class="st">Consumo reale di vita (OBFCM)</div><p class="note">'+(o.km>=0?o.km.toFixed(1)+' km':'km N/D')+' &middot; '+(o.liters>=0?o.liters.toFixed(1)+' L':'litri N/D')+(o.avg>=0?' &middot; media '+o.avg.toFixed(2)+' L/100 km':'')+'</p>'+(o.plausible?'':'<p class="note w">Valori non plausibili: ordine dei campi da verificare sul report Serial.</p>')+'</div>';}
-var run=p.state==='running';
-h+='<div class="s"><div class="st">Scansione approfondita</div><p class="note">Interroga ogni PID Mode 01 e InfoType Mode 09 su tutte le centraline e confronta le risposte con quanto dichiarato (circa 30 s su CAN, 60-80 s su WiFi).</p><p class="note" id="prSt">'+(run?'In corso: '+p.percent+'%':p.state==='done'?'Completata in '+p.seconds+' s':'Non eseguita')+'</p><button class="pbtn" id="prBtn" onclick="probeStart()"'+(run?' disabled':'')+'>Avvia scansione approfondita</button></div>';
-if(!d.ecus||d.ecus.length===0){h+='<p class="empty">Nessuna centralina rilevata.</p>';}
-d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(e.name)+(e.detail?' <span class="ecnt">'+esc(e.detail)+'</span>':'')+'</span><span class="ecnt">'+e.pids.length+' PID'+(e.undoc?' + '+e.undoc+' non documentati':'')+'</span></div>';
-h+=e.pids.length?list(e.pids):'<p class="empty">Nessun PID documentato.</p>';
-if(e.mode09&&e.mode09.length){h+='<div class="lt">Informazioni veicolo (Mode 09)</div>'+list(e.mode09);}
-if(e.probed){if(e.silent&&e.silent.length||e.silentUndoc){h+='<div class="lt">Dichiarati ma senza risposta</div>'+list(e.silent,'miss')+(e.silentUndoc?'<p class="note">+ '+e.silentUndoc+' non documentati</p>':'');}
-if(e.extra&&e.extra.length||e.extra09&&e.extra09.length||e.extraUndoc){h+='<div class="lt">Rispondono senza essere dichiarati</div>'+list(e.extra,'xtra')+list(e.extra09,'xtra')+(e.extraUndoc?'<p class="note">+ '+e.extraUndoc+' non documentati</p>':'');}
-if(!(e.silent&&e.silent.length)&&!e.silentUndoc&&!(e.extra&&e.extra.length)&&!(e.extra09&&e.extra09.length)&&!e.extraUndoc)h+='<p class="note">Scansione approfondita: tutti i PID dichiarati rispondono.</p>';}
+function prText(p){return p.state==='running'?'In corso: '+p.phase+', '+p.percent+'% ('+p.seconds+' s)':p.state==='done'?(p.stopped?'Interrotta dopo ':'Completata in ')+p.seconds+' s':'Nessuna scansione eseguita';}
+function udsDtc(u){return u.dtcConfirmed<0?'DTC non letti':'DTC '+u.dtcConfirmed+' confermati, '+(u.dtcPending<0?'?':u.dtcPending)+' in attesa';}
+function renderScan(d){var h='',p=d.probe||{},a=d.adapter||{},ecus=d.ecus||[],uds=d.uds||[],run=p.state==='running';
+h+='<div class="s"><div class="st">Scansione completa</div><p class="note">Legge in sola lettura tutte le centraline OBD2 e UDS: PID standard, freeze frame, monitor, informazioni veicolo, DTC e i dati VAG con decodifica pubblica. Dura circa 1-2 minuti su CAN e 6-8 su WiFi.</p><p class="note w">Quadro acceso e auto ferma. Il report va nel Serial monitor, raccolto anche fuori dalla sua tab finch&egrave; la pagina resta aperta.</p><p class="note" id="prSt">'+esc(prText(p))+'</p><button class="pbtn" id="prBtn" onclick="probeStart()"'+(run?' disabled':'')+'>Avvia scansione completa</button><button class="pbtn" id="prStop" onclick="probeStop()"'+(run?'':' disabled')+'>Interrompi</button><button class="pbtn" onclick="logSave()">Salva log</button></div>';
+if(p.state==='idle'){document.getElementById('scR').innerHTML=h;return;}
+if(!a.headers)h+='<p class="note w">Adattatore senza header CAN: '+(a.physical?'centraline OBD2 interrogate una alla volta':'una sola centralina OBD2')+', nessuna centralina UDS.</p>';
+else if(!a.physical)h+='<p class="note w">Adattatore senza indirizzamento fisico: solo richieste funzionali, nessuna centralina UDS.</p>';
+if(!a.flowControl)h+='<p class="note w">Flow control verso le centraline UDS non disponibile: letture su pi&ugrave; frame saltate.</p>';
+if(!a.pending78)h+='<p class="note w">L\'adattatore non gestisce le attese delle centraline: letture UDS con timeout esteso.</p>';
+if(!a.can29)h+='<p class="note">CAN a 29 bit non disponibile sull\'adattatore.</p>';
+if(d.engine)h+='<div class="s"><div class="st">Profilo suggerito</div><p class="note">Lettura '+(d.engine.multiPid?'multi-PID':'a PID singolo')+(d.engine.refTorque>0?' &middot; coppia di riferimento letta '+d.engine.refTorque+' Nm':'')+' &middot; blocco da copiare in obd_live.h a fine report</p></div>';
+if(d.obfcm){var o=d.obfcm;h+='<div class="s"><div class="st">Consumo reale di vita (OBFCM)</div><p class="note">'+o.km.toFixed(1)+' km &middot; '+o.liters.toFixed(1)+' L &middot; media '+o.avg.toFixed(2)+' L/100 km</p></div>';}
+h+='<div class="lt">Centraline OBD2 ('+ecus.length+')</div>';
+if(!ecus.length)h+='<p class="empty">'+(run?'Ricerca in corso...':'Nessuna centralina OBD2 ha risposto.')+'</p>';
+ecus.forEach(function(e,i){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(e.name)+(e.detail?' <span class="ecnt">'+esc(e.detail)+'</span>':'')+'</span><span class="ecnt">'+e.pids.length+' PID'+(e.undoc?' + '+e.undoc+' non documentati':'')+'</span></div>';
+uds.forEach(function(u){if(u.obd===i)h+='<p class="note">UDS: '+udsDtc(u)+' &middot; PID standard letti: '+u.stdPids+' &middot; dati VAG letti: '+u.vagDids+(u.silent?' &middot; muta durante le letture':'')+'</p>';});
+h+=e.pids.length?list(e.pids):'<p class="empty">Nessun PID letto.</p>';
+if(e.silent&&e.silent.length)h+='<div class="lt">Dichiarati ma senza risposta</div>'+list(e.silent,'miss');
+if(e.extra&&e.extra.length)h+='<div class="lt">Rispondono senza essere dichiarati</div>'+list(e.extra,'xtra');
+if(e.dtcRead===false&&!run)h+='<p class="note w">DTC non letti: la centralina non ha risposto al Mode 03.</p>';
+if(e.dtc&&e.dtc.length){h+='<div class="lt">DTC</div>';e.dtc.forEach(function(t){h+='<div class="di"><span class="dc">'+esc(t.code)+'</span> <span class="dd">'+KIND[t.kind]+(t.desc?' &middot; '+esc(t.desc):'')+'</span></div>';});}
+if(a.physical&&!e.physical)h+='<p class="note">Risponde solo alle richieste funzionali.</p>';
 h+='</div>';});
-document.getElementById('scR').innerHTML=h;if(run)probePoll();}
-function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: attendere la fine dello scan iniziale.');if(b)b.disabled=false;return;}probePoll();}).catch(function(){if(b)b.disabled=false;});}
-function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=p.state==='running'?'In corso: '+p.percent+'%':'Completata in '+p.seconds+' s';if(p.state!=='running'){clearInterval(prT);prT=null;loadScan();}}).catch(function(){});},1000);}
+var live=uds.filter(function(u){return u.obd<0&&!u.silent;}),mute=uds.filter(function(u){return u.obd<0&&u.silent;});
+h+='<div class="lt">Centraline UDS ('+live.length+')</div>';
+if(!live.length&&!mute.length)h+='<p class="empty">'+(run?'Ricerca in corso...':'Nessuna altra centralina UDS trovata.')+'</p>';
+live.forEach(function(u){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(u.name)+(u.system&&u.system!==u.name?' <span class="ecnt">'+esc(u.system)+'</span>':'')+'</span><span class="ecnt">'+udsDtc(u)+'</span></div><p class="note">PID standard letti: '+u.stdPids+' &middot; dati VAG letti: '+u.vagDids+'</p></div>';});
+if(mute.length)h+='<div class="lt">Escluse perch&egrave; mute</div>'+list(mute.map(function(u){return u.name;}),'miss');
+document.getElementById('scR').innerHTML=h;if(run)scanFollow();}
+function scanFollow(){scanRun=true;logStart();probePoll();}
+function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: adattatore non ancora connesso o lettura in corso, riprovare tra qualche secondo.');if(b)b.disabled=false;return;}scanFollow();loadScan();}).catch(function(){if(b)b.disabled=false;});}
+function probeStop(){var b=document.getElementById('prStop');if(b)b.disabled=true;fetch('/probe?stop').catch(function(){});}
+var prN=0;
+function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){clearInterval(prT);prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){});},1000);}
+function logSave(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.getElementById('smPre').textContent],{type:'text/plain'}));a.download='obd_scan.txt';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function f(v,n,u){return v===null||v===undefined?'N/D':v.toFixed(n)+(u||'');}
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
 function set(id,t,r,y){var e=document.getElementById(id);e.textContent=t;c(e,r,y);}
-var busy=false;
-function u(){fetch('/data').then(function(r){return r.json();}).then(function(d){
+var busy=false,uN=0;
+function u(){if(scanRun&&(uN++%4))return;fetch('/data').then(function(r){return r.json();}).then(function(d){
 document.getElementById('dbgTgl').checked=d.debug;
 document.getElementById('dbgWarn').style.display=d.debug?'':'none';
 document.getElementById('busyWarn').style.display=d.busy?'':'none';
+if(d.scan&&!scanRun)scanFollow();
 if(busy&&!d.busy&&document.getElementById('tcS').classList.contains('act'))loadScan();busy=d.busy;
 document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
 var bs=d.boost!==null&&d.boost>=0?'+':'';
@@ -301,7 +321,7 @@ function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,
 function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
 function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
 function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
-function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
 if(location.pathname==='/scan')swT('s');
 setInterval(u,500);u();
 </script>
@@ -391,18 +411,21 @@ static void jsonDiagnostics(ObdJsonStream &json)
 /**
  * Risponde a /data con i valori mostrati sul display (sempre, senza interrogare il bus), lo stato DTC
  * di tutte le centraline e la luminosità; in debug aggiunge l'istantanea diagnostica letta in quel
- * momento, salvo durante scan e scansione approfondita, quando segnala solo busy.
+ * momento, salvo durante la scansione completa e la connessione all'adattatore, quando segnala solo
+ * busy. Il campo scan fa seguire la scansione anche alla pagina aperta sulla tab Dashboard.
+ * @since 29/10/26 Mattia Alesi
  */
 static void handleData(ESP8266WebServer &server)
 {
-	const bool busy = obdBusy || obdProbeRunning() || engineEcuIndex < 0;
+	const bool busy = obdBusy || obdProbeRunning() || !obdTransportReady;
 	if (debugMode && !busy)
 		obdDiagRead();
 
 	ObdJsonStream json;
 	json.begin(server);
-	json.printfP(PSTR("{\"debug\":%s,\"busy\":%s,\"mil\":%s,\"dtcCount\":%u"), debugMode ? "true" : "false",
-				 busy ? "true" : "false", milOn ? "true" : "false", (unsigned)dtcCount);
+	json.printfP(PSTR("{\"debug\":%s,\"busy\":%s,\"scan\":%s,\"mil\":%s,\"dtcCount\":%u"), debugMode ? "true" : "false",
+				 busy ? "true" : "false", obdProbeRunning() ? "true" : "false", milOn ? "true" : "false",
+				 (unsigned)dtcCount);
 	jsonNumberField(json, PSTR("boost"), boostAvailable, boostBar, 2);
 	jsonNumberField(json, PSTR("coolant"), coolantAvailable, (float)coolantC, 0);
 	jsonNumberField(json, PSTR("torque"), torqueAvailable, (float)torqueNm, 0);
@@ -418,7 +441,7 @@ static void handleData(ESP8266WebServer &server)
 		char code[6];
 		char owner[24];
 		decodeDTC(dtcCodes[i], code);
-		obdEcuDisplayName(dtcEcuIndex[i], owner, sizeof(owner));
+		obdEcuDisplayName(dtcEcuId[i], owner, sizeof(owner));
 		if (i > 0)
 			json.put(',');
 		json.printfP(PSTR("{\"code\":\"%s\",\"ecu\":"), code);
@@ -460,9 +483,11 @@ void setupWebDashboard(ESP8266WebServer &server)
 			  { obdHandleScanData(server); });
 	server.on("/probe-status", HTTP_GET, [&server]()
 			  { obdHandleProbeStatus(server); });
-	// Avvio della scansione approfondita: l'handler imposta solo lo stato, il bus lo interroga il loop
+	// Avvio e interruzione della scansione completa: l'handler imposta solo lo stato, il bus lo interroga il loop
 	server.on("/probe", HTTP_GET, [&server]()
 			  {
+		if (server.hasArg("stop"))
+			obdProbeStop();
 		bool started = server.hasArg("start") && obdProbeStart();
 		ObdJsonStream json;
 		json.begin(server);
@@ -492,6 +517,9 @@ void setupWebDashboard(ESP8266WebServer &server)
 		bool dropped = false;
 		size_t n = WebSerial::logReadFrom(since, chunk, sizeof(chunk),
 																			&nextSeq, &dropped);
+		// La scansione completa attende finchè un browser che legge il log ha troppo arretrato
+		obdSerialServedSeq = nextSeq;
+		obdSerialServedMs = millis();
 
 		server.sendHeader(F("X-Seq"), String((unsigned long)nextSeq));
 		server.sendHeader(F("X-Dropped"), dropped ? "1" : "0");
@@ -535,13 +563,14 @@ void setupWebDashboard(ESP8266WebServer &server)
 			"{\"ldr\":%s,\"contrast\":%u,\"mode\":\"%s\",\"ldrAtOverride\":%d}",
 			ldr, br.currentContrast, brightnessModeName(), br.ldrAtOverride);
 		server.send(200, "application/json", j); });
-	// Cancellazione DTC di tutte le centraline (OBD2 Mode 04, obd_live.h), rifiutata durante le scansioni
+	// Cancellazione DTC di tutte le centraline (OBD2 Mode 04, obd_live.h), rifiutata durante la scansione completa e
+	// la connessione all'adattatore
 	server.on("/clear-dtc", HTTP_GET, [&server]()
 			  {
 		char message[64];
 		bool ok = false;
-		if (obdBusy || obdProbeRunning() || engineEcuIndex < 0) {
-			snprintf_P(message, sizeof(message), PSTR("Scansione in corso, riprovare più tardi"));
+		if (obdBusy || obdProbeRunning() || !obdTransportReady) {
+			snprintf_P(message, sizeof(message), PSTR("Scansione o connessione in corso, riprovare più tardi"));
 		} else {
 			uint8_t result = obdLiveClearDtcs(message, sizeof(message));
 			ok = result == OBD_CLEAR_OK || result == OBD_CLEAR_PARTIAL;

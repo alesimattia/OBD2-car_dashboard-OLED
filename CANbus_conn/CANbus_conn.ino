@@ -7,8 +7,9 @@
  * - Temperatura liquido raffreddamento (C)
  * - Carica batteria ibrida (%, PID 0x5B se la vettura lo espone)
  *
- * All'avvio scopre tutte le centraline OBD e i PID Mode 01 e InfoType Mode 09 che dichiarano
- * (report su Serial e pagina /scan); la scansione approfondita si avvia dalla pagina web.
+ * All'avvio va subito al monitor con il profilo vettura di obd_live.h, senza discovery; la scansione
+ * completa di centraline OBD e UDS si avvia solo dalla pagina web /scan (report su Serial e riepilogo
+ * nella pagina) e si interrompe con il pulsante.
  *
  * Hardware:
  *   ESP8266 D1 Mini + MCP2515/TJA1050 CAN (modulo integrato, SPI) + OLED SH1106 1.3" (I2C)
@@ -17,8 +18,9 @@
  *   MCP2515: VCC->5V, GND->GND, CS->D8, SO->D6, SI->D7, SCK->D5, INT->D0
  *   OLED:    VCC->3.3V, GND->GND, SCL->D1, SDA->D2
  *   OBD2:    CANH->Pin6, CANL->Pin14, GND->Pin4/5
- *   Pulsante: NA tra D3 (GPIO0) e GND. Click breve = scorri schermate;
- *             pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04).
+ *   Pulsante: NA tra D3 (GPIO0) e GND. Click breve = scorri schermate, oppure interrompe la
+ *             scansione completa; pressione lunga (>=2.5s) = cancella DTC (OBD2 Mode 04), ignorata
+ *             a fine scansione finchè il pulsante non è rilasciato e per altri 5 s.
  *   LDR (opzionale): 3.3V -> LDR -> A0 -> 10k -> GND; senza, contrasto fisso a defaultBrightness.
  *
  * Acquisizione: una richiesta multi-PID al motore per ciclo (fino a 6 PID), con ripiego automatico
@@ -60,8 +62,10 @@
 #define ISOTP_CONSECUTIVE_TIMEOUT_MS 150
 // Attesa estesa dopo una risposta 7F xx 78 (P2*CAN di ISO 15765-4)
 #define RESPONSE_PENDING_TIMEOUT_MS 5000
-// Cicli consecutivi senza risposta dal motore prima del ripristino (bus-off o nuovo scan)
+// Cicli consecutivi senza risposta dal motore prima del ripristino (re-init in bus-off, altrimenti
+// schermata "Motore non risponde" e nuovo tentativo dopo ENGINE_SILENT_RETRY_MS)
 #define SILENT_CYCLES_BEFORE_RECOVERY 10
+#define ENGINE_SILENT_RETRY_MS 10000
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/update)
 #define OTA_SSID    "OBD2_UPDATE"   // SSID del SoftAP per OTA
@@ -98,9 +102,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // Stato applicazione
 // ============================================================
 
-enum AppMode { MODE_SCAN,
-               MODE_MONITOR };
-AppMode currentMode = MODE_SCAN;
+// Fine dell'attesa dopo "Motore non risponde": fino ad allora il monitor non interroga il motore
+unsigned long engineRetryAt = 0;
 
 unsigned long lastScreenSwitch = 0;
 // Schermata corrente: 0 = dati, 1 = pagina DTC 1, 2 = pagina DTC 2, etc.
@@ -130,7 +133,7 @@ unsigned long lastDiagPrint = 0;
 // rompere "extern HardwareSerial Serial" nelle loro dichiarazioni.
 #include "serial_logger.h"
 
-// Discovery e lettura OBD condivise con la build WiFi; il trasporto è obdTransact() più sotto
+// Scansione completa e lettura OBD condivise con la build WiFi; il trasporto è obdTransact() più sotto
 #include "obd_proto.h"
 #include "obd_scan.h"
 #include "obd_live.h"
@@ -143,6 +146,11 @@ unsigned long lastDiagPrint = 0;
 // SETUP
 // ============================================================
 
+/**
+ * Avvia seriale, SoftAP con dashboard, display e MCP2515, poi prepara la lettura live con il profilo vettura:
+ * al boot non c'è nessuna scansione.
+ * @since 29/10/26 Mattia Alesi
+ */
 void setup() {
   Serial.begin(115200);
   Serial.println(F("\n=== OBD2 Monitor ==="));
@@ -192,7 +200,7 @@ void setup() {
   // Pulsante fisico (clear DTC + cycle schermate)
   buttonInit();
 
-  currentMode = MODE_SCAN;
+  obdLiveConfigure();
 }
 
 // ============================================================
@@ -215,7 +223,8 @@ void loop() {
       otaClientWasConnected = false;
       Serial.println(F("OTA: client disconnesso, timeout ripartito"));
     }
-    if (!clientNow && millis() > otaDeadline) {
+    // Durante la scansione completa il SoftAP resta acceso: il report si legge solo dal web
+    if (!clientNow && millis() > otaDeadline && !obdProbeRunning()) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_OFF);
@@ -223,17 +232,10 @@ void loop() {
       Serial.println(F("OTA: finestra chiusa, WiFi spento"));
     }
   }
-  switch (currentMode) {
-    case MODE_SCAN:
-      executeScanMode();
-      break;
-    case MODE_MONITOR:
-      if (obdProbeRunning()) {
-        executeProbeStep();
-      } else {
-        executeMonitorMode();
-      }
-      break;
+  if (obdProbeRunning()) {
+    executeProbeStep();
+  } else {
+    executeMonitorMode();
   }
 }
 
@@ -264,13 +266,14 @@ void flushCANBuffer() {
 }
 
 /**
- * Invia un frame a 11 bit con DLC 8, come richiede ISO 15765-4. Dopo tre invii falliti di fila
- * (buffer di trasmissione bloccati con TXREQ attivo) reinizializza il MCP2515.
+ * Invia un frame con DLC 8, come richiede ISO 15765-4, a 29 bit se l'ID porta OBD_ID_EXTENDED. Dopo tre invii
+ * falliti di fila (buffer di trasmissione bloccati con TXREQ attivo) reinizializza il MCP2515.
  */
-bool canSendFrame(uint16_t id, const uint8_t* frame) {
+bool canSendFrame(uint32_t id, const uint8_t* frame) {
   uint8_t data[8];
   memcpy(data, frame, 8);
-  if (CAN.sendMsgBuf(id, 0, 8, data) == CAN_OK) {
+  const uint8_t extended = (id & OBD_ID_EXTENDED) ? 1 : 0;
+  if (CAN.sendMsgBuf(id & 0x1FFFFFFFUL, extended, 8, data) == CAN_OK) {
     canTxFailures = 0;
     return true;
   }
@@ -283,22 +286,29 @@ bool canSendFrame(uint16_t id, const uint8_t* frame) {
 }
 
 /**
- * Trasporto OBD su CAN nativo: invia la richiesta single frame e riassembla le risposte di ogni
- * centralina. Al first frame di un messaggio multi-frame invia il flow control 30 00 00 all'ID fisico
- * della centralina (risposta - 8) ed estende l'attesa di N_Cr; una risposta 7F xx 78 estende l'attesa
- * a P2*CAN. Legge i frame a raffica e cede la CPU solo a coda vuota, perchè il MCP2515 ha due buffer.
+ * Trasporto su CAN nativo: invia la richiesta single frame e riassembla le risposte accettate dal modo di
+ * ricezione. Al first frame invia il flow control all'ID dato da obdFlowControlId() (risposta - 8 in OBD, ID di
+ * richiesta per le coppie UDS VAG) ed estende l'attesa di N_Cr; una risposta 7F xx 78 rinnova l'attesa a P2*CAN,
+ * mai oltre OBD_RESPONSE_PENDING_CAP_MS dall'invio. Legge i frame a raffica e cede la CPU solo a coda vuota,
+ * perchè il MCP2515 ha due buffer.
  * @see obd_scan.h obdTransact()
  */
-uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
-                    uint16_t waitForEcuId) {
+uint8_t obdTransact(uint32_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
+                    uint32_t waitForEcuId, uint8_t receiveMode) {
   obdCollectorReset(obdCollector);
+  obdTransportLastStatus = OBD_TRANSPORT_OK;
   if (requestLen == 0 || requestLen > 7) return 0;
   flushCANBuffer();
   uint8_t frame[8] = { 0 };
   frame[0] = requestLen;
   memcpy(frame + 1, request, requestLen);
-  if (!canSendFrame(requestId, frame)) return 0;
+  if (!canSendFrame(requestId, frame)) {
+    obdTransportLastStatus = OBD_TRANSPORT_ERROR;
+    return 0;
+  }
 
+  const bool firstMessageEnds = waitForEcuId == 0 && (receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29);
+  const unsigned long pendingCap = millis() + OBD_RESPONSE_PENDING_CAP_MS;
   unsigned long deadline = millis() + windowMs;
   while ((long)(millis() - deadline) < 0) {
     if (CAN.checkReceive() != CAN_MSGAVAIL) {
@@ -309,13 +319,14 @@ uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestL
     uint8_t len;
     uint8_t buf[8];
     CAN.readMsgBuf(&rxId, &len, buf);
-    if ((rxId & 0x80000000UL) || !obdIsResponseId(rxId)) continue;
-    ObdIsoTpRx* slot = obdCollectorSlot(obdCollector, (uint16_t)rxId);
+    // Il bit 30 è il flag RTR di mcp_can: un remote frame non porta dati diagnostici
+    if ((rxId & 0x40000000UL) || !obdAcceptsResponse(receiveMode, requestId, rxId)) continue;
+    ObdIsoTpRx* slot = obdCollectorSlot(obdCollector, rxId);
     if (!slot) continue;
 
     if (obdIsoTpFeed(*slot, buf, len)) {
-      uint8_t flowControl[8] = { 0x30, 0x00, 0x00, 0, 0, 0, 0, 0 };
-      canSendFrame(obdPhysicalRequestId((uint16_t)rxId), flowControl);
+      uint8_t flowControl[8] = { 0x30, 0x00, obdFlowControlSeparationMs(receiveMode), 0, 0, 0, 0, 0 };
+      canSendFrame(obdFlowControlId(receiveMode, requestId, rxId), flowControl);
     }
     if (slot->state == OBD_ISOTP_RECEIVING) {
       unsigned long frameDeadline = millis() + ISOTP_CONSECUTIVE_TIMEOUT_MS;
@@ -326,110 +337,108 @@ uint8_t obdTransact(uint16_t requestId, const uint8_t* request, uint8_t requestL
 
     uint8_t service, nrc;
     if (obdIsNegativeResponse(slot->data, slot->receivedLen, &service, &nrc) && nrc == OBD_NRC_RESPONSE_PENDING) {
-      obdIsoTpReset(*slot, (uint16_t)rxId);
-      deadline = millis() + RESPONSE_PENDING_TIMEOUT_MS;
+      obdIsoTpReset(*slot, rxId);
+      unsigned long pendingDeadline = millis() + RESPONSE_PENDING_TIMEOUT_MS;
+      deadline = (long)(pendingDeadline - pendingCap) > 0 ? pendingCap : pendingDeadline;
       continue;
     }
-    if (waitForEcuId != 0 && rxId == waitForEcuId) break;
+    if (firstMessageEnds || (waitForEcuId != 0 && rxId == waitForEcuId)) break;
   }
   return obdCollectorCompleteCount(obdCollector);
 }
 
-// ============================================================
-// MODALITÀ SCANSIONE
-// ============================================================
-
 /**
- * Mostra l'avanzamento dello scan sul display.
- * @see obd_scan.h obdShowScanProgress()
+ * Discovery a raffica sul CAN nativo, come il tool dtcsweep: 3E 00 a ogni ID ogni 10 ms, poi ascolto per 1 s, con
+ * invio e ricezione intercalati nello stesso ciclo. Fra due richieste arriva al più una risposta, quindi cedere la
+ * CPU a coda vuota non riempie i due buffer del MCP2515; se succede comunque (flag di overflow in EFLG) o un invio
+ * fallisce, ritorna OBD_BURST_FAILED senza reinizializzare il chip e la scansione procede in sequenza.
+ * @see obd_scan.h obdTransportDiscoveryBurst()
  */
-void obdShowScanProgress(const char* status, const char* detail) {
-  drawScanScreen(status, detail);
-}
-
-/** Attende ms millisecondi continuando a servire il web server (OTA e dashboard). */
-void waitServingHttp(unsigned long ms) {
-  unsigned long until = millis() + ms;
-  while ((long)(millis() - until) < 0) {
-    if (otaActive) httpServer.handleClient();
-    yield();
-  }
-}
-
-/**
- * Mostra su OLED il riepilogo dello scan: numero di centraline e PID dichiarati dalle prime due.
- * @since 07/05/26 Mattia Alesi
- */
-void drawScanSummaryOLED() {
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tr);
-  drawStrCentered(0, "SCAN COMPLETA");
-
-  char buf[32];
-  snprintf(buf, sizeof(buf), "Centraline: %u", (unsigned)ecuCount);
-  u8g2.drawStr(0, 16, buf);
-
-  // Una riga per centralina, max 2 (le restanti sono solo su Serial)
-  uint8_t shown = ecuCount > 2 ? 2 : ecuCount;
-  for (uint8_t e = 0; e < shown; e++) {
-    char name[16];
-    obdEcuShortName(e, name, sizeof(name));
-    snprintf(buf, sizeof(buf), "%s: %u PID", name, (unsigned)obdCountDataIds(ecuResults[e].mode01, 0xFF));
-    u8g2.drawStr(0, 32 + 12 * e, buf);
-  }
-  if (ecuCount > 2) {
-    snprintf(buf, sizeof(buf), "+%u altre (Serial)", (unsigned)(ecuCount - 2));
-    u8g2.drawStr(0, 56, buf);
-  }
-  u8g2.sendBuffer();
-}
-
-/**
- * Esegue lo scan delle centraline e dei PID (obd_scan.h), stampa il report e prepara la lettura live.
- * Se nessuno risponde o manca il motore 0x7E8 riprova dopo 10 s, servendo comunque il web server.
- */
-void executeScanMode() {
-  uint8_t outcome = obdRunBootScan();
-  if (outcome != OBD_SCAN_OK) {
-    if (outcome == OBD_SCAN_NO_ENGINE) {
-      obdPrintScanReport();
-      showError("Motore non risponde", "Quadro acceso?");
-    } else {
-      showError("ECU non risp.", "Quadro acceso?");
+uint8_t obdTransportDiscoveryBurst(const uint32_t* requestIds, uint16_t count, uint32_t* responders,
+                                   uint8_t maxResponders) {
+  if (count == 0) return 0;
+  const uint8_t receiveMode = (requestIds[0] & OBD_ID_EXTENDED) ? OBD_RX_UDS29 : OBD_RX_UDS11;
+  const uint8_t testerPresent[8] = { 0x02, 0x3E, 0x00, 0, 0, 0, 0, 0 };
+  // RX0OVR e RX1OVR restano alzati finchè non si azzerano: un overflow vecchio farebbe fallire la raffica
+  if (CAN.getError() & 0xC0) canInit();
+  flushCANBuffer();
+  uint8_t found = 0;
+  uint16_t next = 0;
+  unsigned long nextSendMs = millis();
+  unsigned long listenUntil = 0;
+  while (true) {
+    if (next < count && (long)(millis() - nextSendMs) >= 0) {
+      uint8_t data[8];
+      memcpy(data, testerPresent, 8);
+      const uint32_t id = requestIds[next];
+      if (CAN.sendMsgBuf(id & 0x1FFFFFFFUL, (id & OBD_ID_EXTENDED) ? 1 : 0, 8, data) != CAN_OK) return OBD_BURST_FAILED;
+      next++;
+      nextSendMs += 10;
+      if (next == count) listenUntil = millis() + 1000;
     }
-    Serial.println(F("Scan fallito, nuovo tentativo tra 10 s"));
-    waitServingHttp(10000);
-    return;
+    if (next == count && (long)(millis() - listenUntil) >= 0) break;
+    // Un frame perso renderebbe incompleto l'elenco: si ripiega in sequenza con i flag azzerati
+    if (CAN.getError() & 0xC0) {
+      canInit();
+      return OBD_BURST_FAILED;
+    }
+    if (CAN.checkReceive() != CAN_MSGAVAIL) {
+      yield();
+      continue;
+    }
+    unsigned long rxId;
+    uint8_t len;
+    uint8_t buf[8];
+    CAN.readMsgBuf(&rxId, &len, buf);
+    if ((rxId & 0x40000000UL) || len < 3 || !obdAcceptsResponse(receiveMode, 0, rxId)) continue;
+    const bool positive = (buf[0] & 0xF0) == 0 && buf[1] == 0x7E && buf[2] == 0x00;
+    const bool negative = (buf[0] & 0xF0) == 0 && buf[1] == 0x7F && buf[2] == 0x3E;
+    const bool firstFrame = (buf[0] & 0xF0) == 0x10;
+    if (!positive && !negative && !firstFrame) continue;
+    bool known = false;
+    for (uint8_t i = 0; i < found; i++) known = known || responders[i] == rxId;
+    if (!known && found < maxResponders) responders[found++] = rxId;
   }
-
-  obdPrintScanReport();
-  obdLiveConfigure();
-  drawScanSummaryOLED();
-  waitServingHttp(2500);
-
-  // Reset stato display e DTC per la nuova sessione monitor
-  labelsDrawn = false;
-  currentScreen = 0;
-  totalScreens = 1;
-  dtcCheckRequested = true;
-  currentMode = MODE_MONITOR;
+  return found;
 }
 
 /**
- * Esegue un passo della scansione approfondita avviata dal web e ne mostra l'avanzamento sul display;
- * al termine il monitor riprende con un ridisegno completo.
+ * Riporta il CAN nativo allo stato della lettura live dopo la scansione: non c'è configurazione da annullare, restano
+ * solo i flag di overflow che un'eventuale raffica può aver lasciato alzati.
+ * @see obd_scan.h obdTransportRestore()
+ */
+void obdTransportRestore() {
+  if (CAN.getError() & 0xC0) canInit();
+  flushCANBuffer();
+}
+
+// ============================================================
+// SCANSIONE COMPLETA
+// ============================================================
+
+/**
+ * Esegue un passo della scansione completa avviata dal web e ne mostra fase e avanzamento sul display; una
+ * pressione del pulsante la interrompe. Al termine blocca la pressione lunga, che altrimenti cancellerebbe i DTC
+ * a chi tiene premuto, fa ripartire la finestra OTA e fa riprendere il monitor con un ridisegno completo.
  */
 void executeProbeStep() {
   static unsigned long lastDraw = 0;
+  ButtonEvent ev = buttonPoll();
+  if (ev == BTN_SHORT || ev == BTN_LONG) obdProbeStop();
   obdProbeStep();
   bool running = obdProbeRunning();
   if (!running || millis() - lastDraw > 500) {
+    char phase[22];
     char line[22];
-    snprintf(line, sizeof(line), "%u%%", (unsigned)obdProbePercent());
-    drawStatusScreen("SCANSIONE APPROF.", running ? line : "Completata");
+    strncpy_P(phase, obdProbePhaseName(), sizeof(phase) - 1);
+    phase[sizeof(phase) - 1] = '\0';
+    snprintf(line, sizeof(line), "%u%% - click: ferma", (unsigned)obdProbePercent());
+    drawScanScreen(phase, running ? line : "Report su /scan");
     lastDraw = millis();
   }
   if (!running) {
+    buttonBlockLongPress();
+    otaDeadline = millis() + OTA_WINDOW_MS;
     labelsDrawn = false;
     lastDrawnDtcScreen = 0xFF;
   }
@@ -450,16 +459,20 @@ void updateScreenCount() {
  * Esegue un ciclo del monitor: pulsante, controllo periodico dei DTC, una lettura live (obd_live.h)
  * anche mentre sono visibili le pagine DTC, aggiornamento del display e diagnostica seriale.
  * Se il motore resta muto per SILENT_CYCLES_BEFORE_RECOVERY cicli reinizializza il MCP2515 in bus-off,
- * altrimenti ripete lo scan.
+ * altrimenti mostra "Motore non risponde" e riprova dopo ENGINE_SILENT_RETRY_MS.
  */
 void executeMonitorMode() {
+  if ((long)(millis() - engineRetryAt) < 0) {
+    yield();
+    return;
+  }
   // Pulsante fisico: short = ciclo schermate, long = clear DTC.
   ButtonEvent ev = buttonPoll();
   if (ev == BTN_SHORT && totalScreens > 1) {
     currentScreen = (currentScreen + 1) % totalScreens;
     lastScreenSwitch = millis();   // posticipa l'auto-cycle
     labelsDrawn = false;           // forza redraw completo al prossimo update
-  } else if (ev == BTN_LONG) {
+  } else if (ev == BTN_LONG && buttonLongPressAllowed()) {
     drawStatusScreen("CLEAR DTC", "Invio Mode 04...");
     char message[64];
     uint8_t result = obdLiveClearDtcs(message, sizeof(message));
@@ -491,8 +504,11 @@ void executeMonitorMode() {
       Serial.println(F("CAN bus-off, re-init MCP2515"));
       canInit();
     } else {
-      Serial.println(F("Il motore non risponde, nuovo scan"));
-      currentMode = MODE_SCAN;
+      Serial.println(F("Il motore non risponde, nuovo tentativo tra 10 s"));
+      showError("Motore non risponde", "Quadro acceso?");
+      engineRetryAt = millis() + ENGINE_SILENT_RETRY_MS;
+      labelsDrawn = false;
+      lastDrawnDtcScreen = 0xFF;
       return;
     }
   }
@@ -720,7 +736,7 @@ void drawDTCScreen(uint8_t page) {
     char owner[16];
     char line[24];
     decodeDTC(dtcCodes[startIdx + i], codeStr);
-    obdEcuShortName(dtcEcuIndex[startIdx + i], owner, sizeof(owner));
+    obdEcuShortName(dtcEcuId[startIdx + i], owner, sizeof(owner));
     snprintf(line, sizeof(line), "%s %s", codeStr, owner);
     u8g2.drawStr(0, yBase, line);
 
@@ -751,11 +767,11 @@ void drawStrCentered(int y, const char* str) {
   u8g2.drawStr(x > 0 ? x : 0, y, str);
 }
 
-/** Disegna la schermata di scansione PID con stato e dettaglio */
+/** Disegna la schermata della scansione completa con fase e avanzamento */
 void drawScanScreen(const char* status, const char* detail) {
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tr);
-  drawStrCentered(11, "SCANSIONE PID");
+  drawStrCentered(11, "SCANSIONE COMPLETA");
   drawStrCentered(27, status);
   drawStrCentered(43, detail);
   u8g2.sendBuffer();

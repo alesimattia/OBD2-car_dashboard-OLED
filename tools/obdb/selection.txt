@@ -1,0 +1,2253 @@
+Selezione OBDb dei segnali interpretabili, anno modello 2022
+Fonti: OBDb/SAEJ1979@0669017, OBDb/Audi-A5@a821497; licenza CC-BY-SA-4.0
+
+SAE J1979: 683 segnali inclusi (più 410 di supporto) su 205 comandi
+    esclusi    2: stato senza mappa dei valori
+Audi A5: 184 segnali inclusi (più 0 di supporto) su 169 comandi
+    esclusi  291: non verificato da OBDb per il 2022 (dbgfilter)
+    esclusi   94: non verificato da OBDb (dbg)
+    esclusi   59: richiede la sessione diagnostica 03 (din)
+    esclusi   42: non valido per l'anno modello 2022
+    esclusi   11: unità non interpretabile (unknown)
+    esclusi    9: valore grezzo (raw nel nome)
+    esclusi    4: adimensionale senza significato pubblico
+    esclusi    2: stato senza mappa dei valori
+
+Comandi A5 inclusi rispetto alle catture OBDb 2022 (vetture miste), per centralina: risposti / rifiutati / assenti / totale
+    710: 19 / 0 / 0 / 19
+    713: 2 / 0 / 0 / 2
+    714: 6 / 0 / 0 / 6
+    746: 10 / 0 / 0 / 10
+    767: 1 / 0 / 0 / 1
+    7E0: 67 / 1 / 0 / 68
+    7E1: 63 / 0 / 0 / 63
+
+Casi di confine: adimensionali VAG risposti nelle catture
+    INCLUSO  767 22 2431  Satellites, visible
+    INCLUSO  767 22 2431  Satellites, tracked
+    INCLUSO  7E0 22 10D5  Lambda, actual value
+    INCLUSO  7E0 22 11B9  Oil pressure valve switch, control
+    INCLUSO  7E0 22 11DF  Powertrain overall gear ratio
+    INCLUSO  7E0 22 14CB  Gear
+    INCLUSO  7E0 22 14F9  Main cat oxygen storage capacity age correction factor
+    INCLUSO  7E0 22 15AA  Selected gear
+    INCLUSO  7E0 22 15D4  Lambda output value
+    INCLUSO  7E0 22 16F4  Piston cooling nozzles, control
+    INCLUSO  7E0 22 1722  Early ignition counter, cylinder 1
+    INCLUSO  7E0 22 1723  Early ignition counter, cylinder 3
+    INCLUSO  7E0 22 1724  Early ignition counter, cylinder 4
+    INCLUSO  7E0 22 1725  Early ignition counter, cylinder 2
+    INCLUSO  7E0 22 2998  Manual engine starts counter
+    INCLUSO  7E0 22 2999  Automatic engine starts counter
+    INCLUSO  7E0 22 F430  Number of warm-ups since dtcs cleared
+    INCLUSO  7E1 22 10EA  Clutch 2 successful adaptations counter
+    INCLUSO  7E1 22 10ED  Clutch 2 failed adaptations counter
+    INCLUSO  7E1 22 2105  Torque transmitting function, ratio
+    ESCLUSO  746 22 26ED  Air pollution level  (adimensionale senza significato pubblico)
+    ESCLUSO  7E0 22 105A  Battery voltage, raw count  (valore grezzo (raw nel nome))
+    ESCLUSO  7E0 22 1135  Coolant temperature at radiator outlet, raw  (valore grezzo (raw nel nome))
+    ESCLUSO  7E0 22 115B  Particle filter, field regeneration request status  (stato senza mappa dei valori)
+    ESCLUSO  7E0 22 115C  Service regeneration status  (stato senza mappa dei valori)
+    ESCLUSO  7E0 22 1798  Charge air temp at the turbocharger outlet, calculated, raw  (valore grezzo (raw nel nome))
+    ESCLUSO  7E1 22 1064  Analysis, clutch 1, maximum temperature, raw  (valore grezzo (raw nel nome))
+    ESCLUSO  7E1 22 2108  Driving resistance index  (adimensionale senza significato pubblico)
+    ESCLUSO  7E1 22 210E  Driving position  (adimensionale senza significato pubblico)
+    ESCLUSO  7E1 22 2114  Kick down  (adimensionale senza significato pubblico)
+
+Controllo: valori senza bit di supporto abbinato in PID che ne hanno (da verificare uno per uno)
+    PID 01  MIL                Malfunction indicator lamp
+    PID 01  DTC_CNT            Number of DTCs stored in this ECU
+    PID 01  CIM_SUP            Compression ignition monitoring supported
+    PID 41  CIM_SUP_FLAG       Compression ignition monitoring supported
+    PID 94  INDUC_L3           Level three inducement status
+    PID 94  INDUC_L2           Level two inducement status
+    PID 94  INDUC_L1           Level one inducement status
+    PID B3  HVESS_ACR          HV battery actual charge rate
+    PID B4  HVESS_Temp         HV battery temperature
+    PID B5  HVESS_Cur          HV battery current
+    PID B6  HVESS_Volt         HV battery voltage
+    PID BB  HVESS_Enrg_In      HV battery cumulative energy in
+    PID BC  HVESS_Enrg_Out     HV battery cumulative energy out
+    PID BD  HVESS_Enrg_Tput    HV battery total energy throughput
+    PID BE  HVESS_SOH          HV battery state of health
+    PID BF  HVESS_MIN_SOC      HV battery recommended minimum state of charge
+    PID C1  HVESS_MAX_SOC      HV battery recommended maximum state of charge
+    PID C2  HVESS_DEnrg_CAP    HV battery discharge energy capacity
+    PID C6  PM_INDUC_L3        Particulate level three inducement status
+    PID C6  PM_INDUC_L2        Particulate level two inducement status
+    PID C6  PM_INDUC_L1        Particulate level one inducement status
+Nomi corretti rispetto a OBDb: BP_A, BP_B
+Inclusi per scelta dopo la revisione: A5_OIL_P_VLV_SWITCH, A5_PISTON_COOLING
+
+==================== INCLUSI SAE ====================
+Mode 01 PID 01
+    MIL                    Malfunction indicator lamp [offon]
+    DTC_CNT                Number of DTCs stored in this ECU [scalar]
+    CCM_RDY                Comprehensive component monitoring ready [yesno]  (mostrato se CCM_SUP)
+    FUEL_RDY               Fuel system monitoring ready [yesno]  (mostrato se FUEL_SUP)
+    MIS_RDY                Misfire monitoring ready [yesno]  (mostrato se MIS_SUP)
+    CCM_SUP                Comprehensive component monitoring supported [noyes]  (supporto)
+    FUEL_SUP               Fuel system monitoring supported [noyes]  (supporto)
+    MIS_SUP                Misfire monitoring supported [noyes]  (supporto)
+    EGR_SUP                EGR system monitoring supported [noyes]  (supporto, solo accensione comandata)
+    HTR_SUP                Oxygen sensor heater monitoring supported [noyes]  (supporto, solo accensione comandata)
+    O2S_SUP                Oxygen sensor monitoring supported [noyes]  (supporto, solo accensione comandata)
+    ACRF_SUP               A/C system refrigerant monitoring supported [noyes]  (supporto, solo accensione comandata)
+    AIR_SUP                Secondary air system monitoring supported [noyes]  (supporto, solo accensione comandata)
+    EVAP_SUP               Evaporative system monitoring supported [noyes]  (supporto, solo accensione comandata)
+    HCAT_SUP               Heated catalyst monitoring supported [noyes]  (supporto, solo accensione comandata)
+    CAT_SUP                Catalyst monitoring supported [noyes]  (supporto, solo accensione comandata)
+    EGR_RDY                EGR system monitoring ready [yesno]  (mostrato se EGR_SUP, solo accensione comandata)
+    HTR_RDY                Oxygen sensor heater monitoring ready [yesno]  (mostrato se HTR_SUP, solo accensione comandata)
+    O2S_RDY                Oxygen sensor monitoring ready [yesno]  (mostrato se O2S_SUP, solo accensione comandata)
+    ACRF_RDY               A/C system refrigerant monitoring ready [yesno]  (mostrato se ACRF_SUP, solo accensione comandata)
+    AIR_RDY                Secondary air system monitoring ready [yesno]  (mostrato se AIR_SUP, solo accensione comandata)
+    EVAP_RDY               Evaporative system monitoring ready [yesno]  (mostrato se EVAP_SUP, solo accensione comandata)
+    HCAT_RDY               Heated catalyst monitoring ready [yesno]  (mostrato se HCAT_SUP, solo accensione comandata)
+    CAT_RDY                Catalyst monitoring ready [yesno]  (mostrato se CAT_SUP, solo accensione comandata)
+    CIM_SUP                Compression ignition monitoring supported [enum]
+Mode 01 PID 02
+    DTCFRZF                DTC that caused required freeze frame data storage [dtc]
+Mode 01 PID 03
+    FUELSYS1               Fuel system 1 status [enum]
+    FUELSYS2               Fuel system 2 status [enum]
+Mode 01 PID 04
+    LOAD_PCT               Calculated engine load [percent]
+Mode 01 PID 05
+    ECT                    Engine coolant temperature [celsius]
+Mode 01 PID 06
+    SHRTFT1                Short term fuel trim (bank 1) [percent]
+Mode 01 PID 07
+    LONGFT1                Long term fuel trim (bank 1) [percent]
+Mode 01 PID 08
+    SHRTFT2                Short term fuel trim (bank 2) [percent]
+    SHRTFT4                Short term fuel trim (bank 4) [percent]
+Mode 01 PID 09
+    LONGFT2                Long term fuel trim (bank 2) [percent]
+    LONGFT4                Long term fuel trim (bank 4) [percent]
+Mode 01 PID 0A
+    FP                     Fuel pressure [kilopascal]
+Mode 01 PID 0B
+    MAP                    Intake manifold absolute pressure [kilopascal]  (scala da 4F)
+Mode 01 PID 0C
+    RPM                    Engine RPM [rpm]
+Mode 01 PID 0D
+    VSS                    Vehicle speed [kilometersPerHour]
+Mode 01 PID 0E
+    SPARKADV               Timing advance [degrees]
+Mode 01 PID 0F
+    IAT                    Intake air temperature [celsius]
+Mode 01 PID 10
+    MAF                    Air flow rate from mass air flow sensor [gramsPerSecond]  (scala da 50)
+Mode 01 PID 11
+    TP                     Absolute throttle position [percent]
+Mode 01 PID 12
+    AIR_STAT               Commanded secondary air status [enum]
+Mode 01 PID 13
+    O2S24_EXISTS           02S Bank 2, Sensor 4 present [noyes]
+    O2S23_EXISTS           02S Bank 2, Sensor 3 present [noyes]
+    O2S22_EXISTS           02S Bank 2, Sensor 2 present [noyes]
+    O2S21_EXISTS           02S Bank 2, Sensor 1 present [noyes]
+    O2S14_EXISTS           02S Bank 1, Sensor 4 present [noyes]
+    O2S13_EXISTS           02S Bank 1, Sensor 3 present [noyes]
+    O2S12_EXISTS           02S Bank 1, Sensor 2 present [noyes]
+    O2S11_EXISTS           02S Bank 1, Sensor 1 present [noyes]
+Mode 01 PID 14
+    O2S11                  O2S Output Voltage Bank 1, Sensor 1 [volts]
+    SHRTFT11               SHRTFT associated with O2S11 [percent]
+Mode 01 PID 15
+    O2S12                  O2S Output Voltage Bank 1, Sensor 2 [volts]
+    SHRTFT12               SHRTFT associated with O2S12 [percent]
+Mode 01 PID 16
+    O2S13                  O2S Output Voltage Bank 1, Sensor 3 [volts]
+    SHRTFT13               SHRTFT associated with O2S13 [percent]
+Mode 01 PID 17
+    O2S14                  O2S Output Voltage Bank 1, Sensor 4 [volts]
+    SHRTFT14               SHRTFT associated with O2S14 [percent]
+Mode 01 PID 18
+    O2S21                  O2S Output Voltage Bank 2, Sensor 1 [volts]
+    SHRTFT21               SHRTFT associated with O2S21 [percent]
+Mode 01 PID 19
+    O2S22                  O2S Output Voltage Bank 2, Sensor 2 [volts]
+    SHRTFT22               SHRTFT associated with O2S22 [percent]
+Mode 01 PID 1A
+    O2S23                  O2S Output Voltage Bank 2, Sensor 3 [volts]
+    SHRTFT23               SHRTFT associated with O2S23 [percent]
+Mode 01 PID 1B
+    O2S24                  O2S Output Voltage Bank 2, Sensor 4 [volts]
+    SHRTFT24               SHRTFT associated with O2S24 [percent]
+Mode 01 PID 1C
+    OBDSUP                 OBD requirements to which vehicle is designed [enum]
+Mode 01 PID 1D
+    O2S42_EXISTS           02S Bank 4, Sensor 2 present [noyes]
+    O2S41_EXISTS           02S Bank 4, Sensor 1 present [noyes]
+    O2S32_EXISTS           02S Bank 3, Sensor 2 present [noyes]
+    O2S31_EXISTS           02S Bank 3, Sensor 1 present [noyes]
+    O2S22_EXISTS           02S Bank 2, Sensor 2 present [noyes]
+    O2S21_EXISTS           02S Bank 2, Sensor 1 present [noyes]
+    O2S12_EXISTS           02S Bank 1, Sensor 2 present [noyes]
+    O2S11_EXISTS           02S Bank 1, Sensor 1 present [noyes]
+Mode 01 PID 1E
+    PTO_STAT               Power take off (PTO) status [offon]
+Mode 01 PID 1F
+    RUNTM                  Time since engine start [seconds]
+Mode 01 PID 21
+    MIL_DIST               Distance traveled while MIL was activated [kilometers]
+Mode 01 PID 22
+    FRP_REL                Fuel pressure relative to manifold vacuum [kilopascal]
+Mode 01 PID 23
+    FRP                    Fuel rail pressure [kilopascal]
+Mode 01 PID 24
+    LAMBDA11_VOLT          Lambda value, Equivalence Ratio Bank 1, Sensor 1 [scalar]  (scala da 4F)
+    O2S11_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 1, Sensor 1 [volts]  (scala da 4F)
+Mode 01 PID 25
+    LAMBDA12_VOLT          Lambda value, Equivalence Ratio Bank 1, Sensor 2 [scalar]  (scala da 4F)
+    O2S12_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 1, Sensor 2 [volts]  (scala da 4F)
+Mode 01 PID 26
+    LAMBDA13_VOLT          Lambda value, Equivalence Ratio Bank 1, Sensor 3 [scalar]  (scala da 4F)
+    O2S13_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 1, Sensor 3 [volts]  (scala da 4F)
+Mode 01 PID 27
+    LAMBDA14_VOLT          Lambda value, Equivalence Ratio Bank 1, Sensor 4 [scalar]  (scala da 4F)
+    O2S14_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 1, Sensor 4 [volts]  (scala da 4F)
+Mode 01 PID 28
+    LAMBDA21_VOLT          Lambda value, Equivalence Ratio Bank 2, Sensor 1 [scalar]  (scala da 4F)
+    O2S21_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 2, Sensor 1 [volts]  (scala da 4F)
+Mode 01 PID 29
+    LAMBDA22_VOLT          Lambda value, Equivalence Ratio Bank 2, Sensor 2 [scalar]  (scala da 4F)
+    O2S22_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 2, Sensor 2 [volts]  (scala da 4F)
+Mode 01 PID 2A
+    LAMBDA23_VOLT          Lambda value, Equivalence Ratio Bank 2, Sensor 3 [scalar]  (scala da 4F)
+    O2S23_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 2, Sensor 3 [volts]  (scala da 4F)
+Mode 01 PID 2B
+    LAMBDA24_VOLT          Lambda value, Equivalence Ratio Bank 2, Sensor 4 [scalar]  (scala da 4F)
+    O2S24_VOLT             Wide Range O2S Voltage, O2 Sensor Bank 2, Sensor 4 [volts]  (scala da 4F)
+Mode 01 PID 2C
+    EGR_PCT                Commanded EGR [percent]
+Mode 01 PID 2D
+    EGR_ERR                EGR error [percent]
+Mode 01 PID 2E
+    EVAP_PCT               Commanded evaporative purge [percent]
+Mode 01 PID 2F
+    FLI                    Fuel tank level [percent]
+Mode 01 PID 30
+    WARM_UPS               Number of warm-ups since diagnostic trouble codes cleared [scalar]
+Mode 01 PID 31
+    CLR_DIST               Distance traveled since diagnostic trouble codes cleared [kilometers]
+Mode 01 PID 32
+    EVAP_VP                Evap system vapor pressure [kilopascal]
+Mode 01 PID 33
+    BARO                   Barometric pressure [kilopascal]
+Mode 01 PID 34
+    LAMBDA11_CURRENT       Lambda value, Equivalence Ratio Bank 1, Sensor 1 [scalar]  (scala da 4F)
+    O2S11_CURRENT          Wide Range O2S Current, O2 Sensor Bank 1, Sensor 1 [milliamps]  (scala da 4F)
+Mode 01 PID 35
+    LAMBDA12_CURRENT       Lambda value, Equivalence Ratio Bank 1, Sensor 2 [scalar]  (scala da 4F)
+    O2S12_CURRENT          Wide Range O2S Current, O2 Sensor Bank 1, Sensor 2 [milliamps]  (scala da 4F)
+Mode 01 PID 36
+    LAMBDA13_CURRENT       Lambda value, Equivalence Ratio Bank 1, Sensor 3 [scalar]  (scala da 4F)
+    O2S13_CURRENT          Wide Range O2S Current, O2 Sensor Bank 1, Sensor 3 [milliamps]  (scala da 4F)
+Mode 01 PID 37
+    LAMBDA14_CURRENT       Lambda value, Equivalence Ratio Bank 1, Sensor 4 [scalar]  (scala da 4F)
+    O2S14_CURRENT          Wide Range O2S Current, O2 Sensor Bank 1, Sensor 4 [milliamps]  (scala da 4F)
+Mode 01 PID 38
+    LAMBDA21_CURRENT       Lambda value, Equivalence Ratio Bank 2, Sensor 1 [scalar]  (scala da 4F)
+    O2S21_CURRENT          Wide Range O2S Current, O2 Sensor Bank 2, Sensor 1 [milliamps]  (scala da 4F)
+Mode 01 PID 39
+    LAMBDA22_CURRENT       Lambda value, Equivalence Ratio Bank 2, Sensor 2 [scalar]  (scala da 4F)
+    O2S22_CURRENT          Wide Range O2S Current, O2 Sensor Bank 2, Sensor 2 [milliamps]  (scala da 4F)
+Mode 01 PID 3A
+    LAMBDA23_CURRENT       Lambda value, Equivalence Ratio Bank 2, Sensor 3 [scalar]  (scala da 4F)
+    O2S23_CURRENT          Wide Range O2S Current, O2 Sensor Bank 2, Sensor 3 [milliamps]  (scala da 4F)
+Mode 01 PID 3B
+    LAMBDA24_CURRENT       Lambda value, Equivalence Ratio Bank 2, Sensor 4 [scalar]  (scala da 4F)
+    O2S24_CURRENT          Wide Range O2S Current, O2 Sensor Bank 2, Sensor 4 [milliamps]  (scala da 4F)
+Mode 01 PID 3C
+    CATEMP11               Catalyst temperature bank 1, sensor 1 [celsius]
+Mode 01 PID 3D
+    CATEMP21               Catalyst temperature bank 2, sensor 1 [celsius]
+Mode 01 PID 3E
+    CATEMP12               Catalyst temperature bank 1, sensor 2 [celsius]
+Mode 01 PID 3F
+    CATEMP22               Catalyst temperature bank 2, sensor 2 [celsius]
+Mode 01 PID 41
+    CCM_CMPL               Comprehensive component monitoring completed [yesno]  (mostrato se CCM_ENA)
+    FUEL_CMPL              Fuel system monitoring completed [yesno]  (mostrato se FUEL_ENA)
+    MIS_CMPL               Misfire monitoring completed [yesno]  (mostrato se MIS_ENA)
+    CCM_ENA                Comprehensive component monitoring enabled [noyes]  (supporto)
+    FUEL_ENA               Fuel system monitoring enabled [noyes]  (supporto)
+    MIS_ENA                Misfire monitoring enabled [noyes]  (supporto)
+    EGR_ENA                EGR system monitoring [noyes]  (supporto, solo accensione comandata)
+    HTR_ENA                Oxygen sensor heater monitoring [noyes]  (supporto, solo accensione comandata)
+    O2S_ENA                Oxygen sensor monitoring [noyes]  (supporto, solo accensione comandata)
+    ACRF_ENA               A/C system refrigerant monitoring [noyes]  (supporto, solo accensione comandata)
+    AIR_ENA                Secondary air system monitoring [noyes]  (supporto, solo accensione comandata)
+    EVAP_ENA               Evaporative system monitoring [noyes]  (supporto, solo accensione comandata)
+    HCAT_ENA               Heated catalyst monitoring [noyes]  (supporto, solo accensione comandata)
+    CAT_ENA                Catalyst monitoring [noyes]  (supporto, solo accensione comandata)
+    EGR_CMPL               EGR system monitoring completed [yesno]  (mostrato se EGR_ENA, solo accensione comandata)
+    HTR_CMPL               Oxygen sensor heater monitoring completed [yesno]  (mostrato se HTR_ENA, solo accensione comandata)
+    O2S_CMPL               Oxygen sensor monitoring completed [yesno]  (mostrato se O2S_ENA, solo accensione comandata)
+    ACRFCMPL               A/C system refrigerant monitoring completed [yesno]  (mostrato se ACRF_ENA, solo accensione comandata)
+    AIR_CMPL               Secondary air system monitoring completed [yesno]  (mostrato se AIR_ENA, solo accensione comandata)
+    EVAPCMPL               Evaporative system monitoring completed [yesno]  (mostrato se EVAP_ENA, solo accensione comandata)
+    HCATCMPL               Heated catalyst monitoring completed [yesno]  (mostrato se HCAT_ENA, solo accensione comandata)
+    CAT_CMPL               Catalyst monitoring completed [yesno]  (mostrato se CAT_ENA, solo accensione comandata)
+    CIM_SUP_FLAG           Compression ignition monitoring supported [enum]
+Mode 01 PID 42
+    VPWR                   Control module voltage [volts]
+Mode 01 PID 43
+    LOAD_ABS               Absolute load value [percent]
+Mode 01 PID 44
+    EQ_RAT                 Commanded equivalence ratio [scalar]
+Mode 01 PID 45
+    TP_R                   Relative throttle position [percent]
+Mode 01 PID 46
+    AAT                    Ambient air temperature [celsius]
+Mode 01 PID 47
+    TP_B                   Absolute throttle position B [percent]
+Mode 01 PID 48
+    TP_C                   Absolute throttle position C [percent]
+Mode 01 PID 49
+    APP_D                  Accelerator pedal position D [percent]
+Mode 01 PID 4A
+    APP_E                  Accelerator pedal position E [percent]
+Mode 01 PID 4B
+    APP_F                  Accelerator pedal position F [percent]
+Mode 01 PID 4C
+    TAC_PCT                Commanded throttle actuator control [percent]
+Mode 01 PID 4D
+    MIL_TIME               Time run by the engine while MIL was activated [minutes]
+Mode 01 PID 4E
+    CLR_TIME               Engine run time since diagnostic trouble codes cleared [minutes]
+Mode 01 PID 4F
+    MAX_EQ_RAT             Maximum value for equivalence ratio [scalar]
+    MAX_O2_VOLT            Maximum value for oxygen sensor voltage [volts]
+    MAX_O2_CURR            Maximum value for oxygen sensor current [milliamps]
+    MAX_MAP                Maximum value for intake manifold absolute pressure (MAP) [kilopascal]
+Mode 01 PID 50
+    MAX_MAF                Maximum value for air flow rate from mass air flow sensor [gramsPerSecond]
+Mode 01 PID 51
+    FUEL_TYP               Type of fuel currently being used by the vehicle [enum]
+Mode 01 PID 52
+    ALCH_PCT               Alcohol fuel percentage [percent]
+Mode 01 PID 53
+    EVAP_VPA               Absolute evap system vapor pressure [kilopascal]
+Mode 01 PID 54
+    EVAP_VP_WIDE           Evap system vapor pressure (wide) [kilopascal]
+Mode 01 PID 55
+    STSO2FT1               Short term secondary O2 sensor fuel trim (bank 1) [percent]
+Mode 01 PID 56
+    LGSO2FT1               Long term secondary O2 sensor fuel trim (bank 1) [percent]
+Mode 01 PID 57
+    STSO2FT2               Short term secondary O2 sensor fuel trim (bank 2) [percent]
+Mode 01 PID 58
+    LGSO2FT2               Long term secondary O2 sensor fuel trim (bank 2) [percent]
+Mode 01 PID 59
+    FRP_ABS                Fuel rail pressure (absolute) [kilopascal]
+Mode 01 PID 5A
+    APP_R                  Accelerator pedal position (relative) [percent]
+Mode 01 PID 5B
+    BAT_SOC                Hybrid battery pack remaining charge [percent]
+Mode 01 PID 5C
+    EOT                    Engine oil temperature [celsius]
+Mode 01 PID 5D
+    FUEL_TIMING            Fuel injection timing [degrees]
+Mode 01 PID 5E
+    FUEL_RATE              Engine fuel rate [litersPerHour]
+Mode 01 PID 5F
+    EMIS_SUP               Emission requirements to which vehicle is designed [enum]
+Mode 01 PID 61
+    TQ_DD                  Driver's demand engine torque [percent]
+Mode 01 PID 62
+    TQ_ACT                 Actual engine torque [percent]
+Mode 01 PID 63
+    TQ_REF                 Engine reference torque [newtonMeters]
+Mode 01 PID 64
+    TQ_MAX1                Engine Percent Torque At Idle, Point 1 [percent]
+    TQ_MAX2                Engine Percent Torque At Point 2 [percent]
+    TQ_MAX3                Engine Percent Torque At Point 3 [percent]
+    TQ_MAX4                Engine Percent Torque At Point 4 [percent]
+    TQ_MAX5                Engine Percent Torque At Point 5 [percent]
+Mode 01 PID 65
+    GEAR_SUP               Recommended gear supported [noyes]  (supporto)
+    GPL_SUP                Glow plug lamp status supported [noyes]  (supporto)
+    N/G_SUP                Manual trans neutral gear status supported [noyes]  (supporto)
+    N/D_SUP                Auto trans neutral drive status supported [noyes]  (supporto)
+    PTO_SUP                Power Take Off (PTO) output status supported [noyes]  (supporto)
+    GEAR_RCMD              Recommended gear [noyes]  (mostrato se GEAR_SUP)
+    GPL_STAT               Glow plug lamp status [noyes]  (mostrato se GPL_SUP)
+    N/G_STAT               Manual Trans Neutral Gear Status [noyes]  (mostrato se N/G_SUP)
+    N/D_STAT               Auto Trans Neutral Drive Status [noyes]  (mostrato se N/D_SUP)
+    PTO_STAT_AUX           Power Take Off (PTO) Output Status [noyes]  (mostrato se PTO_SUP)
+Mode 01 PID 66
+    MAFB_SUP               MAF Sensor B supported [noyes]  (supporto)
+    MAFA_SUP               MAF Sensor A supported [noyes]  (supporto)
+    MAFA                   Mass Air Flow Sensor A [gramsPerSecond]  (mostrato se MAFA_SUP)
+    MAFB                   Mass Air Flow Sensor B [gramsPerSecond]  (mostrato se MAFB_SUP)
+Mode 01 PID 67
+    ECT_2_SUP              Is ECT sensor 2 supported? [noyes]  (supporto)
+    ECT_1_SUP              Is ECT sensor 1 supported? [noyes]  (supporto)
+    ECT_1                  Engine coolant temperature 1 [celsius]  (mostrato se ECT_1_SUP)
+    ECT_2                  Engine coolant temperature 2 [celsius]  (mostrato se ECT_2_SUP)
+Mode 01 PID 68
+    IAT_23_SUP             IAT Bank 2, Sensor 3 supported [noyes]  (supporto)
+    IAT_22_SUP             IAT Bank 2, Sensor 2 supported [noyes]  (supporto)
+    IAT_21_SUP             IAT Bank 1, Sensor 1 supported [noyes]  (supporto)
+    IAT_13_SUP             IAT Bank 1, Sensor 3 supported [noyes]  (supporto)
+    IAT_12_SUP             IAT Bank 1, Sensor 2 supported [noyes]  (supporto)
+    IAT_11_SUP             IAT Bank 1, Sensor 1 supported [noyes]  (supporto)
+    IAT_11                 Intake air temperature, bank 1, sensor 1 [celsius]  (mostrato se IAT_11_SUP)
+    IAT_12                 Intake air temperature, bank 1, sensor 2 [celsius]  (mostrato se IAT_12_SUP)
+    IAT_13                 Intake air temperature, bank 1, sensor 3 [celsius]  (mostrato se IAT_13_SUP)
+    IAT_21                 Intake air temperature, bank 2, sensor 1 [celsius]  (mostrato se IAT_21_SUP)
+    IAT_22                 Intake air temperature, bank 2, sensor 2 [celsius]  (mostrato se IAT_22_SUP)
+    IAT_23                 Intake air temperature, bank 2, sensor 3 [celsius]  (mostrato se IAT_23_SUP)
+Mode 01 PID 69
+    EGR_B_ERR_SUP          EGR A error supported [noyes]  (supporto)
+    EGR_B_ACT_SUP          Actual EGR A supported [noyes]  (supporto)
+    EGR_B_CMD_SUP          Commanded EGR A supported [noyes]  (supporto)
+    EGR_A_ERR_SUP          EGR A error supported [noyes]  (supporto)
+    EGR_A_ACT_SUP          Actual EGR A supported [noyes]  (supporto)
+    EGR_A_CMD_SUP          Commanded EGR A supported [noyes]  (supporto)
+    EGR_A_CMD              Commanded EGR A duty cycle/position [percent]  (mostrato se EGR_A_CMD_SUP)
+    EGR_A_ACT              Actual EGR A duty cycle/position [percent]  (mostrato se EGR_A_ACT_SUP)
+    EGR_A_ERR              EGR A error [percent]  (mostrato se EGR_A_ERR_SUP)
+    EGR_B_CMD              Commanded EGR B duty cycle/position [percent]  (mostrato se EGR_B_CMD_SUP)
+    EGR_B_ACT              Actual EGR B duty cycle/position [percent]  (mostrato se EGR_B_ACT_SUP)
+    EGR_B_ERR              EGR B error [percent]  (mostrato se EGR_B_ERR_SUP)
+Mode 01 PID 6A
+    IAF_B_REL_SUP          Relative intake air flow B position supported [noyes]  (supporto)
+    IAF_B_CMD_SUP          Commanded intake air flow B control supported [noyes]  (supporto)
+    IAF_A_REL_SUP          Relative intake air flow A position supported [noyes]  (supporto)
+    IAF_A_CMD_SUP          Commanded intake air flow A control supported [noyes]  (supporto)
+    IAF_A_CMD              Commanded intake air flow A control [percent]  (mostrato se IAF_A_CMD_SUP)
+    IAF_A_REL              Relative intake air flow A position [percent]  (mostrato se IAF_A_REL_SUP)
+    IAF_B_CMD              Commanded intake air flow B control [percent]  (mostrato se IAF_B_CMD_SUP)
+    IAF_B_REL              Relative intake air flow B position [percent]  (mostrato se IAF_B_REL_SUP)
+Mode 01 PID 6B
+    EGRTD_WR_SUP           EGR Temperature Sensor D (Bank 2, Sensor 2) Wide Range supported? [noyes]  (supporto)
+    EGRTB_WR_SUP           EGR Temperature Sensor B (Bank 2, Sensor 1) Wide Range supported? [noyes]  (supporto)
+    EGRTC_WR_SUP           EGR Temperature Sensor C (Bank 1, Sensor 2) Wide Range supported? [noyes]  (supporto)
+    EGRTA_WR_SUP           EGR Temperature Sensor A (Bank 1, Sensor 1) Wide Range supported? [noyes]  (supporto)
+    EGRTD_SUP              EGR Temperature Sensor D (Bank 2, Sensor 2) supported? [noyes]  (supporto)
+    EGRTB_SUP              EGR Temperature Sensor B (Bank 2, Sensor 1) supported? [noyes]  (supporto)
+    EGRTC_SUP              EGR Temperature Sensor C (Bank 1, Sensor 2) supported? [noyes]  (supporto)
+    EGRTA_SUP              EGR Temperature Sensor A (Bank 1, Sensor 1) supported? [noyes]  (supporto)
+    EGRTA                  Exhaust Gas Recirculation Temp Sensor A (Bank 1, Sensor 1) [celsius]  (mostrato se EGRTA_SUP)
+    EGRTC                  Exhaust Gas Recirculation Temp Sensor C (Bank 1, Sensor 2) [celsius]  (mostrato se EGRTC_SUP)
+    EGRTB                  Exhaust Gas Recirculation Temp Sensor B (Bank 2, Sensor 1) [celsius]  (mostrato se EGRTB_SUP)
+    EGRTD                  Exhaust Gas Recirculation Temp Sensor D (Bank 2, Sensor 2) [celsius]  (mostrato se EGRTD_SUP)
+Mode 01 PID 6C
+    RTP_B_SUP              Relative Throttle B Position data supported? [noyes]  (supporto)
+    CTAC_B_SUP             Commanded Throttle Actuator B Control supported? [noyes]  (supporto)
+    RTP_A_SUP              Relative Throttle A Position data supported? [noyes]  (supporto)
+    CTAC_A_SUP             Commanded Throttle Actuator A Control supported? [noyes]  (supporto)
+    TAC_A_CMD              Commanded Throttle Actuator A Control [percent]  (mostrato se CTAC_A_SUP)
+    TP_A_REL               Relative Throttle A Position [percent]  (mostrato se RTP_A_SUP)
+    TAC_B_CMD              Commanded Throttle Actuator B Control [percent]  (mostrato se CTAC_B_SUP)
+    TP_B_REL               Relative Throttle B Position [percent]  (mostrato se RTP_B_SUP)
+Mode 01 PID 6D
+    FRT_B_SUP              Fuel Temperature B data supported? [noyes]  (supporto)
+    FRP_B_SUP              Fuel Rail Pressure B data supported? [noyes]  (supporto)
+    FRP_B_CMD_SUP          Commanded Fuel Rail Pressure B data supported? [noyes]  (supporto)
+    FRT_A_SUP              Fuel Temperature A data supported? [noyes]  (supporto)
+    FRP_A_SUP              Fuel Rail Pressure A data supported? [noyes]  (supporto)
+    FRP_A_CMD_SUP          Commanded Fuel Rail Pressure A data supported? [noyes]  (supporto)
+    FRP_A_CMD              Commanded Fuel Rail Pressure A [kilopascal]  (mostrato se FRP_A_CMD_SUP)
+    FRP_A                  Fuel Rail Pressure A [kilopascal]  (mostrato se FRP_A_SUP)
+    FRT_A                  Fuel Rail Temperature A [celsius]  (mostrato se FRT_A_SUP)
+    FRP_B_CMD              Commanded Fuel Rail Pressure B [kilopascal]  (mostrato se FRP_B_CMD_SUP)
+    FRP_B                  Fuel Rail Pressure B [kilopascal]  (mostrato se FRP_B_SUP)
+    FRT_B                  Fuel Rail Temperature B [celsius]  (mostrato se FRT_B_SUP)
+Mode 01 PID 6E
+    ICP_B_SUP              Injection control pressure B supported [noyes]  (supporto)
+    ICP_B_CMD_SUP          Commanded injection control pressure B supported [noyes]  (supporto)
+    ICP_A_SUP              Injection control pressure A supported [noyes]  (supporto)
+    ICP_A_CMD_SUP          Commanded injection control pressure A supported [noyes]  (supporto)
+    ICP_A_CMD              Commanded injection control pressure A [kilopascal]  (mostrato se ICP_A_CMD_SUP)
+    ICP_A                  Injection control pressure A [kilopascal]  (mostrato se ICP_A_SUP)
+    ICP_B_CMD              Commanded injection control pressure B [kilopascal]  (mostrato se ICP_B_CMD_SUP)
+    ICP_B                  Injection control pressure B [kilopascal]  (mostrato se ICP_B_SUP)
+Mode 01 PID 70
+    BP_B_SUP               Boost pressure B control status supported [noyes]  (supporto)
+    BP_B_ACT_SUP           Boost pressure B supported [noyes]  (supporto)
+    BP_B_CMD_SUP           Commanded boost pressure B supported [noyes]  (supporto)
+    BP_A_SUP               Boost pressure A control status supported [noyes]  (supporto)
+    BP_A_ACT_SUP           Boost pressure A supported [noyes]  (supporto)
+    BP_A_CMD_SUP           Commanded boost pressure A supported [noyes]  (supporto)
+    BP_A_CMD               Commanded boost pressure A [kilopascal]  (mostrato se BP_A_CMD_SUP)
+    BP_A_ACT               Boost pressure sensor A [kilopascal]  (mostrato se BP_A_ACT_SUP)
+    BP_B_CMD               Commanded boost pressure B [kilopascal]  (mostrato se BP_B_CMD_SUP)
+    BP_B_ACT               Boost pressure sensor B [kilopascal]  (mostrato se BP_B_ACT_SUP)
+    BP_B                   Boost pressure B control status [enum]  (mostrato se BP_B_SUP)
+    BP_A                   Boost pressure A control status [enum]  (mostrato se BP_A_SUP)
+Mode 01 PID 71
+    VGT_B_STAT_SUP         VGT B control status supported [noyes]  (supporto)
+    VGT_B_ACT_SUP          VGT B position supported [noyes]  (supporto)
+    VGT_B_CMD_SUP          Commanded VGT B position supported [noyes]  (supporto)
+    VGT_A_STAT_SUP         VGT A control status supported [noyes]  (supporto)
+    VGT_A_ACT_SUP          VGT A position supported [noyes]  (supporto)
+    VGT_A_CMD_SUP          Commanded VGT A position supported [noyes]  (supporto)
+    VGT_A_CMD              Commanded variable geometry turbo A position [percent]  (mostrato se VGT_A_CMD_SUP)
+    VGT_A_ACT              Variable geometry turbo A position [percent]  (mostrato se VGT_A_ACT_SUP)
+    VGT_B_CMD              Commanded variable geometry turbo B position [percent]  (mostrato se VGT_B_CMD_SUP)
+    VGT_B_ACT              Variable geometry turbo B position [percent]  (mostrato se VGT_B_ACT_SUP)
+    VGT_B_STAT             Variable geometry turbo B control status [enum]  (mostrato se VGT_B_STAT_SUP)
+    VGT_A_STAT             Variable geometry turbo A control status [enum]  (mostrato se VGT_A_STAT_SUP)
+Mode 01 PID 72
+    WG_B_ACT_SUP           Wastegate B position supported [noyes]  (supporto)
+    WG_B_CMD_SUP           Commanded wastegate B position supported [noyes]  (supporto)
+    WG_A_ACT_SUP           Wastegate A position supported [noyes]  (supporto)
+    WG_A_CMD_SUP           Commanded wastegate A position supported [noyes]  (supporto)
+    WG_A_CMD               Commanded wastegate A position [percent]  (mostrato se WG_A_CMD_SUP)
+    WG_A_ACT               Wastegate A position [percent]  (mostrato se WG_A_ACT_SUP)
+    WG_B_CMD               Commanded wastegate B position [percent]  (mostrato se WG_B_CMD_SUP)
+    WG_B_ACT               Wastegate B position [percent]  (mostrato se WG_B_ACT_SUP)
+Mode 01 PID 73
+    EP_21_SUP              Exhaust pressure bank 2, sensor 1 supported [noyes]  (supporto)
+    EP_11_SUP              Exhaust pressure bank 1, sensor 1 supported [noyes]  (supporto)
+    EP_11                  Exhaust pressure bank 1, sensor 1 [kilopascal]  (mostrato se EP_11_SUP)
+    EP_21                  Exhaust pressure bank 2, sensor 1 [kilopascal]  (mostrato se EP_21_SUP)
+Mode 01 PID 74
+    TCB_RPM_SUP            Turbocharger B speed supported [noyes]  (supporto)
+    TCA_RPM_SUP            Turbocharger A speed supported [noyes]  (supporto)
+    TCA_RPM                Turbocharger A speed [rpm]  (mostrato se TCA_RPM_SUP)
+    TCB_RPM                Turbocharger B speed [rpm]  (mostrato se TCB_RPM_SUP)
+Mode 01 PID 75
+    TCA_TOUTT_SUP          Turbo A turbine outlet temperature supported [noyes]  (supporto)
+    TCA_TINT_SUP           Turbo A turbine inlet temperature supported [noyes]  (supporto)
+    TCA_COUTT_SUP          Turbo A compressor outlet temperature supported [noyes]  (supporto)
+    TCA_CINT_SUP           Turbo A compressor inlet temperature supported [noyes]  (supporto)
+    TCA_CINT               Turbocharger A compressor inlet temperature [celsius]  (mostrato se TCA_CINT_SUP)
+    TCA_COUTT              Turbocharger A compressor outlet temperature [celsius]  (mostrato se TCA_COUTT_SUP)
+    TCA_TINT               Turbocharger A turbine inlet temperature [celsius]  (mostrato se TCA_TINT_SUP)
+    TCA_TOUTT              Turbocharger A turbine outlet temperature [celsius]  (mostrato se TCA_TOUTT_SUP)
+Mode 01 PID 76
+    TCB_TOUTT_SUP          Turbo B turbine outlet temperature supported [noyes]  (supporto)
+    TCB_TINT_SUP           Turbo B turbine inlet temperature supported [noyes]  (supporto)
+    TCB_COUTT_SUP          Turbo B compressor outlet temperature supported [noyes]  (supporto)
+    TCB_CINT_SUP           Turbo B compressor inlet temperature supported [noyes]  (supporto)
+    TCB_CINT               Turbocharger B compressor inlet temperature [celsius]  (mostrato se TCB_CINT_SUP)
+    TCB_COUTT              Turbocharger B compressor outlet temperature [celsius]  (mostrato se TCB_COUTT_SUP)
+    TCB_TINT               Turbocharger B turbine inlet temperature [celsius]  (mostrato se TCB_TINT_SUP)
+    TCB_TOUTT              Turbocharger B turbine outlet temperature [celsius]  (mostrato se TCB_TOUTT_SUP)
+Mode 01 PID 77
+    CACT_22_SUP            Charge air cooler temperature bank 2, sensor 2 supported [noyes]  (supporto)
+    CACT_21_SUP            Charge air cooler temperature bank 2, sensor 1 supported [noyes]  (supporto)
+    CACT_12_SUP            Charge air cooler temperature bank 1, sensor 2 supported [noyes]  (supporto)
+    CACT_11_SUP            Charge air cooler temperature bank 1, sensor 1 supported [noyes]  (supporto)
+    CACT_11                Charge air cooler temperature bank 1, sensor 1 [celsius]  (mostrato se CACT_11_SUP)
+    CACT_12                Charge air cooler temperature bank 1, sensor 2 [celsius]  (mostrato se CACT_12_SUP)
+    CACT_21                Charge air cooler temperature bank 2, sensor 1 [celsius]  (mostrato se CACT_21_SUP)
+    CACT_22                Charge air cooler temperature bank 2, sensor 2 [celsius]  (mostrato se CACT_22_SUP)
+Mode 01 PID 78
+    EGT14_SUP              Exhaust gas temperature bank 1, sensor 4 supported [noyes]  (supporto)
+    EGT13_SUP              Exhaust gas temperature bank 1, sensor 3 supported [noyes]  (supporto)
+    EGT12_SUP              Exhaust gas temperature bank 1, sensor 2 supported [noyes]  (supporto)
+    EGT11_SUP              Exhaust gas temperature bank 1, sensor 1 supported [noyes]  (supporto)
+    EGT11                  Exhaust gas temperature bank 1, sensor 1 [celsius]  (mostrato se EGT11_SUP)
+    EGT12                  Exhaust gas temperature bank 1, sensor 2 [celsius]  (mostrato se EGT12_SUP)
+    EGT13                  Exhaust gas temperature bank 1, sensor 3 [celsius]  (mostrato se EGT13_SUP)
+    EGT14                  Exhaust gas temperature bank 1, sensor 4 [celsius]  (mostrato se EGT14_SUP)
+Mode 01 PID 79
+    EGT24_SUP              Exhaust gas temperature bank 2, sensor 4 supported [noyes]  (supporto)
+    EGT23_SUP              Exhaust gas temperature bank 2, sensor 3 supported [noyes]  (supporto)
+    EGT22_SUP              Exhaust gas temperature bank 2, sensor 2 supported [noyes]  (supporto)
+    EGT21_SUP              Exhaust gas temperature bank 2, sensor 1 supported [noyes]  (supporto)
+    EGT21                  Exhaust gas temperature bank 2, sensor 1 [celsius]  (mostrato se EGT21_SUP)
+    EGT22                  Exhaust gas temperature bank 2, sensor 2 [celsius]  (mostrato se EGT22_SUP)
+    EGT23                  Exhaust gas temperature bank 2, sensor 3 [celsius]  (mostrato se EGT23_SUP)
+    EGT24                  Exhaust gas temperature bank 2, sensor 4 [celsius]  (mostrato se EGT24_SUP)
+Mode 01 PID 7A
+    DPF1_OUTP_SUP          Particulate filter bank 1 outlet pressure supported [noyes]  (supporto)
+    DPF1_INP_SUP           Particulate filter bank 1 inlet pressure supported [noyes]  (supporto)
+    DPF1_DP_SUP            Particulate filter bank 1 delta pressure supported [noyes]  (supporto)
+    DPF1_DP                Particulate filter bank 1 delta pressure [kilopascal]  (mostrato se DPF1_DP_SUP)
+    DPF1_INP               Particulate filter bank 1 inlet pressure [kilopascal]  (mostrato se DPF1_INP_SUP)
+    DPF1_OUTP              Particulate filter bank 1 outlet pressure [kilopascal]  (mostrato se DPF1_OUTP_SUP)
+Mode 01 PID 7B
+    DPF2_OUTP_SUP          Particulate filter bank 2 outlet pressure supported [noyes]  (supporto)
+    DPF2_INP_SUP           Particulate filter bank 2 inlet pressure supported [noyes]  (supporto)
+    DPF2_DP_SUP            Particulate filter bank 2 delta pressure supported [noyes]  (supporto)
+    DPF2_DP                Particulate filter bank 2 delta pressure [kilopascal]  (mostrato se DPF2_DP_SUP)
+    DPF2_INP               Particulate filter bank 2 inlet pressure [kilopascal]  (mostrato se DPF2_INP_SUP)
+    DPF2_OUTP              Particulate filter bank 2 outlet pressure [kilopascal]  (mostrato se DPF2_OUTP_SUP)
+Mode 01 PID 7C
+    DPF2_OUTT_SUP          Particulate filter bank 2 outlet temperature supported [noyes]  (supporto)
+    DPF2_INT_SUP           Particulate filter bank 2 inlet temperature supported [noyes]  (supporto)
+    DPF1_OUTT_SUP          Particulate filter bank 1 outlet temperature supported [noyes]  (supporto)
+    DPF1_INT_SUP           Particulate filter bank 1 inlet temperature supported [noyes]  (supporto)
+    DPF1_INT               Particulate filter bank 1 inlet temperature [celsius]  (mostrato se DPF1_INT_SUP)
+    DPF1_OUTT              Particulate filter bank 1 outlet temperature [celsius]  (mostrato se DPF1_OUTT_SUP)
+    DPF2_INT               Particulate filter bank 2 inlet temperature [celsius]  (mostrato se DPF2_INT_SUP)
+    DPF2_OUTT              Particulate filter bank 2 outlet temperature [celsius]  (mostrato se DPF2_OUTT_SUP)
+Mode 01 PID 7E
+    PM_NTE_DEF             NTE deficiency for PM active area [noyes]
+    PM_NTE_CARVE           Inside manufacturer-specific PM NTE carve-out area [noyes]
+    PM_NTE_OUT             Outside PM control area [noyes]
+    PM_NTE_IN              Inside PM control area [noyes]
+Mode 01 PID 7F
+    PTO_TIME_SUP           Total Run Time With PTO Active supported? [noyes]  (supporto)
+    IDLE_TIME_SUP          Total Idle Run Time supported? [noyes]  (supporto)
+    RUN_TIME_SUP           Total Engine Run Time supported? [noyes]  (supporto)
+    RUN_TIME               Total Engine Run Time [seconds]  (mostrato se RUN_TIME_SUP)
+    IDLE_TIME              Total Idle Run Time [seconds]  (mostrato se IDLE_TIME_SUP)
+    PTO_TIME               Total Run Time With PTO Active [seconds]  (mostrato se PTO_TIME_SUP)
+Mode 01 PID 81
+    AECD5_SUP              Total run time with EI-AECD #5 active supported [noyes]  (supporto)
+    AECD4_SUP              Total run time with EI-AECD #4 active supported [noyes]  (supporto)
+    AECD3_SUP              Total run time with EI-AECD #3 active supported [noyes]  (supporto)
+    AECD2_SUP              Total run time with EI-AECD #2 active supported [noyes]  (supporto)
+    AECD1_SUP              Total run time with EI-AECD #1 active supported [noyes]  (supporto)
+    AECD1_TIME1            Total run time with EI-AECD #1 timer 1 active [seconds]  (mostrato se AECD1_SUP)
+    AECD1_TIME2            Total run time with EI-AECD #1 timer 2 active [seconds]  (mostrato se AECD1_SUP)
+    AECD2_TIME1            Total run time with EI-AECD #2 timer 1 active [seconds]  (mostrato se AECD2_SUP)
+    AECD2_TIME2            Total run time with EI-AECD #2 timer 2 active [seconds]  (mostrato se AECD2_SUP)
+    AECD3_TIME1            Total run time with EI-AECD #3 timer 1 active [seconds]  (mostrato se AECD3_SUP)
+    AECD3_TIME2            Total run time with EI-AECD #3 timer 2 active [seconds]  (mostrato se AECD3_SUP)
+    AECD4_TIME1            Total run time with EI-AECD #4 timer 1 active [seconds]  (mostrato se AECD4_SUP)
+    AECD4_TIME2            Total run time with EI-AECD #4 timer 2 active [seconds]  (mostrato se AECD4_SUP)
+    AECD5_TIME1            Total run time with EI-AECD #5 timer 1 active [seconds]  (mostrato se AECD5_SUP)
+    AECD5_TIME2            Total run time with EI-AECD #5 timer 2 active [seconds]  (mostrato se AECD5_SUP)
+Mode 01 PID 82
+    AECD10_SUP             Total run time with EI-AECD #10 active supported [noyes]  (supporto)
+    AECD9_SUP              Total run time with EI-AECD #9 active supported [noyes]  (supporto)
+    AECD8_SUP              Total run time with EI-AECD #8 active supported [noyes]  (supporto)
+    AECD7_SUP              Total run time with EI-AECD #7 active supported [noyes]  (supporto)
+    AECD6_SUP              Total run time with EI-AECD #6 active supported [noyes]  (supporto)
+    AECD6_TIME1            Total run time with EI-AECD #6 timer 1 active [seconds]  (mostrato se AECD6_SUP)
+    AECD6_TIME2            Total run time with EI-AECD #6 timer 2 active [seconds]  (mostrato se AECD6_SUP)
+    AECD7_TIME1            Total run time with EI-AECD #7 timer 1 active [seconds]  (mostrato se AECD7_SUP)
+    AECD7_TIME2            Total run time with EI-AECD #7 timer 2 active [seconds]  (mostrato se AECD7_SUP)
+    AECD8_TIME1            Total run time with EI-AECD #8 timer 1 active [seconds]  (mostrato se AECD8_SUP)
+    AECD8_TIME2            Total run time with EI-AECD #8 timer 2 active [seconds]  (mostrato se AECD8_SUP)
+    AECD9_TIME1            Total run time with EI-AECD #9 timer 1 active [seconds]  (mostrato se AECD9_SUP)
+    AECD9_TIME2            Total run time with EI-AECD #9 timer 2 active [seconds]  (mostrato se AECD9_SUP)
+    AECD10_TIME1           Total run time with EI-AECD #10 timer 1 active [seconds]  (mostrato se AECD10_SUP)
+    AECD10_TIME2           Total run time with EI-AECD #10 timer 2 active [seconds]  (mostrato se AECD10_SUP)
+Mode 01 PID 83
+    NOX22_NA               NOx sensor bank 2, sensor 2 has no result [noyes]  (mostrato se NOX22_SUP)
+    NOX21_NA               NOx sensor bank 2, sensor 1 has no result [noyes]  (mostrato se NOX21_SUP)
+    NOX12_NA               NOx sensor bank 1, sensor 2 has no result [noyes]  (mostrato se NOX12_SUP)
+    NOX11_NA               NOx sensor bank 1, sensor 1 has no result [noyes]  (mostrato se NOX11_SUP)
+    NOX22_SUP              NOx sensor bank 2, sensor 2 supported [noyes]  (supporto)
+    NOX21_SUP              NOx sensor bank 2, sensor 1 supported [noyes]  (supporto)
+    NOX12_SUP              NOx sensor bank 1, sensor 2 supported [noyes]  (supporto)
+    NOX11_SUP              NOx sensor bank 1, sensor 1 supported [noyes]  (supporto)
+    NOX11                  NOx concentration bank 1, sensor 1 [ppm]  (mostrato se NOX11_SUP)
+    NOX12                  NOx concentration bank 1, sensor 2 [ppm]  (mostrato se NOX12_SUP)
+    NOX21                  NOx concentration bank 2, sensor 1 [ppm]  (mostrato se NOX21_SUP)
+    NOX22                  NOx concentration bank 2, sensor 2 [ppm]  (mostrato se NOX22_SUP)
+Mode 01 PID 84
+    MST                    Manifold surface temperature [celsius]
+Mode 01 PID 85
+    NWI_TIME_SUP           Run time with NOx warning active supported [noyes]  (supporto)
+    REAG_LVL_SUP           Reagent tank level supported [noyes]  (supporto)
+    REAG_DEMD_SUP          Average demanded reagent consumption supported [noyes]  (supporto)
+    REAG_RATE_SUP          Average reagent consumption supported [noyes]  (supporto)
+    REAG_RATE              Average reagent consumption [litersPerHour]  (mostrato se REAG_RATE_SUP)
+    REAG_DEMD              Average demanded reagent consumption [litersPerHour]  (mostrato se REAG_DEMD_SUP)
+    REAG_LVL               Reagent tank level [percent]  (mostrato se REAG_LVL_SUP)
+    NWI_TIME               Run time with NOx warning active [seconds]  (mostrato se NWI_TIME_SUP)
+Mode 01 PID 86
+    PM21_SUP               PM sensor bank 2, sensor 1 mass concentration supported [noyes]  (supporto)
+    PM11_SUP               PM sensor bank 1, sensor 1 mass concentration supported [noyes]  (supporto)
+    PM11                   PM mass concentration bank 1, sensor 1 [milligramsPerCubicMeter]  (mostrato se PM11_SUP)
+    PM21                   PM mass concentration bank 2, sensor 1 [milligramsPerCubicMeter]  (mostrato se PM21_SUP)
+Mode 01 PID 88
+    SCR_IND_ACTIVE         SCR inducement system active [noyes]
+    SCR_IND_NOX_LEVEL      SCR inducement for NOx emissions too high [noyes]
+    SCR_IND_CONSUMP_DEVIATION SCR inducement for reagent consumption deviation [noyes]
+    SCR_IND_INCORR_REAG    SCR inducement for incorrect reagent [noyes]
+    SCR_IND_LEVEL_LOW      SCR inducement for reagent level too low [noyes]
+    SCR_IND_NOX_LEVEL2     SCR inducement for NOx emissions too high in the 10,000-20,000 km history block [noyes]
+    SCR_IND_CONSUMP_DEVIATION2 SCR inducement for reagent consumption deviation in the 10,000-20,000 km history block [noyes]
+    SCR_IND_INCORR_REAG2   SCR inducement for incorrect reagent in the 10,000-20,000 km history block [noyes]
+    SCR_IND_LEVEL_LOW2     SCR inducement for reagent level too low in the 10,000-20,000 km history block [noyes]
+    SCR_IND_NOX_LEVEL1     SCR inducement for NOx emissions too high in the 0-10,000 km history block [noyes]
+    SCR_IND_CONSUMP_DEVIATION1 SCR inducement for reagent consumption deviation in the 0-10,000 km history block [noyes]
+    SCR_IND_INCORR_REAG1   SCR inducement for incorrect reagent in the 0-10,000 km history block [noyes]
+    SCR_IND_LEVEL_LOW1     SCR inducement for reagent level too low in the 0-10,000 km history block [noyes]
+    SCR_IND_NOX_LEVEL4     SCR inducement for NOx emissions too high in the 30,000-40,000 km history block [noyes]
+    SCR_IND_CONSUMP_DEVIATION4 SCR inducement for reagent consumption deviation in the 30,000-40,000 km history block [noyes]
+    SCR_IND_INCORR_REAG4   SCR inducement for incorrect reagent in the 30,000-40,000 km history block [noyes]
+    SCR_IND_LEVEL_LOW4     SCR inducement for reagent level too low in the 30,000-40,000 km history block [noyes]
+    SCR_IND_NOX_LEVEL3     SCR inducement for NOx emissions too high in the 20,000-30,000 km history block [noyes]
+    SCR_IND_CONSUMP_DEVIATION3 SCR inducement for reagent consumption deviation in the 20,000-30,000 km history block [noyes]
+    SCR_IND_INCORR_REAG3   SCR inducement for incorrect reagent in the 20,000-30,000 km history block [noyes]
+    SCR_IND_LEVEL_LOW3     SCR inducement for reagent level too low in the 20,000-30,000 km history block [noyes]
+    SCR_IND_DIST_1N        Distance with SCR inducement active in the current 10,000 km block [kilometers]
+    SCR_IND_DIST_1D        Distance travelled in the current 10,000 km block [kilometers]
+    SCR_IND_DIST_2N        Distance with SCR inducement active in the 10,000-20,000 km block [kilometers]
+    SCR_IND_DIST_3N        Distance with SCR inducement active in the 20,000-30,000 km block [kilometers]
+    SCR_IND_DIST_4N        Distance with SCR inducement active in the 30,000-40,000 km block [kilometers]
+Mode 01 PID 89
+    AECD15_SUP             Total run time with EI-AECD #15 active supported [noyes]  (supporto)
+    AECD14_SUP             Total run time with EI-AECD #14 active supported [noyes]  (supporto)
+    AECD13_SUP             Total run time with EI-AECD #13 active supported [noyes]  (supporto)
+    AECD12_SUP             Total run time with EI-AECD #12 active supported [noyes]  (supporto)
+    AECD11_SUP             Total run time with EI-AECD #11 active supported [noyes]  (supporto)
+    AECD11_TIME1           Total run time with EI-AECD #11 timer 1 active [seconds]  (mostrato se AECD11_SUP)
+    AECD11_TIME2           Total run time with EI-AECD #11 timer 2 active [seconds]  (mostrato se AECD11_SUP)
+    AECD12_TIME1           Total run time with EI-AECD #12 timer 1 active [seconds]  (mostrato se AECD12_SUP)
+    AECD12_TIME2           Total run time with EI-AECD #12 timer 2 active [seconds]  (mostrato se AECD12_SUP)
+    AECD13_TIME1           Total run time with EI-AECD #13 timer 1 active [seconds]  (mostrato se AECD13_SUP)
+    AECD13_TIME2           Total run time with EI-AECD #13 timer 2 active [seconds]  (mostrato se AECD13_SUP)
+    AECD14_TIME1           Total run time with EI-AECD #14 timer 1 active [seconds]  (mostrato se AECD14_SUP)
+    AECD14_TIME2           Total run time with EI-AECD #14 timer 2 active [seconds]  (mostrato se AECD14_SUP)
+    AECD15_TIME1           Total run time with EI-AECD #15 timer 1 active [seconds]  (mostrato se AECD15_SUP)
+    AECD15_TIME2           Total run time with EI-AECD #15 timer 2 active [seconds]  (mostrato se AECD15_SUP)
+Mode 01 PID 8A
+    AECD20_SUP             Total run time with EI-AECD #20 active supported [noyes]  (supporto)
+    AECD19_SUP             Total run time with EI-AECD #19 active supported [noyes]  (supporto)
+    AECD18_SUP             Total run time with EI-AECD #18 active supported [noyes]  (supporto)
+    AECD17_SUP             Total run time with EI-AECD #17 active supported [noyes]  (supporto)
+    AECD16_SUP             Total run time with EI-AECD #16 active supported [noyes]  (supporto)
+    AECD16_TIME1           Total run time with EI-AECD #16 timer 1 active [seconds]  (mostrato se AECD16_SUP)
+    AECD16_TIME2           Total run time with EI-AECD #16 timer 2 active [seconds]  (mostrato se AECD16_SUP)
+    AECD17_TIME1           Total run time with EI-AECD #17 timer 1 active [seconds]  (mostrato se AECD17_SUP)
+    AECD17_TIME2           Total run time with EI-AECD #17 timer 2 active [seconds]  (mostrato se AECD17_SUP)
+    AECD18_TIME1           Total run time with EI-AECD #18 timer 1 active [seconds]  (mostrato se AECD18_SUP)
+    AECD18_TIME2           Total run time with EI-AECD #18 timer 2 active [seconds]  (mostrato se AECD18_SUP)
+    AECD19_TIME1           Total run time with EI-AECD #19 timer 1 active [seconds]  (mostrato se AECD19_SUP)
+    AECD19_TIME2           Total run time with EI-AECD #19 timer 2 active [seconds]  (mostrato se AECD19_SUP)
+    AECD20_TIME1           Total run time with EI-AECD #20 timer 1 active [seconds]  (mostrato se AECD20_SUP)
+    AECD20_TIME2           Total run time with EI-AECD #20 timer 2 active [seconds]  (mostrato se AECD20_SUP)
+Mode 01 PID 8B
+    PF_REGEN_AVGD_SUP      Average distance between particulate filter regens supported [noyes]  (supporto)
+    PF_REGEN_AVGT_SUP      Average time between particulate filter regens supported [noyes]  (supporto)
+    PF_REGEN_PCT_SUP       Normalized trigger for particulate filter regen supported [noyes]  (supporto)
+    NOX_ADS_DESULF_SUP     NOx adsorber desulfurization status supported [noyes]  (supporto)
+    NOX_ADS_REGEN_SUP      NOx adsorber regen status supported [noyes]  (supporto)
+    PF_REGEN_TYPE_SUP      Particulate filter regen type supported [noyes]  (supporto)
+    PF_REGEN_STAT_SUP      Particulate filter regen status supported [noyes]  (supporto)
+    NOX_ADS_DESULF         NOx adsorber desulfurization in progress [noyes]  (mostrato se NOX_ADS_DESULF_SUP)
+    NOX_ADS_REGEN          NOx adsorber regen in progress [noyes]  (mostrato se NOX_ADS_REGEN_SUP)
+    PF_REGEN_STAT          Particulate filter regen in progress [noyes]  (mostrato se PF_REGEN_STAT_SUP)
+    PF_REGEN_PCT           Normalized trigger for particulate filter regen [percent]  (mostrato se PF_REGEN_PCT_SUP)
+    PF_REGEN_AVGT          Average time between particulate filter regens [minutes]  (mostrato se PF_REGEN_AVGT_SUP)
+    PF_REGEN_AVGD          Average distance between particulate filter regens [kilometers]  (mostrato se PF_REGEN_AVGD_SUP)
+    PF_REGEN_TYPE          Particulate filter regen type [enum]  (mostrato se PF_REGEN_TYPE_SUP)
+Mode 01 PID 8C
+    LAMBDA22_SUP           O2 sensor bank 2, sensor 2 lambda supported [noyes]  (supporto)
+    LAMBDA21_SUP           O2 sensor bank 2, sensor 1 lambda supported [noyes]  (supporto)
+    LAMBDA12_SUP           O2 sensor bank 1, sensor 2 lambda supported [noyes]  (supporto)
+    LAMBDA11_SUP           O2 sensor bank 1, sensor 1 lambda supported [noyes]  (supporto)
+    O2S22_PCT_SUP          O2 sensor bank 2, sensor 2 concentration supported [noyes]  (supporto)
+    O2S21_PCT_SUP          O2 sensor bank 2, sensor 1 concentration supported [noyes]  (supporto)
+    O2S12_PCT_SUP          O2 sensor bank 1, sensor 2 concentration supported [noyes]  (supporto)
+    O2S11_PCT_SUP          O2 sensor bank 1, sensor 1 concentration supported [noyes]  (supporto)
+    O2S11_PCT              O2 concentration bank 1, sensor 1 [percent]  (mostrato se O2S11_PCT_SUP)
+    O2S12_PCT              O2 concentration bank 1, sensor 2 [percent]  (mostrato se O2S12_PCT_SUP)
+    O2S21_PCT              O2 concentration bank 2, sensor 1 [percent]  (mostrato se O2S21_PCT_SUP)
+    O2S22_PCT              O2 concentration bank 2, sensor 2 [percent]  (mostrato se O2S22_PCT_SUP)
+    LAMBDA11               O2 sensor lambda bank 1, sensor 1 [scalar]  (mostrato se LAMBDA11_SUP)
+    LAMBDA12               O2 sensor lambda bank 1, sensor 2 [scalar]  (mostrato se LAMBDA12_SUP)
+    LAMBDA21               O2 sensor lambda bank 2, sensor 1 [scalar]  (mostrato se LAMBDA21_SUP)
+    LAMBDA22               O2 sensor lambda bank 2, sensor 2 [scalar]  (mostrato se LAMBDA22_SUP)
+Mode 01 PID 8D
+    TP_G                   Absolute Throttle Position G [percent]
+Mode 01 PID 8E
+    TQ_FR                  Engine Friction - Percent Torque [percent]
+Mode 01 PID 8F
+    PM21_OUT_SUP           PM sensor bank 2, sensor 1 signal supported [noyes]  (supporto)
+    PM21_STAT_SUP          PM sensor bank 2, sensor 1 operating status supported [noyes]  (supporto)
+    PM11_OUT_SUP           PM sensor bank 1, sensor 1 signal supported [noyes]  (supporto)
+    PM11_STAT_SUP          PM sensor bank 1, sensor 1 operating status supported [noyes]  (supporto)
+    PM11_REGEN             PM sensor bank 1, sensor 1 regenerating [noyes]  (mostrato se PM11_STAT_SUP)
+    PM11_ACTIVE            PM sensor bank 1, sensor 1 measuring [noyes]  (mostrato se PM11_STAT_SUP)
+    PM11_OUT               PM sensor normalized output bank 1, sensor 1 [percent]  (mostrato se PM11_OUT_SUP)
+    PM21_REGEN             PM sensor bank 2, sensor 1 regenerating [noyes]  (mostrato se PM21_STAT_SUP)
+    PM21_ACTIVE            PM sensor bank 2, sensor 1 measuring [noyes]  (mostrato se PM21_STAT_SUP)
+    PM21_OUT               PM sensor normalized output bank 2, sensor 1 [percent]  (mostrato se PM21_OUT_SUP)
+Mode 01 PID 90
+    VOBD_MI_TIME           Engine hours with the continuous MI active [hours]
+    VOBD_RDY               Emission system readiness [enum]
+    MI_MODE_VOBD           Vehicle malfunction indicator status [enum]
+    MI_DISP_VOBD           MI display strategy [enum]
+Mode 01 PID 91
+    OBD_MI_TIME            ECU engine hours with the continuous MI active [hours]
+    OBD_B1_TIME            Highest ECU class B1 malfunction counter [hours]
+    MI_MODE_ECU            ECU malfunction indicator status [enum]
+Mode 01 PID 92
+    IFB2_CL_SUP            Idle fuel balance control 2 supported [noyes]  (supporto)
+    FIT2_CL_SUP            Fuel injection timing control 2 supported [noyes]  (supporto)
+    FIQ2_CL_SUP            Fuel injection quantity control 2 supported [noyes]  (supporto)
+    FP2_CL_SUP             Fuel pressure control 2 supported [noyes]  (supporto)
+    IFB1_CL_SUP            Idle fuel balance control 1 supported [noyes]  (supporto)
+    FIT1_CL_SUP            Fuel injection timing control 1 supported [noyes]  (supporto)
+    FIQ1_CL_SUP            Fuel injection quantity control 1 supported [noyes]  (supporto)
+    FP1_CL_SUP             Fuel pressure control 1 supported [noyes]  (supporto)
+    IFB2_CL                Idle fuel balance control 2 in closed loop [noyes]  (mostrato se IFB2_CL_SUP)
+    FIT2_CL                Fuel injection timing control 2 in closed loop [noyes]  (mostrato se FIT2_CL_SUP)
+    FIQ2_CL                Fuel injection quantity control 2 in closed loop [noyes]  (mostrato se FIQ2_CL_SUP)
+    FP2_CL                 Fuel pressure control 2 in closed loop [noyes]  (mostrato se FP2_CL_SUP)
+    IFB1_CL                Idle fuel balance control 1 in closed loop [noyes]  (mostrato se IFB1_CL_SUP)
+    FIT1_CL                Fuel injection timing control 1 in closed loop [noyes]  (mostrato se FIT1_CL_SUP)
+    FIQ1_CL                Fuel injection quantity control 1 in closed loop [noyes]  (mostrato se FIQ1_CL_SUP)
+    FP1_CL                 Fuel pressure control 1 in closed loop [noyes]  (mostrato se FP1_CL_SUP)
+Mode 01 PID 93
+    MI_TIME_CUM_SUP        Cumulative continuous MI counter supported [noyes]  (supporto)
+    MI_TIME_CUM            Cumulative engine hours with the continuous MI active [hours]  (mostrato se MI_TIME_CUM_SUP)
+Mode 01 PID 94
+    MON_SYS_TIME_SUP       NOx control monitoring system counter supported [noyes]  (supporto)
+    EGR_TIME_SUP           EGR valve counter supported [noyes]  (supporto)
+    REAG_DOSE_TIME_SUP     Absence of reagent dosing counter supported [noyes]  (supporto)
+    REAG_CON_TIME_SUP      Reagent consumption counter supported [noyes]  (supporto)
+    REAG_QUAL_TIME_SUP     Reagent quality counter supported [noyes]  (supporto)
+    NOX_WARN_ACT_SUP       NOx warning system activation status supported [noyes]  (supporto)
+    NOX_WARN_ACT           NOx warning system active [noyes]  (mostrato se NOX_WARN_ACT_SUP)
+    REAG_QUAL_TIME         Engine hours with incorrect reagent quality [hours]  (mostrato se REAG_QUAL_TIME_SUP)
+    REAG_CON_TIME          Engine hours with incorrect reagent consumption [hours]  (mostrato se REAG_CON_TIME_SUP)
+    REAG_DOSE_TIME         Engine hours with reagent dosing interrupted [hours]  (mostrato se REAG_DOSE_TIME_SUP)
+    EGR_TIME               Engine hours with an impeded EGR valve [hours]  (mostrato se EGR_TIME_SUP)
+    MON_SYS_TIME           Engine hours with a NOx control monitoring system fault [hours]  (mostrato se MON_SYS_TIME_SUP)
+    INDUC_L3               Level three inducement status [enum]
+    INDUC_L2               Level two inducement status [enum]
+    INDUC_L1               Level one inducement status [enum]
+Mode 01 PID 95
+    SCR_NH3_ACT_B_SUP      Actual SCR catalyst B NH3 storage supported [noyes]  (supporto)
+    SCR_NH3_TGT_B_SUP      Target SCR catalyst B NH3 storage supported [noyes]  (supporto)
+    SCR_NH3_ACT_A_SUP      Actual SCR catalyst A NH3 storage supported [noyes]  (supporto)
+    SCR_NH3_TGT_A_SUP      Target SCR catalyst A NH3 storage supported [noyes]  (supporto)
+    SCR_NH3_TGT_A          Target SCR catalyst A NH3 storage [gramsPerLiter]  (mostrato se SCR_NH3_TGT_A_SUP)
+    SCR_NH3_ACT_A          Actual SCR catalyst A NH3 storage [gramsPerLiter]  (mostrato se SCR_NH3_ACT_A_SUP)
+    SCR_NH3_TGT_B          Target SCR catalyst B NH3 storage [gramsPerLiter]  (mostrato se SCR_NH3_TGT_B_SUP)
+    SCR_NH3_ACT_B          Actual SCR catalyst B NH3 storage [gramsPerLiter]  (mostrato se SCR_NH3_ACT_B_SUP)
+Mode 01 PID 96
+    AFT_FP_SUP             Aftertreatment fuel pressure supported [noyes]  (supporto)
+    HC_INJ_DC_SUP          Hydrocarbon doser injector duty cycle supported [noyes]  (supporto)
+    HC_INJ_FL_SUP          Hydrocarbon doser flow rate supported [noyes]  (supporto)
+    HC_INJ_FL              Hydrocarbon doser flow rate [gramsPerSecond]  (mostrato se HC_INJ_FL_SUP)
+    HC_INJ_DC              Hydrocarbon doser injector duty cycle [percent]  (mostrato se HC_INJ_DC_SUP)
+    AFT_FP                 Aftertreatment fuel pressure [kilopascal]  (mostrato se AFT_FP_SUP)
+Mode 01 PID 97
+    NOX_TP_SUP             Tailpipe NOx mass emission rate supported [noyes]  (supporto)
+    NOX_EO_SUP             Engine-out NOx mass emission rate supported [noyes]  (supporto)
+    NOX_EO                 Engine-out NOx mass emission rate [gramsPerSecond]  (mostrato se NOX_EO_SUP)
+    NOX_TP                 Tailpipe NOx mass emission rate [gramsPerSecond]  (mostrato se NOX_TP_SUP)
+Mode 01 PID 9A
+    EHEV_MODE_SUP          Enhanced Hybrid/EV Vehicle Charging State supported? [noyes]  (supporto)
+    HEV_BATT_A_SUP         Hybrid/EV Battery Current supported? [noyes]  (supporto)
+    HEV_BATT_V_SUP         Hybrid/EV Battery Voltage supported? [noyes]  (supporto)
+    HEV_MODE_SUP           Hybrid/EV Vehicle Charging State supported? [noyes]  (supporto)
+    HEV_BATT_V             Hybrid/EV Battery System Voltage [volts]  (mostrato se HEV_BATT_V_SUP)
+    HEV_BATT_A             Hybrid/EV Battery System Current [amps]  (mostrato se HEV_BATT_A_SUP)
+    EHEV_MODE              Enhanced Hybrid/EV Vehicle Charging State [enum]  (mostrato se EHEV_MODE_SUP)
+    HEV_MODE               Hybrid/EV Vehicle Charging State [enum]  (mostrato se HEV_MODE_SUP)
+Mode 01 PID 9B
+    DEF_LVL_SUP            DEF tank level supported [noyes]  (supporto)
+    DEF_T_SUP              DEF tank temperature supported [noyes]  (supporto)
+    DEF_CON_SUP            DEF concentration supported [noyes]  (supporto)
+    DEF_TYPE_SUP           DEF type supported [noyes]  (supporto)
+    DEF_CON                DEF concentration [percent]  (mostrato se DEF_CON_SUP)
+    DEF_T                  DEF tank temperature [celsius]  (mostrato se DEF_T_SUP)
+    DEF_LVL                DEF tank level [percent]  (mostrato se DEF_LVL_SUP)
+    DEF_TYPE               DEF type [enum]  (mostrato se DEF_TYPE_SUP)
+Mode 01 PID 9C
+    LAMBDA24_SUP           O2 sensor bank 2, sensor 4 lambda supported [noyes]  (supporto)
+    LAMBDA23_SUP           O2 sensor bank 2, sensor 3 lambda supported [noyes]  (supporto)
+    LAMBDA14_SUP           O2 sensor bank 1, sensor 4 lambda supported [noyes]  (supporto)
+    LAMBDA13_SUP           O2 sensor bank 1, sensor 3 lambda supported [noyes]  (supporto)
+    O2S24_PCT_SUP          O2 sensor bank 2, sensor 4 concentration supported [noyes]  (supporto)
+    O2S23_PCT_SUP          O2 sensor bank 2, sensor 3 concentration supported [noyes]  (supporto)
+    O2S14_PCT_SUP          O2 sensor bank 1, sensor 4 concentration supported [noyes]  (supporto)
+    O2S13_PCT_SUP          O2 sensor bank 1, sensor 3 concentration supported [noyes]  (supporto)
+    O2S13_PCT              O2 concentration bank 1, sensor 3 [percent]  (mostrato se O2S13_PCT_SUP)
+    O2S14_PCT              O2 concentration bank 1, sensor 4 [percent]  (mostrato se O2S14_PCT_SUP)
+    O2S23_PCT              O2 concentration bank 2, sensor 3 [percent]  (mostrato se O2S23_PCT_SUP)
+    O2S24_PCT              O2 concentration bank 2, sensor 4 [percent]  (mostrato se O2S24_PCT_SUP)
+    LAMBDA13               O2 sensor lambda bank 1, sensor 3 [scalar]  (mostrato se LAMBDA13_SUP)
+    LAMBDA14               O2 sensor lambda bank 1, sensor 4 [scalar]  (mostrato se LAMBDA14_SUP)
+    LAMBDA23               O2 sensor lambda bank 2, sensor 3 [scalar]  (mostrato se LAMBDA23_SUP)
+    LAMBDA24               O2 sensor lambda bank 2, sensor 4 [scalar]  (mostrato se LAMBDA24_SUP)
+Mode 01 PID 9D
+    FUEL_RATE_ALT          Engine fuel rate (alternate) [gramsPerSecond]
+    VFUEL_RATE             Vehicle fuel rate [gramsPerSecond]
+Mode 01 PID 9E
+    EXH_RATE               Engine exhaust flow rate [kilogramsPerHour]
+Mode 01 PID 9F
+    FUELSYSB_B4_SUP        Fuel system B use percentage bank 4 supported [noyes]  (supporto)
+    FUELSYSA_B4_SUP        Fuel system A use percentage bank 4 supported [noyes]  (supporto)
+    FUELSYSB_B3_SUP        Fuel system B use percentage bank 3 supported [noyes]  (supporto)
+    FUELSYSA_B3_SUP        Fuel system A use percentage bank 3 supported [noyes]  (supporto)
+    FUELSYSB_B2_SUP        Fuel system B use percentage bank 2 supported [noyes]  (supporto)
+    FUELSYSA_B2_SUP        Fuel system A use percentage bank 2 supported [noyes]  (supporto)
+    FUELSYSB_B1_SUP        Fuel system B use percentage bank 1 supported [noyes]  (supporto)
+    FUELSYSA_B1_SUP        Fuel system A use percentage bank 1 supported [noyes]  (supporto)
+    FUELSYSA_B1            Fuel system A use percentage bank 1 [percent]  (mostrato se FUELSYSA_B1_SUP)
+    FUELSYSB_B1            Fuel system B use percentage bank 1 [percent]  (mostrato se FUELSYSB_B1_SUP)
+    FUELSYSA_B2            Fuel system A use percentage bank 2 [percent]  (mostrato se FUELSYSA_B2_SUP)
+    FUELSYSB_B2            Fuel system B use percentage bank 2 [percent]  (mostrato se FUELSYSB_B2_SUP)
+    FUELSYSA_B3            Fuel system A use percentage bank 3 [percent]  (mostrato se FUELSYSA_B3_SUP)
+    FUELSYSB_B3            Fuel system B use percentage bank 3 [percent]  (mostrato se FUELSYSB_B3_SUP)
+    FUELSYSA_B4            Fuel system A use percentage bank 4 [percent]  (mostrato se FUELSYSA_B4_SUP)
+    FUELSYSB_B4            Fuel system B use percentage bank 4 [percent]  (mostrato se FUELSYSB_B4_SUP)
+Mode 01 PID A1
+    NOXC22_NA              Corrected NOx sensor bank 2, sensor 2 has no result [noyes]  (mostrato se NOXC22_SUP)
+    NOXC21_NA              Corrected NOx sensor bank 2, sensor 1 has no result [noyes]  (mostrato se NOXC21_SUP)
+    NOXC12_NA              Corrected NOx sensor bank 1, sensor 2 has no result [noyes]  (mostrato se NOXC12_SUP)
+    NOXC11_NA              Corrected NOx sensor bank 1, sensor 1 has no result [noyes]  (mostrato se NOXC11_SUP)
+    NOXC22_SUP             Corrected NOx sensor bank 2, sensor 2 supported [noyes]  (supporto)
+    NOXC21_SUP             Corrected NOx sensor bank 2, sensor 1 supported [noyes]  (supporto)
+    NOXC12_SUP             Corrected NOx sensor bank 1, sensor 2 supported [noyes]  (supporto)
+    NOXC11_SUP             Corrected NOx sensor bank 1, sensor 1 supported [noyes]  (supporto)
+    NOXC11                 Corrected NOx concentration bank 1, sensor 1 [ppm]  (mostrato se NOXC11_SUP)
+    NOXC12                 Corrected NOx concentration bank 1, sensor 2 [ppm]  (mostrato se NOXC12_SUP)
+    NOXC21                 Corrected NOx concentration bank 2, sensor 1 [ppm]  (mostrato se NOXC21_SUP)
+    NOXC22                 Corrected NOx concentration bank 2, sensor 2 [ppm]  (mostrato se NOXC22_SUP)
+Mode 01 PID A2
+    CYL_RATE               Cylinder fuel rate [milligramsPerStroke]
+Mode 01 PID A3
+    EVAP_SEAL              Evap system sealed [noyes]  (mostrato se EVAP_SEAL_SUP)
+    EVAP_SEAL_SUP          Evap system sealing status supported [noyes]  (supporto)
+    EVAP_B_VPW_SUP         Evap system vapor pressure B wide range supported [noyes]  (supporto)
+    EVAP_B_VP_SUP          Evap system vapor pressure B supported [noyes]  (supporto)
+    EVAP_A_VPW_SUP         Evap system vapor pressure A wide range supported [noyes]  (supporto)
+    EVAP_A_VP_SUP          Evap system vapor pressure A supported [noyes]  (supporto)
+    EVAP_A_VP              Evap system vapor pressure A [kilopascal]  (mostrato se EVAP_A_VP_SUP)
+    EVAP_A_VPW             Evap system vapor pressure A, wide range [kilopascal]  (mostrato se EVAP_A_VPW_SUP)
+    EVAP_B_VP              Evap system vapor pressure B [kilopascal]  (mostrato se EVAP_B_VP_SUP)
+    EVAP_B_VPW             Evap system vapor pressure B, wide range [kilopascal]  (mostrato se EVAP_B_VPW_SUP)
+Mode 01 PID A4
+    GEAR_RAT_SUP           Transmission actual gear ratio supported [noyes]  (supporto)
+    GEAR_ACT_SUP           Transmission actual gear supported [noyes]  (supporto)
+    GEAR_ACT               Transmission actual gear [scalar]  (mostrato se GEAR_ACT_SUP)
+    GEAR_RAT               Transmission actual gear ratio [scalar]  (mostrato se GEAR_RAT_SUP)
+Mode 01 PID A5
+    DEF_UCDC_SUP           DEF used in the current driving cycle supported [noyes]  (supporto)
+    DEF_CMD_SUP            Commanded DEF dosing supported [noyes]  (supporto)
+    DEF_CMD                Commanded DEF dosing [percent]  (mostrato se DEF_CMD_SUP)
+    DEF_UCDC               DEF used in the current driving cycle [liters]  (mostrato se DEF_UCDC_SUP)
+Mode 01 PID A6
+    ODO                    Odometer [kilometers]
+Mode 01 PID A7
+    NOX24_NA               NOx sensor bank 2, sensor 4 has no result [noyes]  (mostrato se NOX24_SUP)
+    NOX23_NA               NOx sensor bank 2, sensor 3 has no result [noyes]  (mostrato se NOX23_SUP)
+    NOX14_NA               NOx sensor bank 1, sensor 4 has no result [noyes]  (mostrato se NOX14_SUP)
+    NOX13_NA               NOx sensor bank 1, sensor 3 has no result [noyes]  (mostrato se NOX13_SUP)
+    NOX24_SUP              NOx sensor bank 2, sensor 4 supported [noyes]  (supporto)
+    NOX23_SUP              NOx sensor bank 2, sensor 3 supported [noyes]  (supporto)
+    NOX14_SUP              NOx sensor bank 1, sensor 4 supported [noyes]  (supporto)
+    NOX13_SUP              NOx sensor bank 1, sensor 3 supported [noyes]  (supporto)
+    NOX13                  NOx concentration bank 1, sensor 3 [ppm]  (mostrato se NOX13_SUP)
+    NOX14                  NOx concentration bank 1, sensor 4 [ppm]  (mostrato se NOX14_SUP)
+    NOX23                  NOx concentration bank 2, sensor 3 [ppm]  (mostrato se NOX23_SUP)
+    NOX24                  NOx concentration bank 2, sensor 4 [ppm]  (mostrato se NOX24_SUP)
+Mode 01 PID A8
+    NOXC24_NA              Corrected NOx sensor bank 2, sensor 4 has no result [noyes]  (mostrato se NOXC24_SUP)
+    NOXC23_NA              Corrected NOx sensor bank 2, sensor 3 has no result [noyes]  (mostrato se NOXC23_SUP)
+    NOXC14_NA              Corrected NOx sensor bank 1, sensor 4 has no result [noyes]  (mostrato se NOXC14_SUP)
+    NOXC13_NA              Corrected NOx sensor bank 1, sensor 3 has no result [noyes]  (mostrato se NOXC13_SUP)
+    NOXC24_SUP             Corrected NOx sensor bank 2, sensor 4 supported [noyes]  (supporto)
+    NOXC23_SUP             Corrected NOx sensor bank 2, sensor 3 supported [noyes]  (supporto)
+    NOXC14_SUP             Corrected NOx sensor bank 1, sensor 4 supported [noyes]  (supporto)
+    NOXC13_SUP             Corrected NOx sensor bank 1, sensor 3 supported [noyes]  (supporto)
+    NOXC13                 Corrected NOx concentration bank 1, sensor 3 [ppm]  (mostrato se NOXC13_SUP)
+    NOXC14                 Corrected NOx concentration bank 1, sensor 4 [ppm]  (mostrato se NOXC14_SUP)
+    NOXC23                 Corrected NOx concentration bank 2, sensor 3 [ppm]  (mostrato se NOXC23_SUP)
+    NOXC24                 Corrected NOx concentration bank 2, sensor 4 [ppm]  (mostrato se NOXC24_SUP)
+Mode 01 PID AA
+    V_SET                  Maximum current vehicle speed limit [kilometersPerHour]
+Mode 01 PID AB
+    FTT_AF_SUP             Alternative fuel tank temperature supported [noyes]  (supporto)
+    FTPW_AF_SUP            Alternative fuel tank pressure wide range supported [noyes]  (supporto)
+    FTP_AF_SUP             Alternative fuel tank pressure supported [noyes]  (supporto)
+    FRT_AF_SUP             Alternative fuel rail temperature supported [noyes]  (supporto)
+    FRP_AF_SUP             Alternative fuel rail pressure supported [noyes]  (supporto)
+    FRP_AF                 Alternative fuel rail pressure [kilopascal]  (mostrato se FRP_AF_SUP)
+    FRT_AF                 Alternative fuel rail temperature [celsius]  (mostrato se FRT_AF_SUP)
+    FTP_AF                 Alternative fuel tank pressure [kilopascal]  (mostrato se FTP_AF_SUP)
+    FTPW_AF                Alternative fuel tank pressure, wide range [kilopascal]  (mostrato se FTPW_AF_SUP)
+    FTT_AF                 Alternative fuel tank temperature [celsius]  (mostrato se FTT_AF_SUP)
+Mode 01 PID AC
+    DEFA_MAX_SUP           DEF doser A maximum dosing rate supported [noyes]  (supporto)
+    DEFA_MODE_SUP          DEF doser A dosing mode supported [noyes]  (supporto)
+    DEFA_MAX               DEF doser A maximum dosing rate [kilogramsPerHour]  (mostrato se DEFA_MAX_SUP)
+Mode 01 PID AE
+    EVAP_PPW_SUP           Evap system purge pressure wide range supported [noyes]  (supporto)
+    EVAP_PP_SUP            Evap system purge pressure supported [noyes]  (supporto)
+    EVAP_PP                Evap system purge pressure [kilopascal]  (mostrato se EVAP_PP_SUP)
+    EVAP_PPW               Evap system purge pressure, wide range [kilopascal]  (mostrato se EVAP_PPW_SUP)
+Mode 01 PID AF
+    AIR_FL_TGT             Commanded fresh air flow [kilogramsPerHour]
+Mode 01 PID B0
+    EGR_M_FL_B_SUP         EGR mass flow rate B supported [noyes]  (supporto)
+    EGR_M_FL_A_SUP         EGR mass flow rate A supported [noyes]  (supporto)
+    EGR_M_FL_A             EGR mass flow rate A [kilogramsPerHour]  (mostrato se EGR_M_FL_A_SUP)
+    EGR_M_FL_B             EGR mass flow rate B [kilogramsPerHour]  (mostrato se EGR_M_FL_B_SUP)
+Mode 01 PID B1
+    LONGFT2_CI_SUP         Long term fuel trim bank 2 supported [noyes]  (supporto)
+    SHRTFT2_CI_SUP         Short term fuel trim bank 2 supported [noyes]  (supporto)
+    LONGFT1_CI_SUP         Long term fuel trim bank 1 supported [noyes]  (supporto)
+    SHRTFT1_CI_SUP         Short term fuel trim bank 1 supported [noyes]  (supporto)
+    FUELSYS2_SUP           Fuel system status bank 2 supported [noyes]  (supporto)
+    FUELSYS1_SUP           Fuel system status bank 1 supported [noyes]  (supporto)
+    FUELSYS2_OL_FAULT      Fuel system bank 2 in open loop due to a malfunction [noyes]  (mostrato se FUELSYS2_SUP)
+    FUELSYS2_CL            Fuel system bank 2 in closed loop [noyes]  (mostrato se FUELSYS2_SUP)
+    FUELSYS2_OL            Fuel system bank 2 in open loop [noyes]  (mostrato se FUELSYS2_SUP)
+    FUELSYS1_OL_FAULT      Fuel system bank 1 in open loop due to a malfunction [noyes]  (mostrato se FUELSYS1_SUP)
+    FUELSYS1_CL            Fuel system bank 1 in closed loop [noyes]  (mostrato se FUELSYS1_SUP)
+    FUELSYS1_OL            Fuel system bank 1 in open loop [noyes]  (mostrato se FUELSYS1_SUP)
+    SHRTFT1_CI             Short term fuel trim bank 1, compression ignition [percent]  (mostrato se SHRTFT1_CI_SUP)
+    LONGFT1_CI             Long term fuel trim bank 1, compression ignition [percent]  (mostrato se LONGFT1_CI_SUP)
+    SHRTFT2_CI             Short term fuel trim bank 2, compression ignition [percent]  (mostrato se SHRTFT2_CI_SUP)
+    LONGFT2_CI             Long term fuel trim bank 2, compression ignition [percent]  (mostrato se LONGFT2_CI_SUP)
+Mode 01 PID B2
+    BAT_SOH                Traction battery pack State of Health [percent]
+Mode 01 PID B3
+    HVESPH_ACR_SUP         HV battery pack H actual charge rate supported [noyes]  (supporto)
+    HVESPG_ACR_SUP         HV battery pack G actual charge rate supported [noyes]  (supporto)
+    HVESPF_ACR_SUP         HV battery pack F actual charge rate supported [noyes]  (supporto)
+    HVESPE_ACR_SUP         HV battery pack E actual charge rate supported [noyes]  (supporto)
+    HVESPD_ACR_SUP         HV battery pack D actual charge rate supported [noyes]  (supporto)
+    HVESPC_ACR_SUP         HV battery pack C actual charge rate supported [noyes]  (supporto)
+    HVESPB_ACR_SUP         HV battery pack B actual charge rate supported [noyes]  (supporto)
+    HVESPA_ACR_SUP         HV battery pack A actual charge rate supported [noyes]  (supporto)
+    HVESS_ACR              HV battery actual charge rate [kilowatts]
+    HVESPA_ACR             HV battery pack A actual charge rate [kilowatts]  (mostrato se HVESPA_ACR_SUP)
+    HVESPB_ACR             HV battery pack B actual charge rate [kilowatts]  (mostrato se HVESPB_ACR_SUP)
+    HVESPC_ACR             HV battery pack C actual charge rate [kilowatts]  (mostrato se HVESPC_ACR_SUP)
+    HVESPD_ACR             HV battery pack D actual charge rate [kilowatts]  (mostrato se HVESPD_ACR_SUP)
+    HVESPE_ACR             HV battery pack E actual charge rate [kilowatts]  (mostrato se HVESPE_ACR_SUP)
+    HVESPF_ACR             HV battery pack F actual charge rate [kilowatts]  (mostrato se HVESPF_ACR_SUP)
+    HVESPG_ACR             HV battery pack G actual charge rate [kilowatts]  (mostrato se HVESPG_ACR_SUP)
+    HVESPH_ACR             HV battery pack H actual charge rate [kilowatts]  (mostrato se HVESPH_ACR_SUP)
+Mode 01 PID B4
+    HVESPH_Temp_SUP        HV battery pack H temperature supported [noyes]  (supporto)
+    HVESPG_Temp_SUP        HV battery pack G temperature supported [noyes]  (supporto)
+    HVESPF_Temp_SUP        HV battery pack F temperature supported [noyes]  (supporto)
+    HVESPE_Temp_SUP        HV battery pack E temperature supported [noyes]  (supporto)
+    HVESPD_Temp_SUP        HV battery pack D temperature supported [noyes]  (supporto)
+    HVESPC_Temp_SUP        HV battery pack C temperature supported [noyes]  (supporto)
+    HVESPB_Temp_SUP        HV battery pack B temperature supported [noyes]  (supporto)
+    HVESPA_Temp_SUP        HV battery pack A temperature supported [noyes]  (supporto)
+    HVESS_Temp             HV battery temperature [celsius]
+    HVESPA_Temp            HV battery pack A temperature [celsius]  (mostrato se HVESPA_Temp_SUP)
+    HVESPB_Temp            HV battery pack B temperature [celsius]  (mostrato se HVESPB_Temp_SUP)
+    HVESPC_Temp            HV battery pack C temperature [celsius]  (mostrato se HVESPC_Temp_SUP)
+    HVESPD_Temp            HV battery pack D temperature [celsius]  (mostrato se HVESPD_Temp_SUP)
+    HVESPE_Temp            HV battery pack E temperature [celsius]  (mostrato se HVESPE_Temp_SUP)
+    HVESPF_Temp            HV battery pack F temperature [celsius]  (mostrato se HVESPF_Temp_SUP)
+    HVESPG_Temp            HV battery pack G temperature [celsius]  (mostrato se HVESPG_Temp_SUP)
+    HVESPH_Temp            HV battery pack H temperature [celsius]  (mostrato se HVESPH_Temp_SUP)
+Mode 01 PID B5
+    HVESPH_Cur_SUP         HV battery pack H current supported [noyes]  (supporto)
+    HVESPG_Cur_SUP         HV battery pack G current supported [noyes]  (supporto)
+    HVESPF_Cur_SUP         HV battery pack F current supported [noyes]  (supporto)
+    HVESPE_Cur_SUP         HV battery pack E current supported [noyes]  (supporto)
+    HVESPD_Cur_SUP         HV battery pack D current supported [noyes]  (supporto)
+    HVESPC_Cur_SUP         HV battery pack C current supported [noyes]  (supporto)
+    HVESPB_Cur_SUP         HV battery pack B current supported [noyes]  (supporto)
+    HVESPA_Cur_SUP         HV battery pack A current supported [noyes]  (supporto)
+    HVESS_Cur              HV battery current [amps]
+    HVESPA_Cur             HV battery pack A current [amps]  (mostrato se HVESPA_Cur_SUP)
+    HVESPB_Cur             HV battery pack B current [amps]  (mostrato se HVESPB_Cur_SUP)
+    HVESPC_Cur             HV battery pack C current [amps]  (mostrato se HVESPC_Cur_SUP)
+    HVESPD_Cur             HV battery pack D current [amps]  (mostrato se HVESPD_Cur_SUP)
+    HVESPE_Cur             HV battery pack E current [amps]  (mostrato se HVESPE_Cur_SUP)
+    HVESPF_Cur             HV battery pack F current [amps]  (mostrato se HVESPF_Cur_SUP)
+    HVESPG_Cur             HV battery pack G current [amps]  (mostrato se HVESPG_Cur_SUP)
+    HVESPH_Cur             HV battery pack H current [amps]  (mostrato se HVESPH_Cur_SUP)
+Mode 01 PID B6
+    HVESPH_Volt_SUP        HV battery pack H voltage supported [noyes]  (supporto)
+    HVESPG_Volt_SUP        HV battery pack G voltage supported [noyes]  (supporto)
+    HVESPF_Volt_SUP        HV battery pack F voltage supported [noyes]  (supporto)
+    HVESPE_Volt_SUP        HV battery pack E voltage supported [noyes]  (supporto)
+    HVESPD_Volt_SUP        HV battery pack D voltage supported [noyes]  (supporto)
+    HVESPC_Volt_SUP        HV battery pack C voltage supported [noyes]  (supporto)
+    HVESPB_Volt_SUP        HV battery pack B voltage supported [noyes]  (supporto)
+    HVESPA_Volt_SUP        HV battery pack A voltage supported [noyes]  (supporto)
+    HVESS_Volt             HV battery voltage [volts]
+    HVESPA_Volt            HV battery pack A voltage [volts]  (mostrato se HVESPA_Volt_SUP)
+    HVESPB_Volt            HV battery pack B voltage [volts]  (mostrato se HVESPB_Volt_SUP)
+    HVESPC_Volt            HV battery pack C voltage [volts]  (mostrato se HVESPC_Volt_SUP)
+    HVESPD_Volt            HV battery pack D voltage [volts]  (mostrato se HVESPD_Volt_SUP)
+    HVESPE_Volt            HV battery pack E voltage [volts]  (mostrato se HVESPE_Volt_SUP)
+    HVESPF_Volt            HV battery pack F voltage [volts]  (mostrato se HVESPF_Volt_SUP)
+    HVESPG_Volt            HV battery pack G voltage [volts]  (mostrato se HVESPG_Volt_SUP)
+    HVESPH_Volt            HV battery pack H voltage [volts]  (mostrato se HVESPH_Volt_SUP)
+Mode 01 PID B7
+    HEV_BATT_THERM_MODE_SUP HV battery thermal state supported [noyes]  (supporto)
+    HEV_BATT_COOLANT_T_SUP HV battery coolant temperature supported [noyes]  (supporto)
+    HEV_BATT_BUS_BAR_T_SUP HV battery bus bar temperature supported [noyes]  (supporto)
+    HEV_BATT_AVG_CELL_T_SUP HV battery average cell temperature supported [noyes]  (supporto)
+    HEV_BATT_MAX_CELL_T_SUP HV battery maximum cell temperature supported [noyes]  (supporto)
+    HEV_BATT_MIN_CELL_T_SUP HV battery minimum cell temperature supported [noyes]  (supporto)
+    HEV_BATT_MIN_CELL_T    HV battery minimum cell temperature [celsius]  (mostrato se HEV_BATT_MIN_CELL_T_SUP)
+    HEV_BATT_MAX_CELL_T    HV battery maximum cell temperature [celsius]  (mostrato se HEV_BATT_MAX_CELL_T_SUP)
+    HEV_BATT_AVG_CELL_T    HV battery average cell temperature [celsius]  (mostrato se HEV_BATT_AVG_CELL_T_SUP)
+    HEV_BATT_BUS_BAR_T     HV battery bus bar temperature [celsius]  (mostrato se HEV_BATT_BUS_BAR_T_SUP)
+    HEV_BATT_COOLANT_T     HV battery coolant temperature [celsius]  (mostrato se HEV_BATT_COOLANT_T_SUP)
+    HEV_BATT_THERM_MODE    HV battery thermal state [enum]  (mostrato se HEV_BATT_THERM_MODE_SUP)
+Mode 01 PID B8
+    HEV_BATT_BAL_TIME      HV battery active time since cell balancing [minutes]
+Mode 01 PID B9
+    HEV_BATT_MIN_CELL_V    HV battery minimum cell voltage [volts]
+    HEV_BATT_MAX_CELL_V    HV battery maximum cell voltage [volts]
+Mode 01 PID BA
+    HEV_BATT_PWR_AVAIL     HV battery continuous rated power available [percent]
+    HEV_BATT_CHG_I_LIM     HV battery continuous charge current limit [amps]
+    HEV_BATT_DCHG_I_LIM    HV battery continuous discharge current limit [amps]
+Mode 01 PID BB
+    HVESPH_Enrg_In_SUP     HV battery pack H cumulative energy in supported [noyes]  (supporto)
+    HVESPG_Enrg_In_SUP     HV battery pack G cumulative energy in supported [noyes]  (supporto)
+    HVESPF_Enrg_In_SUP     HV battery pack F cumulative energy in supported [noyes]  (supporto)
+    HVESPE_Enrg_In_SUP     HV battery pack E cumulative energy in supported [noyes]  (supporto)
+    HVESPD_Enrg_In_SUP     HV battery pack D cumulative energy in supported [noyes]  (supporto)
+    HVESPC_Enrg_In_SUP     HV battery pack C cumulative energy in supported [noyes]  (supporto)
+    HVESPB_Enrg_In_SUP     HV battery pack B cumulative energy in supported [noyes]  (supporto)
+    HVESPA_Enrg_In_SUP     HV battery pack A cumulative energy in supported [noyes]  (supporto)
+    HVESS_Enrg_In          HV battery cumulative energy in [kilowattHours]
+    HVESPA_Enrg_In         HV battery pack A cumulative energy in [kilowattHours]  (mostrato se HVESPA_Enrg_In_SUP)
+    HVESPB_Enrg_In         HV battery pack B cumulative energy in [kilowattHours]  (mostrato se HVESPB_Enrg_In_SUP)
+    HVESPC_Enrg_In         HV battery pack C cumulative energy in [kilowattHours]  (mostrato se HVESPC_Enrg_In_SUP)
+    HVESPD_Enrg_In         HV battery pack D cumulative energy in [kilowattHours]  (mostrato se HVESPD_Enrg_In_SUP)
+    HVESPE_Enrg_In         HV battery pack E cumulative energy in [kilowattHours]  (mostrato se HVESPE_Enrg_In_SUP)
+    HVESPF_Enrg_In         HV battery pack F cumulative energy in [kilowattHours]  (mostrato se HVESPF_Enrg_In_SUP)
+    HVESPG_Enrg_In         HV battery pack G cumulative energy in [kilowattHours]  (mostrato se HVESPG_Enrg_In_SUP)
+    HVESPH_Enrg_In         HV battery pack H cumulative energy in [kilowattHours]  (mostrato se HVESPH_Enrg_In_SUP)
+Mode 01 PID BC
+    HVESPH_Enrg_Out_SUP    HV battery pack H cumulative energy out supported [noyes]  (supporto)
+    HVESPG_Enrg_Out_SUP    HV battery pack G cumulative energy out supported [noyes]  (supporto)
+    HVESPF_Enrg_Out_SUP    HV battery pack F cumulative energy out supported [noyes]  (supporto)
+    HVESPE_Enrg_Out_SUP    HV battery pack E cumulative energy out supported [noyes]  (supporto)
+    HVESPD_Enrg_Out_SUP    HV battery pack D cumulative energy out supported [noyes]  (supporto)
+    HVESPC_Enrg_Out_SUP    HV battery pack C cumulative energy out supported [noyes]  (supporto)
+    HVESPB_Enrg_Out_SUP    HV battery pack B cumulative energy out supported [noyes]  (supporto)
+    HVESPA_Enrg_Out_SUP    HV battery pack A cumulative energy out supported [noyes]  (supporto)
+    HVESS_Enrg_Out         HV battery cumulative energy out [kilowattHours]
+    HVESPA_Enrg_Out        HV battery pack A cumulative energy out [kilowattHours]  (mostrato se HVESPA_Enrg_Out_SUP)
+    HVESPB_Enrg_Out        HV battery pack B cumulative energy out [kilowattHours]  (mostrato se HVESPB_Enrg_Out_SUP)
+    HVESPC_Enrg_Out        HV battery pack C cumulative energy out [kilowattHours]  (mostrato se HVESPC_Enrg_Out_SUP)
+    HVESPD_Enrg_Out        HV battery pack D cumulative energy out [kilowattHours]  (mostrato se HVESPD_Enrg_Out_SUP)
+    HVESPE_Enrg_Out        HV battery pack E cumulative energy out [kilowattHours]  (mostrato se HVESPE_Enrg_Out_SUP)
+    HVESPF_Enrg_Out        HV battery pack F cumulative energy out [kilowattHours]  (mostrato se HVESPF_Enrg_Out_SUP)
+    HVESPG_Enrg_Out        HV battery pack G cumulative energy out [kilowattHours]  (mostrato se HVESPG_Enrg_Out_SUP)
+    HVESPH_Enrg_Out        HV battery pack H cumulative energy out [kilowattHours]  (mostrato se HVESPH_Enrg_Out_SUP)
+Mode 01 PID BD
+    HVESPH_Enrg_Tput_SUP   HV battery pack H total energy throughput supported [noyes]  (supporto)
+    HVESPG_Enrg_Tput_SUP   HV battery pack G total energy throughput supported [noyes]  (supporto)
+    HVESPF_Enrg_Tput_SUP   HV battery pack F total energy throughput supported [noyes]  (supporto)
+    HVESPE_Enrg_Tput_SUP   HV battery pack E total energy throughput supported [noyes]  (supporto)
+    HVESPD_Enrg_Tput_SUP   HV battery pack D total energy throughput supported [noyes]  (supporto)
+    HVESPC_Enrg_Tput_SUP   HV battery pack C total energy throughput supported [noyes]  (supporto)
+    HVESPB_Enrg_Tput_SUP   HV battery pack B total energy throughput supported [noyes]  (supporto)
+    HVESPA_Enrg_Tput_SUP   HV battery pack A total energy throughput supported [noyes]  (supporto)
+    HVESS_Enrg_Tput        HV battery total energy throughput [kilowattHours]
+    HVESPA_Enrg_Tput       HV battery pack A total energy throughput [kilowattHours]  (mostrato se HVESPA_Enrg_Tput_SUP)
+    HVESPB_Enrg_Tput       HV battery pack B total energy throughput [kilowattHours]  (mostrato se HVESPB_Enrg_Tput_SUP)
+    HVESPC_Enrg_Tput       HV battery pack C total energy throughput [kilowattHours]  (mostrato se HVESPC_Enrg_Tput_SUP)
+    HVESPD_Enrg_Tput       HV battery pack D total energy throughput [kilowattHours]  (mostrato se HVESPD_Enrg_Tput_SUP)
+    HVESPE_Enrg_Tput       HV battery pack E total energy throughput [kilowattHours]  (mostrato se HVESPE_Enrg_Tput_SUP)
+    HVESPF_Enrg_Tput       HV battery pack F total energy throughput [kilowattHours]  (mostrato se HVESPF_Enrg_Tput_SUP)
+    HVESPG_Enrg_Tput       HV battery pack G total energy throughput [kilowattHours]  (mostrato se HVESPG_Enrg_Tput_SUP)
+    HVESPH_Enrg_Tput       HV battery pack H total energy throughput [kilowattHours]  (mostrato se HVESPH_Enrg_Tput_SUP)
+Mode 01 PID BE
+    HVESPH_SOH_SUP         HV battery pack H state of health supported [noyes]  (supporto)
+    HVESPG_SOH_SUP         HV battery pack G state of health supported [noyes]  (supporto)
+    HVESPF_SOH_SUP         HV battery pack F state of health supported [noyes]  (supporto)
+    HVESPE_SOH_SUP         HV battery pack E state of health supported [noyes]  (supporto)
+    HVESPD_SOH_SUP         HV battery pack D state of health supported [noyes]  (supporto)
+    HVESPC_SOH_SUP         HV battery pack C state of health supported [noyes]  (supporto)
+    HVESPB_SOH_SUP         HV battery pack B state of health supported [noyes]  (supporto)
+    HVESPA_SOH_SUP         HV battery pack A state of health supported [noyes]  (supporto)
+    HVESS_SOH              HV battery state of health [percent]
+    HVESPA_SOH             HV battery pack A state of health [percent]  (mostrato se HVESPA_SOH_SUP)
+    HVESPB_SOH             HV battery pack B state of health [percent]  (mostrato se HVESPB_SOH_SUP)
+    HVESPC_SOH             HV battery pack C state of health [percent]  (mostrato se HVESPC_SOH_SUP)
+    HVESPD_SOH             HV battery pack D state of health [percent]  (mostrato se HVESPD_SOH_SUP)
+    HVESPE_SOH             HV battery pack E state of health [percent]  (mostrato se HVESPE_SOH_SUP)
+    HVESPF_SOH             HV battery pack F state of health [percent]  (mostrato se HVESPF_SOH_SUP)
+    HVESPG_SOH             HV battery pack G state of health [percent]  (mostrato se HVESPG_SOH_SUP)
+    HVESPH_SOH             HV battery pack H state of health [percent]  (mostrato se HVESPH_SOH_SUP)
+Mode 01 PID BF
+    HVESPH_MIN_SOC_SUP     HV battery pack H recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPG_MIN_SOC_SUP     HV battery pack G recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPF_MIN_SOC_SUP     HV battery pack F recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPE_MIN_SOC_SUP     HV battery pack E recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPD_MIN_SOC_SUP     HV battery pack D recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPC_MIN_SOC_SUP     HV battery pack C recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPB_MIN_SOC_SUP     HV battery pack B recommended minimum state of charge supported [noyes]  (supporto)
+    HVESPA_MIN_SOC_SUP     HV battery pack A recommended minimum state of charge supported [noyes]  (supporto)
+    HVESS_MIN_SOC          HV battery recommended minimum state of charge [percent]
+    HVESPA_MIN_SOC         HV battery pack A recommended minimum state of charge [percent]  (mostrato se HVESPA_MIN_SOC_SUP)
+    HVESPB_MIN_SOC         HV battery pack B recommended minimum state of charge [percent]  (mostrato se HVESPB_MIN_SOC_SUP)
+    HVESPC_MIN_SOC         HV battery pack C recommended minimum state of charge [percent]  (mostrato se HVESPC_MIN_SOC_SUP)
+    HVESPD_MIN_SOC         HV battery pack D recommended minimum state of charge [percent]  (mostrato se HVESPD_MIN_SOC_SUP)
+    HVESPE_MIN_SOC         HV battery pack E recommended minimum state of charge [percent]  (mostrato se HVESPE_MIN_SOC_SUP)
+    HVESPF_MIN_SOC         HV battery pack F recommended minimum state of charge [percent]  (mostrato se HVESPF_MIN_SOC_SUP)
+    HVESPG_MIN_SOC         HV battery pack G recommended minimum state of charge [percent]  (mostrato se HVESPG_MIN_SOC_SUP)
+    HVESPH_MIN_SOC         HV battery pack H recommended minimum state of charge [percent]  (mostrato se HVESPH_MIN_SOC_SUP)
+Mode 01 PID C1
+    HVESPH_MAX_SOC_SUP     HV battery pack H recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPG_MAX_SOC_SUP     HV battery pack G recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPF_MAX_SOC_SUP     HV battery pack F recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPE_MAX_SOC_SUP     HV battery pack E recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPD_MAX_SOC_SUP     HV battery pack D recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPC_MAX_SOC_SUP     HV battery pack C recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPB_MAX_SOC_SUP     HV battery pack B recommended maximum state of charge supported [noyes]  (supporto)
+    HVESPA_MAX_SOC_SUP     HV battery pack A recommended maximum state of charge supported [noyes]  (supporto)
+    HVESS_MAX_SOC          HV battery recommended maximum state of charge [percent]
+    HVESPA_MAX_SOC         HV battery pack A recommended maximum state of charge [percent]  (mostrato se HVESPA_MAX_SOC_SUP)
+    HVESPB_MAX_SOC         HV battery pack B recommended maximum state of charge [percent]  (mostrato se HVESPB_MAX_SOC_SUP)
+    HVESPC_MAX_SOC         HV battery pack C recommended maximum state of charge [percent]  (mostrato se HVESPC_MAX_SOC_SUP)
+    HVESPD_MAX_SOC         HV battery pack D recommended maximum state of charge [percent]  (mostrato se HVESPD_MAX_SOC_SUP)
+    HVESPE_MAX_SOC         HV battery pack E recommended maximum state of charge [percent]  (mostrato se HVESPE_MAX_SOC_SUP)
+    HVESPF_MAX_SOC         HV battery pack F recommended maximum state of charge [percent]  (mostrato se HVESPF_MAX_SOC_SUP)
+    HVESPG_MAX_SOC         HV battery pack G recommended maximum state of charge [percent]  (mostrato se HVESPG_MAX_SOC_SUP)
+    HVESPH_MAX_SOC         HV battery pack H recommended maximum state of charge [percent]  (mostrato se HVESPH_MAX_SOC_SUP)
+Mode 01 PID C2
+    HVESPH_DEnrg_CAP_SUP   HV battery pack H discharge energy capacity supported [noyes]  (supporto)
+    HVESPG_DEnrg_CAP_SUP   HV battery pack G discharge energy capacity supported [noyes]  (supporto)
+    HVESPF_DEnrg_CAP_SUP   HV battery pack F discharge energy capacity supported [noyes]  (supporto)
+    HVESPE_DEnrg_CAP_SUP   HV battery pack E discharge energy capacity supported [noyes]  (supporto)
+    HVESPD_DEnrg_CAP_SUP   HV battery pack D discharge energy capacity supported [noyes]  (supporto)
+    HVESPC_DEnrg_CAP_SUP   HV battery pack C discharge energy capacity supported [noyes]  (supporto)
+    HVESPB_DEnrg_CAP_SUP   HV battery pack B discharge energy capacity supported [noyes]  (supporto)
+    HVESPA_DEnrg_CAP_SUP   HV battery pack A discharge energy capacity supported [noyes]  (supporto)
+    HVESS_DEnrg_CAP        HV battery discharge energy capacity [kilowattHours]
+    HVESPA_DEnrg_CAP       HV battery pack A discharge energy capacity [kilowattHours]  (mostrato se HVESPA_DEnrg_CAP_SUP)
+    HVESPB_DEnrg_CAP       HV battery pack B discharge energy capacity [kilowattHours]  (mostrato se HVESPB_DEnrg_CAP_SUP)
+    HVESPC_DEnrg_CAP       HV battery pack C discharge energy capacity [kilowattHours]  (mostrato se HVESPC_DEnrg_CAP_SUP)
+    HVESPD_DEnrg_CAP       HV battery pack D discharge energy capacity [kilowattHours]  (mostrato se HVESPD_DEnrg_CAP_SUP)
+    HVESPE_DEnrg_CAP       HV battery pack E discharge energy capacity [kilowattHours]  (mostrato se HVESPE_DEnrg_CAP_SUP)
+    HVESPF_DEnrg_CAP       HV battery pack F discharge energy capacity [kilowattHours]  (mostrato se HVESPF_DEnrg_CAP_SUP)
+    HVESPG_DEnrg_CAP       HV battery pack G discharge energy capacity [kilowattHours]  (mostrato se HVESPG_DEnrg_CAP_SUP)
+    HVESPH_DEnrg_CAP       HV battery pack H discharge energy capacity [kilowattHours]  (mostrato se HVESPH_DEnrg_CAP_SUP)
+Mode 01 PID C3
+    FLI_B_SUP              Fuel level input B supported [noyes]  (supporto)
+    FLI_A_SUP              Fuel level input A supported [noyes]  (supporto)
+    FLI_A                  Fuel level input A [percent]  (mostrato se FLI_A_SUP)
+    FLI_B                  Fuel level input B [percent]  (mostrato se FLI_B_SUP)
+Mode 01 PID C4
+    EXH_PM_TIME            Exhaust particulate control diagnostic time [seconds]
+    EXH_PM_OCC_CNT         Exhaust particulate control diagnostic count [scalar]
+Mode 01 PID C5
+    LFP_B_SUP              Low-pressure fuel pressure B supported [noyes]  (supporto)
+    LFP_A_SUP              Low-pressure fuel pressure A supported [noyes]  (supporto)
+    LFP_A                  Low-pressure fuel pressure A [kilopascal]  (mostrato se LFP_A_SUP)
+    LFP_B                  Low-pressure fuel pressure B [kilopascal]  (mostrato se LFP_B_SUP)
+Mode 01 PID C6
+    PCD_FAILURE_TIME_SUP   Particulate control monitoring system counter supported [noyes]  (supporto)
+    LRIS_FAILURE_TIME_SUP  Liquid reagent injection system failure counter supported [noyes]  (supporto)
+    DPF_REMOVAL_BLOCKED_TIME_SUP Particulate filter removal or block counter supported [noyes]  (supporto)
+    PM_WARN_ACT_SUP        Particulate warning system activation status supported [noyes]  (supporto)
+    PM_WARN_ACT            Particulate warning system active [noyes]  (mostrato se PM_WARN_ACT_SUP)
+    DPF_REMOVAL_BLOCKED_TIME Engine hours with the particulate filter removed or blocked [hours]  (mostrato se DPF_REMOVAL_BLOCKED_TIME_SUP)
+    LRIS_FAILURE_TIME      Engine hours with a liquid reagent injection system failure [hours]  (mostrato se LRIS_FAILURE_TIME_SUP)
+    PCD_FAILURE_TIME       Engine hours with a particulate control monitoring system fault [hours]  (mostrato se PCD_FAILURE_TIME_SUP)
+    PM_INDUC_L3            Particulate level three inducement status [enum]
+    PM_INDUC_L2            Particulate level two inducement status [enum]
+    PM_INDUC_L1            Particulate level one inducement status [enum]
+Mode 01 PID C7
+    REFLASH_DIST           Distance since module reflash or replacement [kilometers]
+Mode 01 PID C8
+    PCD_WL                 Particulate control (PCD) warning lamp [enum]
+    NCD_WL                 NOx control (NCD) warning lamp [enum]
+    NCD_PCD_WL             Shared NCD and PCD warning lamp [enum]
+Mode 01 PID C9
+    LAMBDA26_SUP           O2 sensor bank 2, sensor 6 lambda supported [noyes]  (supporto)
+    LAMBDA25_SUP           O2 sensor bank 2, sensor 5 lambda supported [noyes]  (supporto)
+    LAMBDA16_SUP           O2 sensor bank 1, sensor 6 lambda supported [noyes]  (supporto)
+    LAMBDA15_SUP           O2 sensor bank 1, sensor 5 lambda supported [noyes]  (supporto)
+    O2S26_PCT_SUP          O2 sensor bank 2, sensor 6 concentration supported [noyes]  (supporto)
+    O2S25_PCT_SUP          O2 sensor bank 2, sensor 5 concentration supported [noyes]  (supporto)
+    O2S16_PCT_SUP          O2 sensor bank 1, sensor 6 concentration supported [noyes]  (supporto)
+    O2S15_PCT_SUP          O2 sensor bank 1, sensor 5 concentration supported [noyes]  (supporto)
+    O2S15_PCT              O2 concentration bank 1, sensor 5 [percent]  (mostrato se O2S15_PCT_SUP)
+    O2S16_PCT              O2 concentration bank 1, sensor 6 [percent]  (mostrato se O2S16_PCT_SUP)
+    O2S25_PCT              O2 concentration bank 2, sensor 5 [percent]  (mostrato se O2S25_PCT_SUP)
+    O2S26_PCT              O2 concentration bank 2, sensor 6 [percent]  (mostrato se O2S26_PCT_SUP)
+    LAMBDA15               O2 sensor lambda bank 1, sensor 5 [scalar]  (mostrato se LAMBDA15_SUP)
+    LAMBDA16               O2 sensor lambda bank 1, sensor 6 [scalar]  (mostrato se LAMBDA16_SUP)
+    LAMBDA25               O2 sensor lambda bank 2, sensor 5 [scalar]  (mostrato se LAMBDA25_SUP)
+    LAMBDA26               O2 sensor lambda bank 2, sensor 6 [scalar]  (mostrato se LAMBDA26_SUP)
+Mode 01 PID CB
+    EP_22_SUP              Exhaust pressure bank 2, sensor 2 supported [noyes]  (supporto)
+    EP_12_SUP              Exhaust pressure bank 1, sensor 2 supported [noyes]  (supporto)
+    EP_12                  Exhaust pressure bank 1, sensor 2 [kilopascal]  (mostrato se EP_12_SUP)
+    EP_22                  Exhaust pressure bank 2, sensor 2 [kilopascal]  (mostrato se EP_22_SUP)
+Mode 01 PID CC
+    EMH_RPM_SUP            Electric motor H speed supported [noyes]  (supporto)
+    EMG_RPM_SUP            Electric motor G speed supported [noyes]  (supporto)
+    EMF_RPM_SUP            Electric motor F speed supported [noyes]  (supporto)
+    EME_RPM_SUP            Electric motor E speed supported [noyes]  (supporto)
+    EMD_RPM_SUP            Electric motor D speed supported [noyes]  (supporto)
+    EMC_RPM_SUP            Electric motor C speed supported [noyes]  (supporto)
+    EMB_RPM_SUP            Electric motor B speed supported [noyes]  (supporto)
+    EMA_RPM_SUP            Electric motor A speed supported [noyes]  (supporto)
+    EMA_RPM                Electric motor A speed [rpm]  (mostrato se EMA_RPM_SUP)
+    EMB_RPM                Electric motor B speed [rpm]  (mostrato se EMB_RPM_SUP)
+    EMC_RPM                Electric motor C speed [rpm]  (mostrato se EMC_RPM_SUP)
+    EMD_RPM                Electric motor D speed [rpm]  (mostrato se EMD_RPM_SUP)
+    EME_RPM                Electric motor E speed [rpm]  (mostrato se EME_RPM_SUP)
+    EMF_RPM                Electric motor F speed [rpm]  (mostrato se EMF_RPM_SUP)
+    EMG_RPM                Electric motor G speed [rpm]  (mostrato se EMG_RPM_SUP)
+    EMH_RPM                Electric motor H speed [rpm]  (mostrato se EMH_RPM_SUP)
+Mode 01 PID CD
+    EMH_TQ_SUP             Electric motor H torque supported [noyes]  (supporto)
+    EMG_TQ_SUP             Electric motor G torque supported [noyes]  (supporto)
+    EMF_TQ_SUP             Electric motor F torque supported [noyes]  (supporto)
+    EME_TQ_SUP             Electric motor E torque supported [noyes]  (supporto)
+    EMD_TQ_SUP             Electric motor D torque supported [noyes]  (supporto)
+    EMC_TQ_SUP             Electric motor C torque supported [noyes]  (supporto)
+    EMB_TQ_SUP             Electric motor B torque supported [noyes]  (supporto)
+    EMA_TQ_SUP             Electric motor A torque supported [noyes]  (supporto)
+    EMA_TQ                 Electric motor A torque [newtonMeters]  (mostrato se EMA_TQ_SUP)
+    EMB_TQ                 Electric motor B torque [newtonMeters]  (mostrato se EMB_TQ_SUP)
+    EMC_TQ                 Electric motor C torque [newtonMeters]  (mostrato se EMC_TQ_SUP)
+    EMD_TQ                 Electric motor D torque [newtonMeters]  (mostrato se EMD_TQ_SUP)
+    EME_TQ                 Electric motor E torque [newtonMeters]  (mostrato se EME_TQ_SUP)
+    EMF_TQ                 Electric motor F torque [newtonMeters]  (mostrato se EMF_TQ_SUP)
+    EMG_TQ                 Electric motor G torque [newtonMeters]  (mostrato se EMG_TQ_SUP)
+    EMH_TQ                 Electric motor H torque [newtonMeters]  (mostrato se EMH_TQ_SUP)
+Mode 01 PID CE
+    EVAP_D_VPW_SUP         Evap system vapor pressure D wide range supported [noyes]  (supporto)
+    EVAP_D_VP_SUP          Evap system vapor pressure D supported [noyes]  (supporto)
+    EVAP_C_VPW_SUP         Evap system vapor pressure C wide range supported [noyes]  (supporto)
+    EVAP_C_VP_SUP          Evap system vapor pressure C supported [noyes]  (supporto)
+    EVAP_C_VP              Evap system vapor pressure C [kilopascal]  (mostrato se EVAP_C_VP_SUP)
+    EVAP_C_VPW             Evap system vapor pressure C, wide range [kilopascal]  (mostrato se EVAP_C_VPW_SUP)
+    EVAP_D_VP              Evap system vapor pressure D [kilopascal]  (mostrato se EVAP_D_VP_SUP)
+    EVAP_D_VPW             Evap system vapor pressure D, wide range [kilopascal]  (mostrato se EVAP_D_VPW_SUP)
+Mode 01 PID CF
+    CATEMP_D_SUP           Catalyst temperature sensor D supported [noyes]  (supporto)
+    CATEMP_C_SUP           Catalyst temperature sensor C supported [noyes]  (supporto)
+    CATEMP_B_SUP           Catalyst temperature sensor B supported [noyes]  (supporto)
+    CATEMP_A_SUP           Catalyst temperature sensor A supported [noyes]  (supporto)
+    CATEMP_A               Catalyst temperature A [celsius]  (mostrato se CATEMP_A_SUP)
+    CATEMP_B               Catalyst temperature B [celsius]  (mostrato se CATEMP_B_SUP)
+    CATEMP_C               Catalyst temperature C [celsius]  (mostrato se CATEMP_C_SUP)
+    CATEMP_D               Catalyst temperature D [celsius]  (mostrato se CATEMP_D_SUP)
+Mode 01 PID D0
+    INIT_ESS_RSRV_CAP_SUP  Initial reserve energy supported [noyes]  (supporto)
+    REMAINING_ESS_RSRV_CAP_SUP Remaining reserve energy supported [noyes]  (supporto)
+    HEALTH_DIST_SUP        Distance since state of health update supported [noyes]  (supporto)
+    HEALTH_DIST            Distance since state of health update [kilometers]  (mostrato se HEALTH_DIST_SUP)
+    REMAINING_ESS_RSRV_CAP HV battery remaining reserve energy [kilowattHours]  (mostrato se REMAINING_ESS_RSRV_CAP_SUP)
+    INIT_ESS_RSRV_CAP      HV battery initial reserve energy [kilowattHours]  (mostrato se INIT_ESS_RSRV_CAP_SUP)
+Mode 01 PID D1
+    HVESS_CHARGE_LIM       HV battery charging limit [kilowatts]
+    HVESS_CHARGE_ACT       HV battery charging power [kilowatts]
+Mode 01 PID D2
+    SOCR_SUP               State of certified range supported [noyes]  (supporto)
+    SOCE_SUP               State of certified energy supported [noyes]  (supporto)
+    SOCE                   State of certified energy [percent]  (mostrato se SOCE_SUP)
+    SOCR                   State of certified range [percent]  (mostrato se SOCR_SUP)
+Mode 01 PID D3
+    ODO_ENG                Engine odometer [kilometers]
+Mode 01 PID D4
+    HVESS_ENER             HV battery power over the last second [kilowatts]
+Mode 01 PID D5
+    FC_CUMUL_ENER_SUP      Fuel cell energy supported [noyes]  (supporto)
+    FC_CUMUL_CURR_SUP      Fuel cell current supported [noyes]  (supporto)
+    FC_FUEL_RATE_SUP       Fuel cell fuel consumption supported [noyes]  (supporto)
+    FC_VOLT_SUP            Fuel cell system voltage supported [noyes]  (supporto)
+    FC_VOLT                Fuel cell system voltage [volts]  (mostrato se FC_VOLT_SUP)
+    FC_FUEL_RATE           Fuel cell fuel consumption [gramsPerSecond]  (mostrato se FC_FUEL_RATE_SUP)
+    FC_CUMUL_CURR          Fuel cell current over the last second [amps]  (mostrato se FC_CUMUL_CURR_SUP)
+    FC_CUMUL_ENER          Fuel cell power over the last second [kilowatts]  (mostrato se FC_CUMUL_ENER_SUP)
+Mode 01 PID D6
+    NUMPSATRIPSFLTMEMCLR   Propulsion system active trips since DTCs cleared [scalar]
+Mode 01 PID D7
+    DEFB_MAX_SUP           DEF doser B maximum dosing rate supported [noyes]  (supporto)
+    DEFB_MODE_SUP          DEF doser B dosing mode supported [noyes]  (supporto)
+    DEFB_CMD_SUP           DEF doser B commanded dosing supported [noyes]  (supporto)
+    DEFB_CMD               DEF doser B commanded dosing [percent]  (mostrato se DEFB_CMD_SUP)
+    DEFB_MAX               DEF doser B maximum dosing rate [kilogramsPerHour]  (mostrato se DEFB_MAX_SUP)
+Mode 01 PID D8
+    BCAP_R                 Battery capacity calculation [enum]
+Mode 01 PID D9
+    CALCULATED_ESS_CAP     HV battery calculated usable energy [kilowattHours]
+Mode 01 PID DA
+    HVESS_CURR             HV battery current over the last second [amps]
+Mode 01 PID DC
+    AECD25_SUP             Total run time with EI-AECD #25 active supported [noyes]  (supporto)
+    AECD24_SUP             Total run time with EI-AECD #24 active supported [noyes]  (supporto)
+    AECD23_SUP             Total run time with EI-AECD #23 active supported [noyes]  (supporto)
+    AECD22_SUP             Total run time with EI-AECD #22 active supported [noyes]  (supporto)
+    AECD21_SUP             Total run time with EI-AECD #21 active supported [noyes]  (supporto)
+    AECD21_TIME1           Total run time with EI-AECD #21 timer 1 active [seconds]  (mostrato se AECD21_SUP)
+    AECD21_TIME2           Total run time with EI-AECD #21 timer 2 active [seconds]  (mostrato se AECD21_SUP)
+    AECD22_TIME1           Total run time with EI-AECD #22 timer 1 active [seconds]  (mostrato se AECD22_SUP)
+    AECD22_TIME2           Total run time with EI-AECD #22 timer 2 active [seconds]  (mostrato se AECD22_SUP)
+    AECD23_TIME1           Total run time with EI-AECD #23 timer 1 active [seconds]  (mostrato se AECD23_SUP)
+    AECD23_TIME2           Total run time with EI-AECD #23 timer 2 active [seconds]  (mostrato se AECD23_SUP)
+    AECD24_TIME1           Total run time with EI-AECD #24 timer 1 active [seconds]  (mostrato se AECD24_SUP)
+    AECD24_TIME2           Total run time with EI-AECD #24 timer 2 active [seconds]  (mostrato se AECD24_SUP)
+    AECD25_TIME1           Total run time with EI-AECD #25 timer 1 active [seconds]  (mostrato se AECD25_SUP)
+    AECD25_TIME2           Total run time with EI-AECD #25 timer 2 active [seconds]  (mostrato se AECD25_SUP)
+
+==================== ESCLUSI SAE ====================
+    PID AC         DEFA_MODE              DEF doser A dosing mode  (stato senza mappa dei valori)
+    PID D7         DEFB_MODE              DEF doser B dosing mode  (stato senza mappa dei valori)
+
+==================== INCLUSI A5 ====================
+710/77A 22 123A  [catture: risposto]
+    A5_BZE_Q_LAD           Bze_q_lad [ampereHours]
+    A5_BZE_Q_ELAD          Bze_q_elad [ampereHours]
+710/77A 22 2A00  [catture: risposto]
+    A5_SSB_VT              Start/stop battery target voltage [volts]
+710/77A 22 2A06  [catture: risposto]
+    A5_12V_BAT_CAP         12V battery capacity [ampereHours]
+710/77A 22 2A07  [catture: risposto]
+    A5_SSB_V               Start/stop battery voltage [volts]
+710/77A 22 2A09  [catture: risposto]
+    A5_SSB_C               Start/stop battery current [amps]
+710/77A 22 2A0A  [catture: risposto]
+    A5_SSB_BAT_T           Start/stop battery temperature [celsius]
+710/77A 22 2A0B  [catture: risposto]
+    A5_SSB_T               Start/stop battery sensor temperature [celsius]
+710/77A 22 2A0C  [catture: risposto]
+    A5_SSB_SOC             Start/stop battery state of charge [percent]
+710/77A 22 2A0E  [catture: risposto]
+    A5_SSB_R               Start/stop battery resistance [milliohms]
+710/77A 22 2A0F  [catture: risposto]
+    A5_SSB_AH              Start/stop battery charge [ampereHours]
+710/77A 22 2A10  [catture: risposto]
+    A5_SSB_V_REST          Start/stop battery voltage, at rest [volts]
+710/77A 22 2A15  [catture: risposto]
+    A5_ENERGY_BALANCE_LAST Energy balance of last driving cycle [ampereHours]
+710/77A 22 2A17  [catture: risposto]
+    A5_OVERALL_ENERGY      Overall energy balance [ampereHours]
+710/77A 22 2A18  [catture: risposto]
+    A5_ENTIRE_ENERGY       Entire energy throughput [ampereHours]
+710/77A 22 2A1C  [catture: risposto]
+    A5_GEN_CURRENT         Generator current [amps]
+710/77A 22 2AB6  [catture: risposto]
+    A5_RANGE_V2            Range remaining [kilometers]
+710/77A 22 2AB7  [catture: risposto]
+    A5_AVG_CSMP_CAT0       Average consumption, category 0 [kilowattHours]
+    A5_AVG_CSMP_CAT1       Average consumption, category 1 [kilowattHours]
+    A5_AVG_CSMP_CAT2       Average consumption, category 2 [kilowattHours]
+    A5_AVG_CSMP_CAT3       Average consumption, category 3 [kilowattHours]
+    A5_AVG_CSMP_CAT4       Average consumption, category 4 [kilowattHours]
+    A5_AVG_CSMP_CAT5       Average consumption, category 5 [kilowattHours]
+    A5_AVG_CSMP_CAT6       Average consumption, category 6 [kilowattHours]
+710/77A 22 4F00  [catture: risposto]
+    A5_GEN_V_ACT           Generator voltage, actual [volts]
+710/77A 22 5505  [catture: risposto]
+    A5_STEER_WHL_T         Steering wheel temperature [celsius]
+713/77D 22 2B21  [catture: risposto]
+    A5_BRAKE_P             Brake pressure [bars]
+713/77D 22 2B29  [catture: risposto]
+    A5_STEER_ANGLE         Steering wheel angle [radians]
+714/77E 22 1014  [catture: risposto]
+    A5_AAT                 Ambient air temperature [celsius]
+714/77E 22 2203  [catture: risposto]
+    A5_ODO_DASH            Odometer, dash [kilometers]
+714/77E 22 220C  [catture: risposto]
+    A5_OUTSIDE_T           Outside temperature [celsius]
+714/77E 22 2211  [catture: risposto]
+    A5_PQ35_CHG_AIR_P      Charge air pressure [percent]
+714/77E 22 224B  [catture: risposto]
+    A5_DASH_OIL_THERMAL_WEAR Oil thermal wear [kilometers]
+714/77E 22 22B8  [catture: risposto]
+    A5_ODO_MILEAGE_HR      Odometer, mileage, HR [kilometers]
+746/7B0 22 2605  [catture: risposto]
+    A5_CLIMATE_REFRIG_P    Refrigerant pressure [bars]
+746/7B0 22 2606  [catture: risposto]
+    A5_CLIMATE_RAD_FAN_ACT_DUTY Radiator fan actual duty [percent]
+746/7B0 22 2607  [catture: risposto]
+    A5_CLIMATE_RAD_FAN_CMD_DUTY Radiator fan commanded duty [percent]
+746/7B0 22 2609  [catture: risposto]
+    A5_AAT_746             Outside temperature [celsius]
+746/7B0 22 260A  [catture: risposto]
+    A5_OUTSIDE_T_SYSTEM    Outside temperature, system calculated [celsius]
+746/7B0 22 260C  [catture: risposto]
+    A5_CLIMATE_FR_L_DEFL_T Front left deflector temperature [celsius]
+746/7B0 22 260D  [catture: risposto]
+    A5_CLIMATE_FR_R_DEFL_T Front right deflector temperature [celsius]
+746/7B0 22 2612  [catture: risposto]
+    A5_CLIMATE_T_AFTER_EVAP Temperature after evaporator [celsius]
+746/7B0 22 2613  [catture: risposto]
+    A5_CABIN_T             Cabin temperature [celsius]
+746/7B0 22 263D  [catture: risposto]
+    A5_CLIMATE_RR_DEFL_T   Rear deflector temperature [celsius]
+767/7D1 22 2431  [catture: risposto]
+    A5_GPS_SATS_VISIBLE    Satellites, visible [scalar]
+    A5_GPS_SATS_TRACKED    Satellites, tracked [scalar]
+7E0/7E8 22 028D  [catture: risposto]
+    A5_ECU_TEMP            Control module temperature [celsius]
+7E0/7E8 22 1002  [catture: risposto]
+    A5_AC_COMP_T           A/c compressor torque, requested [newtonMeters]
+7E0/7E8 22 1004  [catture: risposto]
+    A5_AAT_V2              Ambient temperature [celsius]
+7E0/7E8 22 101A  [catture: risposto]
+    A5_A_C_COMPRESSOR_TORQUE A/C compressor torque [newtonMeters]
+7E0/7E8 22 102A  [catture: risposto]
+    A5_ACCEL_PEDAL_SENS_1_V Accelerator pedal, sensor 1 voltage [millivolts]
+7E0/7E8 22 1065  [catture: risposto]
+    A5_CYL_HEAD_T          Cylinder head temperature [celsius]
+7E0/7E8 22 10D3  [catture: risposto]
+    A5_PQ35_INJ_2_RAIL_P_1 Injector 2 rail pressure calibration point 1 [milliseconds]
+7E0/7E8 22 10D4  [catture: risposto]
+    A5_INJ_2_RAIL_P_1      Injector 2, rail pressure calibration point 1 [milliseconds]
+7E0/7E8 22 10D5  [catture: risposto]
+    A5_LAMBDA_ACT          Lambda, actual value [scalar]
+7E0/7E8 22 10D6  [catture: risposto]
+    A5_PQ35_INJ_1_RAIL_P_2 Injector 1 rail pressure calibration point 2 [milliseconds]
+7E0/7E8 22 10E0  [catture: risposto]
+    A5_ODO_2               Odometer, alternative [kilometers]
+7E0/7E8 22 1116  [catture: risposto]
+    A5_PQ35_COOL_FAN_1_DUTY Coolant fan 1 duty cycle [percent]
+7E0/7E8 22 1125  [catture: risposto]
+    A5_CAM_ADPT_INT_BANK_1 Camshaft adaptation, intake bank 1, phase position [degrees]
+7E0/7E8 22 1128  [catture: risposto]
+    A5_CAM_ADPT_EXH_BANK_1 Camshaft adaptation, exhaust bank 1, phase position [degrees]
+7E0/7E8 22 113F  [catture: risposto]
+    A5_FUEL_CONS           Fuel consumption [liters]
+7E0/7E8 22 1158  [catture: risposto]
+    A5_MAX_DCHA_CUR_2      Maximum discharge current [amps]
+7E0/7E8 22 1159  [catture: risposto]
+    A5_MAX_CHA_CUR_2       Maximum charge current [amps]
+7E0/7E8 22 1160  [catture: risposto]
+    A5_ODO_HD              Odometer, high resolution [kilometers]
+7E0/7E8 22 1189  [catture: risposto]
+    A5_PQ35_CAMS_EDGE_POS_2 Intake camshaft signal edge position adapted edge 2 [degrees]
+7E0/7E8 22 118A  [catture: risposto]
+    A5_PQ35_CAMS_EDGE_POS_3 Intake camshaft signal edge position adapted edge 3 [degrees]
+7E0/7E8 22 11B9  [catture: risposto]
+    A5_OIL_P_VLV_SWITCH    Oil pressure valve switch, control [scalar]
+7E0/7E8 22 11BA  [catture: risposto]
+    A5_OIL_LEVEL           Oil level [centimeters]
+7E0/7E8 22 11BD  [catture: risposto]
+    A5_OIL_LEVEL_WARN      Oil level warning threshold [centimeters]
+7E0/7E8 22 11BE  [catture: risposto]
+    A5_EOT_V2              Engine oil temperature [celsius]
+7E0/7E8 22 11C8  [catture: risposto]
+    A5_LOW_FUEL_P_ACT      Low fuel pressure, actual [kilopascal]
+7E0/7E8 22 11CD  [catture: rifiutato]
+    A5_TCO_1_SYS           TCO_1_SYS [celsius]
+7E0/7E8 22 11CE  [catture: risposto]
+    A5_LOW_FUEL_P_CMD      Low fuel pressure, commanded [kilopascal]
+7E0/7E8 22 11DF  [catture: risposto]
+    A5_POWERTRAIN_OVERALL  Powertrain overall gear ratio [scalar]
+7E0/7E8 22 11F1  [catture: risposto]
+    A5_PQ35_TRANS_IN_SPD   Transmission input shaft speed [rpm]
+7E0/7E8 22 11F3  [catture: risposto]
+    A5_PQ35_POST_INJ_2_START Post-injection 2 start position [degrees]
+7E0/7E8 22 1221  [catture: risposto]
+    A5_PQ35_ACCEL_PED_1    Accelerator pedal sensor 1 [millivolts]
+7E0/7E8 22 1224  [catture: risposto]
+    A5_TQ_LOSS_ADPT_GEAR   Torque loss adaptation, gear engaged [newtonMeters]
+7E0/7E8 22 1225  [catture: risposto]
+    A5_TQ_LOSS_ADPT_IDLE   Torque loss adaptation at idle [newtonMeters]
+7E0/7E8 22 1340  [catture: risposto]
+    A5_TQ_INCREASE_REQ_ESP Torque increase request from ESP [newtonMeters]
+7E0/7E8 22 1341  [catture: risposto]
+    A5_PQ35_CAMS_END       Camshaft end position [degrees]
+7E0/7E8 22 14CB  [catture: risposto]
+    A5_GEAR_V2             Gear [scalar]
+7E0/7E8 22 14CE  [catture: risposto]
+    A5_PQ35_POST_INJ_3_ACTIVATION_DURATION Post-injection 3 activation duration [milliseconds]
+7E0/7E8 22 14D1  [catture: risposto]
+    A5_PQ35_PRE_INJ_2_DURATION Pre-injection 2 duration [milliseconds]
+7E0/7E8 22 14F8  [catture: risposto]
+    A5_AAT_V1              Ambient air temperature, v1 [celsius]
+7E0/7E8 22 14F9  [catture: risposto]
+    A5_MAIN_CAT_OSC_AGE_CORRECTION_FACTOR Main cat oxygen storage capacity age correction factor [scalar]
+7E0/7E8 22 15AA  [catture: risposto]
+    A5_PQ35_SELECTED_GEAR  Selected gear [scalar]
+7E0/7E8 22 15D4  [catture: risposto]
+    A5_LAMBDA_OUTPUT       Lambda output value [scalar]
+7E0/7E8 22 1632  [catture: risposto]
+    A5_EOT_MEAS            Engine oil temperature measured value [celsius]
+7E0/7E8 22 1644  [catture: risposto]
+    A5_LATERAL_ACCEL       Lateral acceleration [metersPerSecondSquared]
+7E0/7E8 22 167E  [catture: risposto]
+    A5_CLT_CIRCULATION_PMP Coolant circulation pump, control [percent]
+7E0/7E8 22 167F  [catture: risposto]
+    A5_HEATER_CIRCULATION  Heater circulation pump, nominal value [percent]
+7E0/7E8 22 16F4  [catture: risposto]
+    A5_PISTON_COOLING      Piston cooling nozzles, control [scalar]
+7E0/7E8 22 1722  [catture: risposto]
+    A5_EARLY_IGN_CNT_CYL_1 Early ignition counter, cylinder 1 [scalar]
+7E0/7E8 22 1723  [catture: risposto]
+    A5_EARLY_IGN_CNT_CYL_3 Early ignition counter, cylinder 3 [scalar]
+7E0/7E8 22 1724  [catture: risposto]
+    A5_EARLY_IGN_CNT_CYL_4 Early ignition counter, cylinder 4 [scalar]
+7E0/7E8 22 1725  [catture: risposto]
+    A5_EARLY_IGN_CNT_CYL_2 Early ignition counter, cylinder 2 [scalar]
+7E0/7E8 22 179C  [catture: risposto]
+    A5_PQ35_ENGINE_OIL_T_2 Engine oil temperature 2 [celsius]
+7E0/7E8 22 2998  [catture: risposto]
+    A5_MANUAL_ENG_STARTS   Manual engine starts counter [scalar]
+7E0/7E8 22 2999  [catture: risposto]
+    A5_AUTOMATIC_ENG_STARTS Automatic engine starts counter [scalar]
+7E0/7E8 22 2CD8  [catture: risposto]
+    A5_OIL_P_VLV_PISTON    Oil pressure valve for piston cooling nozzles, control switch button ratio [percent]
+7E0/7E8 22 58D1  [catture: risposto]
+    A5_ENG_OIL_LEVEL       Engine oil level current value [percent]
+7E0/7E8 22 F40C  [catture: risposto]
+    A5_RPM                 Engine RPM [rpm]
+7E0/7E8 22 F40D  [catture: risposto]
+    A5_VSS                 Vehicle speed [kilometersPerHour]
+7E0/7E8 22 F41F  [catture: risposto]
+    A5_RUNTM               Time since engine start [seconds]
+7E0/7E8 22 F421  [catture: risposto]
+    A5_MIL_DIST            Distance traveled while mil was activated [kilometers]
+7E0/7E8 22 F430  [catture: risposto]
+    A5_WARM_UPS            Number of warm-ups since dtcs cleared [scalar]
+7E0/7E8 22 F431  [catture: risposto]
+    A5_CLR_DIST            Distance traveled since dtcs cleared [kilometers]
+7E0/7E8 22 F433  [catture: risposto]
+    A5_BARO                Barometric pressure [kilopascal]
+7E0/7E8 22 F43C  [catture: risposto]
+    A5_EXH_GAS_T           Exhaust gas temperature [celsius]
+7E0/7E8 22 F442  [catture: risposto]
+    A5_VPWR                Control module voltage [volts]
+7E0/7E8 22 F446  [catture: risposto]
+    A5_AAT_7E0             Ambient air temperature [celsius]
+7E0/7E8 22 F449  [catture: risposto]
+    A5_ACCEL_PEDAL_POS_1   Accelerator pedal position 1 [percent]
+7E0/7E8 22 F44A  [catture: risposto]
+    A5_ACCEL_PEDAL_POS_2   Accelerator pedal position 2 [percent]
+7E1/7E9 22 0301  [catture: risposto]
+    A5_CTRL_MODULE_T_7E1   Control module temperature [celsius]
+7E1/7E9 22 0302  [catture: risposto]
+    A5_DRIVE_TIME          Total drive time [hours]
+7E1/7E9 22 0303  [catture: risposto]
+    A5_DRIVE_TIME_ECO      Driving time, eco [percent]
+7E1/7E9 22 0304  [catture: risposto]
+    A5_DRIVE_TIME_SPORT    Driving time, sport [percent]
+7E1/7E9 22 0305  [catture: risposto]
+    A5_DRIVE_TIME_MANUAL   Driving time, manual [percent]
+7E1/7E9 22 0805  [catture: risposto]
+    A5_BRAKE_LIGHT_ON_VALID Brake light reading valid? [noyes]
+    A5_BRAKE_PRESSED_VALID Brake pressure reading valid? [noyes]
+    A5_BRAKE_PRESSED       Brake [offon]
+    A5_BRAKE_LIGHT_ON      Brake light [offon]
+7E1/7E9 22 1001  [catture: risposto]
+    A5_TIRE_FR_SPD_V3      Front right wheel speed [kilometersPerHour]
+7E1/7E9 22 1002  [catture: risposto]
+    A5_TIRE_FL_SPD_V3      Front left wheel speed [kilometersPerHour]
+7E1/7E9 22 1003  [catture: risposto]
+    A5_TIRE_RR_SPD_V3      Rear right wheel speed [kilometersPerHour]
+7E1/7E9 22 1004  [catture: risposto]
+    A5_TIRE_RL_SPD_V3      Rear left wheel speed [kilometersPerHour]
+7E1/7E9 22 1005  [catture: risposto]
+    A5_VSS_ESP             Vehicle speed ESP [kilometersPerHour]
+7E1/7E9 22 1010  [catture: risposto]
+    A5_MQB_TCM_CONVERTER_LOSS_TORQUE Converter loss torque [newtonMeters]
+7E1/7E9 22 1022  [catture: risposto]
+    A5_TCM_TQ_LOSSES       Transmission torque losses [newtonMeters]
+7E1/7E9 22 1024  [catture: risposto]
+    A5_CURRENT_N215_P_CTRL_1 Current N215 pressure control valve 1 [milliamps]
+7E1/7E9 22 102B  [catture: risposto]
+    A5_PQ35_CLUTCH_1_T     Clutch 1 temperature [celsius]
+7E1/7E9 22 102C  [catture: risposto]
+    A5_PQ35_CLUTCH_2_T     Clutch 2 temperature [celsius]
+7E1/7E9 22 102E  [catture: risposto]
+    A5_M009_DES_SOLENOID_10 M009, desired solenoid out 10 [offon]
+    A5_M009_DES_SOLENOID_11 M009, desired solenoid out 11 [offon]
+    A5_M009_DES_SOLENOID_12 M009, desired solenoid out 12 [offon]
+    A5_M009_DES_SOLENOID_13 M009, desired solenoid out 13 [offon]
+    A5_M009_DES_SOLENOID_14 M009, desired solenoid out 14 [offon]
+7E1/7E9 22 1033  [catture: risposto]
+    A5_TIME_SINCE_SHIFT    Time since shift [milliseconds]
+7E1/7E9 22 103B  [catture: risposto]
+    A5_TIME_SINCE_RESET    Time since reset [milliseconds]
+7E1/7E9 22 1057  [catture: risposto]
+    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHAR_POINT_0_POS Clutch 1 adaptation basic characteristic point 0 position [bars]
+7E1/7E9 22 105A  [catture: risposto]
+    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHARAC_POINT_1_MOMENT Clutch 1 adaptation basic characteristic point 1 moment [newtonMeters]
+7E1/7E9 22 105B  [catture: risposto]
+    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHAR_POINT_2_POS Clutch 1 adaptation basic characteristic point 2 position [bars]
+7E1/7E9 22 105C  [catture: risposto]
+    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHARAC_POINT_2_MOMENT Clutch 1 adaptation basic characteristic point 2 moment [newtonMeters]
+7E1/7E9 22 1062  [catture: risposto]
+    A5_PQ35_CLUTCH_1_FRICTION_VALUE_CORRECTION_FACTOR Clutch 1 friction value correction factor [percent]
+7E1/7E9 22 1063  [catture: risposto]
+    A5_PQ35_CLUTCH_1_CHAR_CURVE_SHIFT Clutch 1 characteristic curve shift [millimeters]
+7E1/7E9 22 1065  [catture: risposto]
+    A5_CLU_1_T_TIME_RANGE_0 Clutch 1 temperature time in range 0 [seconds]
+7E1/7E9 22 1066  [catture: risposto]
+    A5_ANALYSIS_CLU_1_T_1  Analysis, clutch 1 temperature time in range 1 [seconds]
+7E1/7E9 22 1067  [catture: risposto]
+    A5_ANALYSIS_CLU_1_T_2  Analysis, clutch 1 temperature time in range 2 [seconds]
+7E1/7E9 22 106A  [catture: risposto]
+    A5_RESERVE_TQ          Reserve torque [newtonMeters]
+7E1/7E9 22 106C  [catture: risposto]
+    A5_PQ35_CLUTCH_2_ADAPT_BASIC_CHAR_POINT_0_POS Clutch 2 adaptation basic characteristic point 0 position [bars]
+7E1/7E9 22 1078  [catture: risposto]
+    A5_PQ35_CLUTCH_2_CHAR_CURVE_SHIFT Clutch 2 characteristic curve shift [millimeters]
+7E1/7E9 22 1094  [catture: risposto]
+    A5_PQ35_GEAR_ACTUATOR_ADAPT_ENGAGED_POS_G4 Gear actuator adaptation engaged position G4 [millimeters]
+7E1/7E9 22 10CA  [catture: risposto]
+    A5_PQ35_CLUTCH_1_ADAPT_KISS_POINT_PART_1_ODO_READING Clutch 1 adaptation kiss point part 1 odometer reading [kilometers]
+7E1/7E9 22 10EA  [catture: risposto]
+    A5_PQ35_CLUTCH_2_SUCCESSFUL_ADAPTS_COUNTER Clutch 2 successful adaptations counter [scalar]
+7E1/7E9 22 10EB  [catture: risposto]
+    A5_PQ35_CLUTCH_2_ADAPT_KISS_POINT_PART_1_ODO_READING Clutch 2 adaptation kiss point part 1 odometer reading [kilometers]
+7E1/7E9 22 10ED  [catture: risposto]
+    A5_PQ35_CLUTCH_2_FAILED_ADAPTS_COUNTER Clutch 2 failed adaptations counter [scalar]
+7E1/7E9 22 1120  [catture: risposto]
+    A5_CLU_1_LO_ADPT_POINT Clutch 1 lower adaptation point [bars]
+7E1/7E9 22 1121  [catture: risposto]
+    A5_CLU_2_LO_ADPT_POINT Clutch 2 lower adaptation point [bars]
+7E1/7E9 22 1124  [catture: risposto]
+    A5_CLU_1_HI_ADPT_POINT Clutch 1 upper adaptation point [bars]
+7E1/7E9 22 1125  [catture: risposto]
+    A5_CLU_2_HI_ADPT_POINT Clutch 2 upper adaptation point [bars]
+7E1/7E9 22 120F  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_0_T_CALCULATED Clutch 0 temperature calculated [celsius]
+7E1/7E9 22 132A  [catture: risposto]
+    A5_MQB_DL382_P_SENSOR_1_T Pressure sensor 1 temperature [celsius]
+7E1/7E9 22 132B  [catture: risposto]
+    A5_MQB_DL382_P_SENSOR_2_T Pressure sensor 2 temperature [celsius]
+7E1/7E9 22 13CC  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_1_ABSOLUTE_P Clutch 1 absolute pressure [bars]
+7E1/7E9 22 13CD  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_2_ABSOLUTE_P Clutch 2 absolute pressure [bars]
+7E1/7E9 22 1419  [catture: risposto]
+    A5_MQB_DL382_STIFFNESS_POINT_P_CLUTCH_1 Stiffness point pressure clutch 1 [bars]
+7E1/7E9 22 141A  [catture: risposto]
+    A5_MQB_DL382_STIFFNESS_POINT_P_CLUTCH_2 Stiffness point pressure clutch 2 [bars]
+7E1/7E9 22 1426  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_0_CMD_P_OFFSET Clutch 0 commanded pressure offset [bars]
+7E1/7E9 22 18E3  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_T_CALCULATED Clutch temperature calculated [celsius]
+7E1/7E9 22 2002  [catture: risposto]
+    A5_ENG_TQ_7E1          Engine torque [newtonMeters]
+7E1/7E9 22 2102  [catture: risposto]
+    A5_MQB_TCM_TRANSMISSION_INPUT_SPD Transmission input speed [rpm]
+7E1/7E9 22 2103  [catture: risposto]
+    A5_MQB_TCM_TRANSMISSION_OUTPUT_SPD Transmission output speed [rpm]
+7E1/7E9 22 2104  [catture: risposto]
+    A5_ATF_T               Automatic transmission fluid temperature [celsius]
+7E1/7E9 22 2105  [catture: risposto]
+    A5_TQ_TRANSMITTING_FUNCTION Torque transmitting function, ratio [scalar]
+7E1/7E9 22 2106  [catture: risposto]
+    A5_VSS_HR              Vehicle speed, HR [kilometersPerHour]
+7E1/7E9 22 210F  [catture: risposto]
+    A5_GEAR                Current gear [enum]
+7E1/7E9 22 2142  [catture: risposto]
+    A5_SPEC_TQ_CLU_1_DATA  Specified torque clutch 1 - data [newtonMeters]
+7E1/7E9 22 2143  [catture: risposto]
+    A5_SPEC_TQ_CLU_2_DATA  Specified torque clutch 2 - data [newtonMeters]
+7E1/7E9 22 214C  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_1_P Clutch 1 pressure [bars]
+7E1/7E9 22 214D  [catture: risposto]
+    A5_MQB_DL382_CLUTCH_2_P Clutch 2 pressure [bars]
+7E1/7E9 22 70D6  [catture: risposto]
+    A5_AUX_HYDRAULIC_PMP   Aux. hydraulic pump RPM [rpm]
+7E1/7E9 22 F40D  [catture: risposto]
+    A5_VSS_7E1             Vehicle speed [kilometersPerHour]
+7E1/7E9 22 F449  [catture: risposto]
+    A5_ACCEL_PEDAL_POS_7E1 Accelerator pedal position [percent]
+
+==================== ESCLUSI A5 ====================
+    70E 22 2605    A5_REFRIGERANT_P       Refrigerant pressure  (richiede la sessione diagnostica 03 (din))
+    70E 22 2606    A5_CLT_FAN_ACTIVATION_ACT Coolant fan activation, actual value  (richiede la sessione diagnostica 03 (din))
+    70E 22 2607    A5_CLT_FAN_ACTIVATION_SPEC Coolant fan activation, specified value  (richiede la sessione diagnostica 03 (din))
+    70E 22 2613    A5_INSIDE_T            Inside temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42BB    A5_EVAPORATOR_T        Evaporator temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42BC    A5_LEFT_FOOTWELL_AIR_T Left footwell air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42BD    A5_RIGHT_FOOTWELL_AIR_T Right footwell air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42BE    A5_LEFT_REAR_HI_AIR_T  Left rear upper air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C0    A5_RIGHT_REAR_HI_AIR_T Right rear upper air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C1    A5_LEFT_REAR_FOOTWELL_T Left rear footwell air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C2    A5_RIGHT_REAR_FOOTWELL_T Right rear footwell air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C3    A5_LEFT_SIDE_AIR_OUTLET_T Left side air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C4    A5_RIGHT_SIDE_AIR_T    Right side air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C5    A5_LEFT_CENTRAL_AIR_T  Left central air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C6    A5_RIGHT_CENTRAL_AIR_T Right central air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 42C8    A5_FRONT_DEFROST_FLAP_T Front defrost flap air outlet temperature  (richiede la sessione diagnostica 03 (din))
+    70E 22 5036    A5_HUMIDITY_SENS_REL   Humidity sensor, relative humidity  (richiede la sessione diagnostica 03 (din))
+    70F 22 13ED    A5_CPL_CLU_TQ          Coupling clutch torque, raw  (non verificato da OBDb per il 2022 (dbgfilter))
+    70F 22 1800    A5_CPL_SOL_I           Coupling solenoid current  (non verificato da OBDb per il 2022 (dbgfilter))
+    70F 22 1801    A5_CPL_SENS_SPD        Coupling sensor speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    70F 22 5236    A5_DRIVE_SHFT_SPD_SENS Drive shaft speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    710 22 2A25    A5_BAT_INTERNAL_RES_RAW Battery internal resistance, raw  (valore grezzo (raw nel nome))
+    710 22 2A53    A5_DCDC_V_LOW          DC-DC converter, low voltage  (non valido per l'anno modello 2022)
+    710 22 2A53    A5_DCDC_I              DC-DC converter, current  (non valido per l'anno modello 2022)
+    710 22 2A53    A5_DCDC_I_RSV          DC-DC converter, reserved current  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_V           12V battery voltage  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_C           12V battery current  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_SOC         12V battery state of charge  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_T           12V battery temperature  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_T_S         12V battery sensor temperature  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_CHRG_TOT    12V battery total charge  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_DSCH_TOT    12V battery total discharge  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_AGE_CAP     12V battery aging by capacity  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_AGE_POW     12V battery aging by power  (non valido per l'anno modello 2022)
+    710 22 2AF7    A5_AUX_BAT_CAP         12V battery adapted capacity  (non valido per l'anno modello 2022)
+    713 22 2005    A5_P_BRAKE_SERVO_UNIT  Pressure in brake servo unit  (unità non interpretabile (unknown))
+    714 22 2294    A5_DTE                 Distance to empty  (non verificato da OBDb (dbg))
+    71D 22 028D    A5_CTRL_MODULE_T       Control module temperature  (non verificato da OBDb (dbg))
+    71D 22 2002    A5_ENG_TQ              Engine torque  (non verificato da OBDb (dbg))
+    71D 22 2105    A5_TQ_TRANSMITTING     Torque transmitting function  (non verificato da OBDb (dbg))
+    71D 22 2B03    A5_OIL_SENS_T_1        Oil sensor temperature 1  (non verificato da OBDb (dbg))
+    71D 22 2B04    A5_OIL_SENS_T_2        Oil sensor temperature 2  (non verificato da OBDb (dbg))
+    71D 22 2B05    A5_OIL_P_1             Oil pressure 1  (non verificato da OBDb (dbg))
+    71D 22 2B06    A5_OIL_P_2             Oil pressure 2  (non verificato da OBDb (dbg))
+    71D 22 2B07    A5_THERMAL_LOAD_LEFT   Thermal load of left clutch  (non verificato da OBDb (dbg))
+    71D 22 2B08    A5_THERMAL_LOAD_RIGHT  Thermal load of right clutch  (non verificato da OBDb (dbg))
+    71D 22 2B09    A5_THERMAL_LOAD_AWD    Thermal load of AWD drive pump  (non verificato da OBDb (dbg))
+    71D 22 2B0A    A5_TQ_DISTRIBUTION     Torque distribution  (non verificato da OBDb (dbg))
+    71D 22 2B0D    A5_AWD_PMP_CURRENT     All-wheel-drive pump current  (non verificato da OBDb (dbg))
+    71D 22 2B0E    A5_AWD_PMP_V           All-wheel-drive pump voltage  (non verificato da OBDb (dbg))
+    71D 22 2B16    A5_VSS_71D             Vehicle speed  (non verificato da OBDb (dbg))
+    71D 22 2B29    A5_STEER_WHL_ANG       Steering wheel angle  (non verificato da OBDb (dbg))
+    71D 22 F40C    A5_RPM_71D             Engine RPM  (non verificato da OBDb (dbg))
+    746 22 26ED    A5_AIR_POLUTION        Air pollution level  (adimensionale senza significato pubblico)
+    746 22 27C3    A5_HVAC_OUTSIDE_HUM    Outside humidity  (non verificato da OBDb (dbg))
+    74F 22 467C    A5_LIGHT_ASSISTANCE    Light assistance, status active  (non verificato da OBDb (dbg))
+    74F 22 467C    A5_LIGHT_ASSISTANCE_NUM Light assistance, number of reflectors  (non verificato da OBDb (dbg))
+    74F 22 467C    A5_LIGHT_ASSISTANCE_NUM_STREET_LAMPS Light assistance, number of street lamps  (non verificato da OBDb (dbg))
+    74F 22 467C    A5_LIGHT_ASSISTANCE_TOT Light assistance, total brightness  (non verificato da OBDb (dbg))
+    773 22 1814    A5_SIM_CARD_SIM_CARD   SIM card, SIM card in main unit  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 028D    A5_ECU_TEMP_KELVIN     Control module temperature  (non valido per l'anno modello 2022)
+    7E0 22 1000    A5_AAT_7E0_2           Ambient temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1007    A5_PQ35_CAMS_START     Camshaft start position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 100C    A5_PQ35_FUEL_LVL_2     Fuel level variant  (richiede la sessione diagnostica 03 (din))
+    7E0 22 100D    A5_PQ35_GEAR           Current gear  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1023    A5_AC_COMP_TQ          Air conditioning compressor torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1024    A5_MQB_AIR_MASS_1      Air mass meter 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1026    A5_MQB_MAF_1_B1_RAW    Mass airflow sensor 1 bank 1 raw value  (valore grezzo (raw nel nome))
+    7E0 22 102C    A5_ECT_RADIATOR_OUTLET_ACT_7E0 Coolant temperature at radiator outlet, actual value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 102E    A5_PQ35_ACCEL_PED_2    Accelerator pedal sensor 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1033    A5_GEN_LOAD_SIG        Generator load signal  (non verificato da OBDb (dbg))
+    7E0 22 103C    A5_MQB_INT_MAN_P       Intake manifold pressure calculated  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1044    A5_DPF_SFC_T           Diesel particulate filter surface temperature  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1047    A5_PQ35_ENG_TRQ        Engine torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 104B    A5_PQ35_AC_COMP_TRQ    Air conditioning compressor torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 104C    A5_AIR_MASS_SPEC       Air mass, specified value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1056    A5_CHG_AIR_P_ACT       Charge air pressure, actual value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1057    A5_PQ35_CHG_P          Boost pressure  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 105A    A5_BATTERY_V           Battery voltage, raw count  (valore grezzo (raw nel nome))
+    7E0 22 105C    A5_PQ35_GEN_LOAD       Generator load  (richiede la sessione diagnostica 03 (din))
+    7E0 22 105E    A5_PQ35_BAT_V_2        Battery voltage variant  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1069    A5_PQ35_ENG_START_QTY  Engine start quantity  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 106B    A5_PQ35_LIM_TRQ        Torque limit  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 108C    A5_ODO_7E0             Odometer  (non verificato da OBDb (dbg))
+    7E0 22 108F    A5_ENG_TQ_LIM          Engine torque limitation  (non verificato da OBDb (dbg))
+    7E0 22 1092    A5_CAM_SPD             Camshaft speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1093    A5_CAM_ADPT_INT_PHASE  Camshaft adaptation intake, phase position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 109B    A5_ECT_RAD_OUT_2       Coolant temperature at radiator outlet 2  (non verificato da OBDb (dbg))
+    7E0 22 109C    A5_RADIATOR_FAN_2_CMD  Radiator fan 2, commanded duty  (non verificato da OBDb (dbg))
+    7E0 22 109E    A5_RADIATOR_FAN_1_CMD  Radiator fan 1, commanded duty  (non verificato da OBDb (dbg))
+    7E0 22 10A0    A5_FUEL_FLOW           Fuel flow  (non verificato da OBDb (dbg))
+    7E0 22 10A2    A5_MILEAGE_ECU         Mileage with ECU installed  (non verificato da OBDb (dbg))
+    7E0 22 10A7    A5_OIL_T               Oil temperature  (non verificato da OBDb (dbg))
+    7E0 22 10C2    A5_PQ35_EGR_DUTY       Exhaust gas recirculation valve duty  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10CA    A5_ACCEL               Acceleration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D0    A5_PQ35_INJ_1_RAIL_P_1 Injector 1 rail pressure calibration point 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D1    A5_PQ35_INJ_3_RAIL_P_1 Injector 3 rail pressure calibration point 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D2    A5_PQ35_INJ_3_RAIL_P_2 Injector 3 rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D7    A5_INJ_4_RAIL_P_2      Injector 4, rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D8    A5_PQ35_INJ_4_RAIL_P_2 Injector 4 rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10D9    A5_PQ35_INJ_2_RAIL_P_2 Injector 2 rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DA    A5_INJ_2_RAIL_P_2      Injector 2, rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DB    A5_INJ_5_RAIL_P_2      Injector 5, rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DC    A5_PQ35_INJ_1_RAIL_P_3 Injector 1 rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DD    A5_PQ35_INJ_3_RAIL_P_3 Injector 3 rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DE    A5_PQ35_INJ_4_RAIL_P_3 Injector 4 rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10DF    A5_PQ35_INJ_2_RAIL_P_3 Injector 2 rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E1    A5_OPEN_CAM_ANG_QTY    Open camshaft angle at quantity control valve  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E2    A5_PQ35_WEAR_IDX       Wear index  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E3    A5_PQ35_TRQ_RED_EXH_T  Torque reduction due to exhaust temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E4    A5_PQ35_REG_FACTOR     Regulation factor total  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E5    A5_IGNITION_TIMING_ANGLE_RETARD_C4 Ignition timing angle retard, cylinder 4  (non verificato da OBDb (dbg))
+    7E0 22 10E6    A5_EOT                 Engine oil temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10E7    A5_KNOCK_RETARD_5      Knock retard 5  (non valido per l'anno modello 2022)
+    7E0 22 10E9    A5_MAX_FILLING_CORR    Maximum filling correction factor from knock control  (non verificato da OBDb (dbg))
+    7E0 22 10F1    A5_PQ35_DPF_DIFF_P_OFFSET Diesel particulate filter differential pressure offset  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F2    A5_SUM_MIS_CNT         Sum of misfires counter  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F3    A5_PQ35_DPF_DIFF_P_2   Diesel particulate filter differential pressure variant 2  (richiede la sessione diagnostica 03 (din))
+    7E0 22 10F4    A5_MIS_PER_1000_3      Misfires per 1000 revolutions, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F5    A5_MIS_4               Misfires, cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F6    A5_MIS_PER_1000_2      Misfires per 1000 revolutions, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F7    A5_MIS_1               Misfires, cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10F8    A5_MIS_3               Misfires, cylinder 3  (non verificato da OBDb (dbg))
+    7E0 22 10F9    A5_EARLY_DPF_OUT_T     Diesel particulate filter outlet temperature  (non valido per l'anno modello 2022)
+    7E0 22 10F9    A5_PQ35_DPF_OUT_T      Diesel particulate filter outlet temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10FA    A5_MIS_2               Misfires, cylinder 2  (non verificato da OBDb (dbg))
+    7E0 22 10FB    A5_PQ35_EXH_GAS_T_1    Exhaust gas temperature sensor 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 10FF    A5_PQ35_INJ_DEV_CYL_1  Injection amount deviation cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1100    A5_PQ35_INJ_DEV_CYL_3  Injection amount deviation cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1104    A5_PQ35_INJ_DEV_CYL_4  Injection amount deviation cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1105    A5_PQ35_INJ_DEV_CYL_2  Injection amount deviation cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1106    A5_INJ_AMOUNT_DEV_CYL_2 Injection amount deviation cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1107    A5_INJ_AMOUNT_DEV_CYL_5 Injection amount deviation cylinder 5  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1108    A5_CHG_P_CTRL_SPEC     Charge pressure control specified value  (non verificato da OBDb (dbg))
+    7E0 22 1109    A5_FUEL_PMP_SPEC       Fuel pump specified value  (non verificato da OBDb (dbg))
+    7E0 22 110A    A5_MASS_FLOW_THROUGH   Mass flow through throttle valve  (unità non interpretabile (unknown))
+    7E0 22 110E    A5_LONG_TERM_FUEL_TRIM Long term fuel trim at idle  (non verificato da OBDb (dbg))
+    7E0 22 1111    A5_PQ35_RAD_COOL_T_CMD Radiator outlet coolant temperature commanded  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1114    A5_PQ35_COOL_FAN_2_DUTY Coolant fan 2 duty cycle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1118    A5_BOOST_P_TGT         Boost pressure, target  (non verificato da OBDb (dbg))
+    7E0 22 111A    A5_PQ35_FUEL_FLOW      Fuel flow rate  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 111B    A5_HIGH_FUEL_P_TGT     High fuel pressure, target  (non verificato da OBDb (dbg))
+    7E0 22 111C    A5_FUEL_T_7E0_2        Fuel temperature  (richiede la sessione diagnostica 03 (din))
+    7E0 22 111E    A5_BOOST_P_ACT         Boost pressure, actual  (non verificato da OBDb (dbg))
+    7E0 22 111F    A5_PQ35_PREHEAT_T      Glow plug preheat time  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1123    A5_AAT_7E0_3           Ambient temperature  (non verificato da OBDb (dbg))
+    7E0 22 1126    A5_KNOCK_SENS_V_CYL_1  Knock sensor voltage, cylinder 1  (non verificato da OBDb (dbg))
+    7E0 22 1127    A5_KNOCK_SENS_V_CYL_3  Knock sensor voltage, cylinder 3  (non verificato da OBDb (dbg))
+    7E0 22 1129    A5_PQ35_COMPRESSION_TEST_CYL_1 Compression test cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 112A    A5_PQ35_COMP_TEST_CYL_2 Compression test cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 112B    A5_PQ35_COMP_TEST_CYL_3 Compression test cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 112C    A5_ACT                 Turbine actuator 1 bank 1: activation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1131    A5_PQ35_POST_INJ_3_START Post-injection 3 start position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1135    A5_EARLY_COOLANT_T     Coolant temperature at radiator outlet  (non valido per l'anno modello 2022)
+    7E0 22 1135    A5_COOLANT_T           Coolant temperature at radiator outlet, raw  (valore grezzo (raw nel nome))
+    7E0 22 1138    A5_SEG_AD_MMV_ER_H_0   SEG_AD_MMV_ER_H, 0  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1139    A5_MEAN_INJ_QUANTITY   Mean injection quantity  (unità non interpretabile (unknown))
+    7E0 22 113D    A5_PQ35_O2_SEN_1_LAMBDA Oxygen sensor 1 bank 1 lambda value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1146    A5_MISFIRES_TOTAL      Misfires total  (non valido per l'anno modello 2022)
+    7E0 22 1147    A5_MISFIRES_1000REV_C1 Misfires / 1000 revolutions, cylinder 1  (non valido per l'anno modello 2022)
+    7E0 22 1148    A5_PQ35_FUEL_METER     Fuel metering valve position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1149    A5_PQ35_BOOST_P_CMD    Boost pressure commanded  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 114A    A5_MISFIRES_1000REV_C2 Misfires / 1000 revolutions, cylinder 2  (non valido per l'anno modello 2022)
+    7E0 22 114B    A5_MIS_1000_REVOLUTIONS_2 Misfires for 1000 revolutions, cylinder 2  (non verificato da OBDb (dbg))
+    7E0 22 114C    A5_MIS_1000_REVOLUTIONS_5 Misfires for 1000 revolutions, cylinder 5  (non valido per l'anno modello 2022)
+    7E0 22 114E    A5_PQ35_SOOT_MASS_MEAS Soot mass measured  (richiede la sessione diagnostica 03 (din))
+    7E0 22 114F    A5_PQ35_SOOT_MASS_CALC Soot mass calculated  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1150    A5_MISFIRES_C3_ECM     Misfires, cylinder 3  (non valido per l'anno modello 2022)
+    7E0 22 1153    A5_EM_TORQ_1           Elector motor 1 torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1154    A5_EM_TORQ_2           Elector motor 2 torque  (non valido per l'anno modello 2022)
+    7E0 22 1155    A5_EM_TORQ_3           Elector motor 3 torque  (non valido per l'anno modello 2022)
+    7E0 22 1156    A5_PQ35_DIST_LAST_REGEN Distance since last regeneration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 115A    A5_PQ35_DPF_FUEL_CON_REGEN Diesel particulate filter fuel consumption since last regeneration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 115B    A5_PARTICLE_FLT_FIELD  Particle filter, field regeneration request status  (stato senza mappa dei valori)
+    7E0 22 115C    A5_PQ35_SRV_REGEN_STAT Service regeneration status  (stato senza mappa dei valori)
+    7E0 22 115E    A5_PQ35_TIME_LAST_REGEN Time since last regeneration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1164    A5_PQ35_SRV_REGEN_DUR  Service regeneration current duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1169    A5_PQ35_FUEL_P_HIGH    High pressure fuel pressure actual  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 116A    A5_PQ35_FUEL_P_HIGH_CMD High pressure fuel pressure commanded  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1175    A5_INTEGRATED_MASS_AIR Integrated mass of air since engine start  (unità non interpretabile (unknown))
+    7E0 22 1177    A5_T_AC_HEAT_EXCHANGER Temperature at air conditioner heat exchanger output  (richiede la sessione diagnostica 03 (din))
+    7E0 22 117E    A5_PQ35_TURB_ACT_1_B1  Turbine actuator 1 bank 1 activation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1181    A5_CHG_ADJUSTER_OUTPUT Charge adjuster output stage  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1184    A5_PSN_EDGE_REL_AD_CAM_1 PSN_EDGE_REL_AD_CAM_SAVE_EX_1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1185    A5_PSN_EDGE_REL_AD_CAM_2 PSN_EDGE_REL_AD_CAM_SAVE_EX_2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1187    A5_ACCELERATION        Acceleration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 118B    A5_PQ35_CAMS_EDGE_POS_4 Intake camshaft signal edge position adapted edge 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 118C    A5_PQ35_CAMS_EDGE_POS_5 Intake camshaft signal edge position adapted edge 5  (non valido per l'anno modello 2022)
+    7E0 22 118D    A5_PQ35_CAMS_EDGE_POS_6 Intake camshaft signal edge position adapted edge 6  (non valido per l'anno modello 2022)
+    7E0 22 118E    A5_PQ35_CAMS_EDGE_POS_7 Intake camshaft signal edge position adapted edge 7  (non valido per l'anno modello 2022)
+    7E0 22 118F    A5_PQ35_CAMS_EDGE_POS_8 Intake camshaft signal edge position adapted edge 8  (non valido per l'anno modello 2022)
+    7E0 22 11A6    A5_PQ35_LIM_ACCEL_PED  Accelerator pedal limit  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11B2    A5_PQ35_DPF_IN_T       Diesel particulate filter inlet temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11B5    A5_ECT_RADIATOR_OUTLET Coolant temperature at radiator outlet  (richiede la sessione diagnostica 03 (din))
+    7E0 22 11B8    A5_AIR_LEAKAGE         Air leakage  (unità non interpretabile (unknown))
+    7E0 22 11BB    A5_OIL_CRIT            Oil level, critical  (non valido per l'anno modello 2022)
+    7E0 22 11BC    A5_PQ35_OIL_LVL        Engine oil level  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11BF    A5_PQ35_FUEL_P_REG     Fuel pressure regulator position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11C1    A5_PQ35_DPF_FIELD_REGEN_LOCK Diesel particulate filter field regeneration lock status  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11C3    A5_SERVICE_REGEN       Service regeneration current duration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 11C4    A5_OIL_MAX             Oil level, maximum  (non valido per l'anno modello 2022)
+    7E0 22 11C5    A5_OIL_MIN             Oil level, minimum  (non valido per l'anno modello 2022)
+    7E0 22 11C9    A5_FUEL_PMP_ADPT       Fuel pump adaptation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11CC    A5_BOOST_REGULATOR_FEEDBACK Boost regulator feedback  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11CD    A5_TCO_1_SYS_BYTE      TCO_1_SYS  (non valido per l'anno modello 2022)
+    7E0 22 11CF    A5_BRAKE_BOOSTER_P     Brake booster pressure  (unità non interpretabile (unknown))
+    7E0 22 11D0    A5_TCO_1_ST            TCO_1_ST  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11D5    A5_HIGH_FUEL_P         High fuel pressure, regulation error  (unità non interpretabile (unknown))
+    7E0 22 11DC    A5_MAP_RAW             Manifold absolute pressure, raw value  (valore grezzo (raw nel nome))
+    7E0 22 11DD    A5_INT_MANIFOLD_P_CMD  Intake manifold pressure, commanded  (unità non interpretabile (unknown))
+    7E0 22 11E6    A5_MQB_DPF_EXH_VOL     Diesel particulate filter exhaust gas flow volume  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11F2    A5_PQ35_MAIN_INJ_START Main injection start position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11F4    A5_PQ35_POST_INJ_1_START Post-injection 1 start position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 11F6    A5_PQ35_FIELD_LIM      Field limit value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 11FF    A5_EA888B_BOOST_P_CTRL_0 Ea888b boost pressure control, adaptation value 0  (unità non interpretabile (unknown))
+    7E0 22 1200    A5_EA888B_BOOST_P_CTRL_1 Ea888b boost pressure control, adaptation value 1  (unità non interpretabile (unknown))
+    7E0 22 1212    A5_KNOCK_SENS_CYL_2_7E0 Knock sensor, cylinder 2  (non verificato da OBDb (dbg))
+    7E0 22 1213    A5_PQ35_ENVD_CAM_IN_1  Environment data camshaft input 1  (non valido per l'anno modello 2022)
+    7E0 22 121A    A5_PRE_INJ_3_ACTIVATION Pre-injection 3, activation duration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 121B    A5_POST_INJ_2          Post-injection 2, activation duration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 121D    A5_PRE_INJ_3_ACTIVATION_START Pre-injection 3, activation start  (richiede la sessione diagnostica 03 (din))
+    7E0 22 121E    A5_SPEC_VALUE_RAIL_P   Fuel pressure regulator valve: specified value rail pressure  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 121F    A5_HIGH_FUEL_P_CONTROL_DEVIATION High fuel pressure control deviation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 123C    A5_PQ35_OIL_DYN_LAST   Oil last dynamic measurement  (richiede la sessione diagnostica 03 (din))
+    7E0 22 123F    A5_PQ35_OIL_DYN_AVG    Oil dynamic average measurement  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1298    A5_CAT_T_BANK_1        Cat. temperature, bank 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1299    A5_CAT_T_BANK_2        Cat. temperature, bank 2  (non verificato da OBDb (dbg))
+    7E0 22 12C7    A5_PRE_INJ_2_ACTIVATION Pre-injection 2, activation start  (richiede la sessione diagnostica 03 (din))
+    7E0 22 12C8    A5_PRE_INJ_1_ACTIVATION Pre-injection 1, activation start  (richiede la sessione diagnostica 03 (din))
+    7E0 22 12CB    A5_PQ35_SRV_LIM        Service limit value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 12FC    A5_PQ35_THROT_VALVE_ADAPT Throttle valve adapter position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 12FE    A5_PQ35_CAMS_ADAPT_PHASE_1 Intake camshaft adaptation unit 1 phase length  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1301    A5_PQ35_LIM_SMOKE      Smoke limit  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 130D    A5_FUEL_MASS_REQ_I_CTL Fuel mass request, integral controller  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1312    A5_FUEL_MASS_REQ_P_CTL Fuel mass request, proportional controller  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1313    A5_MQB_EGR_VALVE_2_B1_FLOW Exhaust gas recirculation valve 2 bank 1 mass flow  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 133B    A5_PQ35_CAMS_SPD       Camshaft speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 133F    A5_TQ_REDUCTION_REQ_ESP Torque reduction request from ESP  (non verificato da OBDb (dbg))
+    7E0 22 1347    A5_PQ35_REGEN_DUR      Regeneration duration  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1354    A5_PQ35_SOOT_IDX       Soot index  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1356    A5_PQ35_CHG_LIM_OVER   Charge limit overcharge protection  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 136D    A5_CAM_ADJ_EXH_BANK_2_ACT Camshaft adjustment, exhaust bank 2, actual value  (non verificato da OBDb (dbg))
+    7E0 22 1372    A5_CAM_ADJ_EXH_BANK_2_SPEC Camshaft adjustment, exhaust bank 2, specified value  (non verificato da OBDb (dbg))
+    7E0 22 137A    A5_PQ35_IGN_ANG_CYL    Ignition angle current cylinder  (non valido per l'anno modello 2022)
+    7E0 22 137C    A5_DPF_REGEN_CANCEL    Diesel particulate filter regeneration cancel conditions  (richiede la sessione diagnostica 03 (din))
+    7E0 22 13FA    A5_KNOCK_SENS_V_CYL_3_7E0 Knock sensor voltage:, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 13FB    A5_KNOCK_SENS_V_CYL_6  Knock sensor voltage:, cylinder 6  (non verificato da OBDb (dbg))
+    7E0 22 13FC    A5_KNOCK_SENS_V_CYL_2  Knock sensor voltage:, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 13FD    A5_KNOCK_SENS_V_CYL_5  Knock sensor voltage:, cylinder 5  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 146D    A5_INJ_7_RAIL_P_CAL_PT_1 Injector 7: rail pressure calibration point 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 146E    A5_INJ_2_RAIL_P_CAL_PT_1_146E Injector 2: rail pressure calibration point 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1473    A5_INJ_7_RAIL_P_CAL_PT_2 Injector 7: rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1474    A5_INJ_2_RAIL_P_CAL_PT_2_1474 Injector 2: rail pressure calibration point 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1479    A5_INJ_7_RAIL_P_CAL_PT_3 Injector 7: rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 147A    A5_INJ_2_RAIL_P_CAL_PT_3_147A Injector 2: rail pressure calibration point 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1480    A5_MIS_CNT_3           Misfires counter:, cylinder 3  (non verificato da OBDb (dbg))
+    7E0 22 1481    A5_MIS_CNT_6           Misfires counter:, cylinder 6  (non verificato da OBDb (dbg))
+    7E0 22 1482    A5_MIS_CNT_2           Misfires counter:, cylinder 2  (non verificato da OBDb (dbg))
+    7E0 22 1483    A5_MIS_CNT_5           Misfires counter:, cylinder 5  (non verificato da OBDb (dbg))
+    7E0 22 1486    A5_MIS_PER_1000_RPM_3  Misfires per 1000 rpm:, cylinder 3  (non verificato da OBDb (dbg))
+    7E0 22 1487    A5_MIS_PER_1000_RPM_6  Misfires per 1000 rpm:, cylinder 6  (non verificato da OBDb (dbg))
+    7E0 22 1489    A5_MIS_PER_1000_RPM_5  Misfires per 1000 rpm:, cylinder 5  (non verificato da OBDb (dbg))
+    7E0 22 148B    A5_MIS_PER_1000_RPM_ALL Misfires per 1000 rpm, all cylinders  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14C7    A5_PQ35_PRE_INJ_1_START Pre-injection 1 start position  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14C8    A5_PQ35_PRE_INJ_2_START Pre-injection 2 start  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14CC    A5_PQ35_POST_INJ_1_DURATION Post-injection 1 duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14CD    A5_PQ35_POST_INJ_2_DURATION Post-injection 2 duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14CF    A5_PQ35_MAIN_INJ_DURATION Main injection duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14D0    A5_PQ35_PRE_INJ_1_DURATION Pre-injection 1 duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 14F5    A5_PQ35_DIFF_P         Differential pressure  (richiede la sessione diagnostica 03 (din))
+    7E0 22 14F7    A5_PQ35_EXHAUST_GAS_T_SENSOR_2 Exhaust gas temperature sensor 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1509    A5_AMBIENT_AIR_P       Ambient air pressure  (unità non interpretabile (unknown))
+    7E0 22 1513    A5_ECT_LINEAR          Coolant temperature linear  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1515    A5_CAT_T_CALC          Catalyst temperature, calculated  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1526    A5_MQB_NOX_CONC_BEHIND_TURBO Calculated nitrogen oxide concentration behind turbocharger  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 157C    A5_DPF_STATISTICS_T    Diesel particulate filter statistics current avg. temperature after DPF  (richiede la sessione diagnostica 03 (din))
+    7E0 22 15B8    A5_MQB_DPF_DIFF_P_DYNAMIC_OFFSET Diesel particulate filter differential pressure, dynamic offset  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1626    A5_PQ35_RADIATOR_OUTPUT_COOLANT_T_ACTUAL Radiator output coolant temp: actual  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1628    A5_PQ35_INTERCOOLER_AIR_OUTPUT_T Intercooler air output temperature  (richiede la sessione diagnostica 03 (din))
+    7E0 22 162D    A5_PQ35_FUEL_T         Fuel temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 162F    A5_MQB_DPF_AIR_P_SENSOR_RAW_VALUE Diesel particulate filter air pressure sensor, raw  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1631    A5_PRE_INJ_3_START     Pre-injection 3, start  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 163B    A5_PQ35_POST_INJ_2_QTY_SPEC Post injection 2: quantity specified value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 163C    A5_PQ35_POST_INJ_1_QTY_SPEC Post injection 1: quantity specified value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 166D    A5_EXH_GAS_T_SENS_4    Exhaust gas temperature sensor 4  (non verificato da OBDb (dbg))
+    7E0 22 166E    A5_EXH_GAS_T_S4_B2     Exhaust gas temperature, sensor 4 bank 2  (non verificato da OBDb (dbg))
+    7E0 22 167D    A5_PQ35_POST_INJ_3_QTY_SPEC Post injection 3: quantity specified value  (richiede la sessione diagnostica 03 (din))
+    7E0 22 16A9    A5_PQ35_ODO_2          Odometer, alternate  (richiede la sessione diagnostica 03 (din))
+    7E0 22 173A    A5_PQ35_INTAKE_CAMSHAFT_SIGNAL_EDGE_POS_ADAPTED_VALUE_EDGE_1 Intake camshaft signal edge position adapted value edge 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 177D    A5_OIL_P_ACT_7E0       Oil pressure, actual value  (non verificato da OBDb (dbg))
+    7E0 22 178C    A5_PQ35_OIL_ASH_RESIDUE Oil ash residue  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1793    A5_OIL_ASH_LIM         Oil ash limit  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1798    A5_MQB_CHARGE_AIR_T_TUBROCHARGER_OUTLET_CALCULATED Charge air temp at the turbocharger outlet, calculated  (non valido per l'anno modello 2022)
+    7E0 22 1798    A5_MQB_CHARGE_AIR_T_TUBROCHARGER_OUTLET_CALCULATED_RAW Charge air temp at the turbocharger outlet, calculated, raw  (valore grezzo (raw nel nome))
+    7E0 22 17F4    A5_LOW_P_EGR_CLOSING   Low pressure EGR closing  (richiede la sessione diagnostica 03 (din))
+    7E0 22 1813    A5_MQB_EGR_VALVE_1_B1_MASS_I_SPEC Exhaust gas recirculation valve 1, B1, mass current: specified value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1814    A5_MQB_EGR_VALVE_2_B1_MASS_I_SPEC Exhaust gas recirculation valve 2, B1, mass current: specified value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 181A    A5_PQ35_BOOST_P_BEFORE_THROTTLE_CALCULATED_ACT Boost press before throttle: calculated actual value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 18BB    A5_MQB_DPF_UNBURNED_FUEL_CALCULATED Diesel particulate filter unburned fuel calculated  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 18D0    A5_PQ35_BRAKE_P        Brake pressure  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 195D    A5_BRAKE_P_7E0         Brake pressure  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 197C    A5_MQB_FUEL_FILTER_WATER_LEVEL_SENSOR_1 Fuel filter: water level sensor 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABA    A5_MQB_DPF_DISTANCE_SINCE_LAST_REGEN Diesel particulate filter, distance since last regeneration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABB    A5_MQB_DPF_CHARGE_LIMIT_SERVICE_REGEN_WHILE_DRIVING Diesel particulate filter, charge limit for service regeneration while driving  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABC    A5_MQB_DPF_CHARGE_LIMIT_OVER_CHARGE Diesel particulate filter, charge limit over-charge  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABD    A5_MQB_DPF_OIL_ASH_MASS Diesel particulate filter oil ash mass  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABE    A5_MQB_DPF_SOOT_MASS_MEASURED Diesel particulate filter soot mass measured  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ABF    A5_MQB_DPF_ASH_LOAD_LIMIT Diesel particulate filter ash load limit  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC0    A5_MQB_DPF_REGEN_TIME_COUNTER Diesel particulate filter regeneration time counter  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC1    A5_MQB_DPF_FUEL_CONSUMPTION_SINCE_LAST_REGEN Diesel particulate filter fuel consumption since last regeneration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC2    A5_MQB_DPF_FIELD_REGEN_REQUEST Diesel particulate filter field regeneration request  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC3    A5_MQB_DPF_TIME_SINCE_LAST_REGEN Diesel particulate filter time since last regeneration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC4    A5_MQB_DPF_SERVICE_REGEN_I_DURATION Diesel particulate filter service regeneration current duration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC5    A5_MQB_DPF_STATISTICS_REGEN_REQUEST Diesel particulate filter statistics regeneration request  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC7    A5_MQB_DPF_STATISTICS_EXHAUST_T_REGULATION_AVERAGE_VALUE Diesel particulate filter statistics exhaust temperature regulation average value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC8    A5_MQB_DPF_STATISTICS_REGEN_BLOCKED_STATUS Diesel particulate filter statistics regeneration blocked status  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AC9    A5_MQB_DPF_STATISTICS_NUMBER_INTERRUPTED_REGENS Diesel particulate filter statistics number of interrupted regenerations  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ACA    A5_MQB_DPF_STATISTICS_ERROR_STATUS Diesel particulate filter statistics error status  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ACB    A5_MQB_DPF_STATISTICS_ROUTE_IN_CHARGE_CYCLE Diesel particulate filter statistics route in charge cycle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ACC    A5_MQB_DPF_STATISTICS_AVERAGE_DRIVE_CYCLE_TIME_DURING_CHARGE_CYCLE Diesel particulate filter statistics average drive cycle time during charge cycle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ACD    A5_MQB_DPF_STATISTICS_REGEN_TIME Diesel particulate filter statistics regeneration time  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1ACE    A5_MQB_DPF_STATISTICS_REGEN_TIME_SLICE_NOT_POSS_IN_CHARGE_CYCLE Diesel particulate filter statistics regeneration time slice not possible in charge cycle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AD2    A5_MQB_DPF_REGEN_RELEASE_REQUIREMENT Diesel particulate filter regeneration release requirement  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AD3    A5_MQB_DPF_REGEN_LEVEL_I Diesel particulate filter regeneration level current  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AD4    A5_MQB_DPF_REGEN_STATUS Diesel particulate filter regeneration status  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AD5    A5_MQB_DPF_INLET_LAMBDA_VALUE Diesel particulate filter inlet lambda value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 1AD7    A5_MQB_EXH_TEMP_CTRL_AFTER_CAT_MODEL_ERR Exhaust temperature control downstream oxidation catalyst filtered model error  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2005    A5_BRAKE_BST_P         Brake booster pressure  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2006    A5_PQ35_OIL_FILL_LEVEL Oil fill level  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 200A    A5_PQ35_TIMING_ANGLE_RETARDATION_CYL_1 Timing angle retardation cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 200B    A5_PQ35_TIMING_ANGLE_RETARDATION_CYL_2 Timing angle retardation cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 200C    A5_PQ35_TIMING_ANGLE_RETARDATION_CYL_3 Timing angle retardation cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 200D    A5_PQ35_TIMING_ANGLE_RETARDATION_CYL_4 Timing angle retardation cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2029    A5_PQ35_CHARGE_AIR_P_SPECIFIED Charge air pressure: specified  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 202A    A5_PQ35_CHARGE_AIR_P_ACTUAL Charge air pressure: actual  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2061    A5_APP_POS1            Accelerator pedal position sensor 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2062    A5_APP_POS2            Accelerator pedal position sensor 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 20A1    A5_PQ35_CALCULATED_OIL_T Calculated oil temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 20DB    A5_DPF_CHG_LIM_OVER_CHG Diesel particulate filter charge limit over-charge  (non verificato da OBDb (dbg))
+    7E0 22 2206    A5_PQ35_FUEL_LEVEL_7E0_2206 Fuel level  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2609    A5_MQB_DPF_SOOT_MASS_CALCULATED Diesel particulate filter soot mass calculated  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2682    A5_CLT_SHUT_OFF_VLV    Coolant shut-off valve, closed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2929    A5_ADPT_LOSS_TQ        Adaptation of loss torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 295A    A5_ODO                 Odometer  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 295C    A5_LOAD_SHIFT_FLAPS_ACT Load shift flaps, actual value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 295D    A5_LOAD_SHIFT_FLAPS_SPEC Load shift flaps, specified value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 29D4    A5_ENG_TRQ_REQ_1       Driver torque requested #1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 2AE3    A5_EGT_AFTER_CAT_MODEL_B EGT after catalyst, model bank b  (non verificato da OBDb (dbg))
+    7E0 22 381D    A5_OIL_P_ACT_7E0_2     Oil pressure, actual value  (non verificato da OBDb (dbg))
+    7E0 22 395E    A5_BRAKE_SYSTEM_VACUUM Brake system vacuum pump active  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 399F    A5_CNT_FUEL_ENTRY_OIL  Counter of fuel entry in oil  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 39A9    A5_OXYGEN_CTRL_ADPT    Oxygen control, adaptation value at part. load  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F41    A5_ADPT_VAL_CYL1_SLOW  Adaptation val.cylinder1 slow diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F42    A5_ADPT_VAL_CYL3_SLOW  Adaptation val.cylinder3 slow diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F43    A5_ADPT_VAL_CYL4_SLOW  Adaptation val.cylinder4 slow diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F44    A5_ADPT_VAL_CYL2_SLOW  Adaptation val.cylinder2 slow diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F45    A5_ADPT_VAL_CYL1_FAST  Adaptation val.cylinder1 fast diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F46    A5_ADPT_VAL_CYL3_FAST  Adaptation val.cylinder3 fast diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F47    A5_ADPT_VAL_CYL4_FAST  Adaptation val.cylinder4 fast diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 3F48    A5_ADPT_VAL_CYL2_FAST  Adaptation val.cylinder2 fast diagnosis  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 401F    A5_DPF_STATISTICS_REGEN Diesel particulate filter statistics, regeneration time  (non verificato da OBDb (dbg))
+    7E0 22 4031    A5_DPF_STATISTICS_ROUTE Diesel particulate filter statistics, route in charge cycle  (non verificato da OBDb (dbg))
+    7E0 22 4033    A5_DPF_STATISTICS_AVG  Diesel particulate filter statistics, average drive cycle time during charge cycle  (non verificato da OBDb (dbg))
+    7E0 22 40CE    A5_OIL_LEVEL_STATIC    Oil level, static measurement  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 414E    A5_LONG_TERM_ADPT_INT  Long-term adaptation of intake manifold injection  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 414F    A5_LONG_TERM_ADPT_INT_MANIFOLD_INJ Long-term adaptation of intake manifold injection at idle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4267    A5_DIRECT_INJECTIONS   Direct injections counter  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4268    A5_PORT_INJ_INJECTIONS Port injection injections counter  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 432B    A5_CHG_P_BEFORE_ACT    Charge pressure before throttle valve, calculated actual value  (non verificato da OBDb (dbg))
+    7E0 22 437E    A5_LOST_TQ_ADPT_DRIVING Lost torque adaptation driving mode  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 437F    A5_LOST_TQ_ADPT_AC     Lost torque adaptation A/C + driving mode  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4380    A5_ENG_TRQ_REQ_2       Driver torque requested #2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4381    A5_LONG_TERM_FUEL_TRIM_IDLE Long term fuel trim at idle  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4384    A5_HIGH_P_REGULATION   High pressure regulation, adaptation value  (non verificato da OBDb (dbg))
+    7E0 22 445A    A5_CHG_AIR_COOLER_INLET_P_1_1 Charge air cooler inlet, pressure sensor 1 bank 1 raw value  (non verificato da OBDb (dbg))
+    7E0 22 44BB    A5_ERROR_CNT_BAD_FUEL  Error counter bad fuel  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E48    A5_EARLY_IGN_CNT_OXYGEN_1 Early ignition counter for oxygen shift, cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E48    A5_EARLY_IGN_CNT_OXYGEN_2 Early ignition counter for oxygen shift, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E48    A5_EARLY_IGN_CNT_OXYGEN_3 Early ignition counter for oxygen shift, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E48    A5_EARLY_IGN_CNT_OXYGEN_4 Early ignition counter for oxygen shift, cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E49    A5_EARLY_IGN_CNT_CYL_SUPPRESS_1 Early ignition counter, cylinder suppress early ignition, cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E49    A5_EARLY_IGN_CNT_CYL_SUPPRESS_2 Early ignition counter, cylinder suppress early ignition, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E49    A5_EARLY_IGN_CNT_CYL_SUPPRESS_3 Early ignition counter, cylinder suppress early ignition, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E49    A5_EARLY_IGN_CNT_CYL_SUPPRESS_4 Early ignition counter, cylinder suppress early ignition, cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4A    A5_EARLY_IGN_CNT_TOQUE_1 Early ignition counter for toque reduction, cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4A    A5_EARLY_IGN_CNT_TOQUE_2 Early ignition counter for toque reduction, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4A    A5_EARLY_IGN_CNT_TOQUE_3 Early ignition counter for toque reduction, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4A    A5_EARLY_IGN_CNT_TOQUE_4 Early ignition counter for toque reduction, cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4B    A5_EARLY_IGN_CNT_CYL_SUPPRESS_GLOW_1 Early ignition counter, cylinder suppress glow ignition, cylinder 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4B    A5_EARLY_IGN_CNT_CYL_SUPPRESS_GLOW_2 Early ignition counter, cylinder suppress glow ignition, cylinder 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4B    A5_EARLY_IGN_CNT_CYL_SUPPRESS_GLOW_3 Early ignition counter, cylinder suppress glow ignition, cylinder 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 4E4B    A5_EARLY_IGN_CNT_CYL_SUPPRESS_GLOW_4 Early ignition counter, cylinder suppress glow ignition, cylinder 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E0 22 F42C    A5_PQ35_HIGH_P_EGR_CLOSING_VAR_2 High press EGR closing v2  (richiede la sessione diagnostica 03 (din))
+    7E0 22 F469    A5_PQ35_HIGH_P_EGR_CLOSING_VAR_1 High press EGR closing v1  (richiede la sessione diagnostica 03 (din))
+    7E1 22 1009    A5_MQB_DQ250_SPD_OUTPUT Speed ​​output  (non valido per l'anno modello 2022)
+    7E1 22 100A    A5_MQB_DQ250_VEHICLE_SPD_FROM_TRANSMISSION Vehicle speed from transmission  (non valido per l'anno modello 2022)
+    7E1 22 100B    A5_MQB_TCM_DRIVER_DEMAND_TORQUE Driver demand torque  (non valido per l'anno modello 2022)
+    7E1 22 100C    A5_MQB_TCM_ENGINE_TORQUE Engine torque  (non valido per l'anno modello 2022)
+    7E1 22 100E    A5_MQB_TCM_ENGINE_TORQUE_LIMITATION Engine torque limitation  (non valido per l'anno modello 2022)
+    7E1 22 100F    A5_MQB_TCM_ENGINE_TORQUE_LOSS Engine torque loss  (non verificato da OBDb (dbg))
+    7E1 22 1011    A5_ADAPTIVE_MODE       Adaptive mode  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1012    A5_ID_CURRENT_DRIVING  ID of current driving program  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1013    A5_CURRENT_TYPE_DRIVER Current type of driver counter  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1017    A5_PQ35_ROAD_RESISTANCE Road resistance  (non valido per l'anno modello 2022)
+    7E1 22 1018    A5_PQ35_DRIVING_STRATEGY_MOUNTAIN_FACTOR Driving strategy mountain factor  (non valido per l'anno modello 2022)
+    7E1 22 1019    A5_PQ35_DRIVING_STRATEGY_SPORT_FACTOR Driving strategy sport factor  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 101A    A5_PQ35_ODO_3          Odometer #3  (non verificato da OBDb (dbg))
+    7E1 22 1021    A5_TCM_DRAG_TQ         Transmission drag torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1025    A5_CURRENT_N218_P_CTRL_4 Current N218 pressure control valve 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1026    A5_CURRENT_N216_P_CTRL_2 Current N216 pressure control valve 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1027    A5_CURRENT_N233_P_CTRL_5 Current N233 pressure control valve 5  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 102A    A5_CLU_CENTER_CENTRAL_T Clutch center central plate temperature, raw  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 102D    A5_MQB_DQ200_P_SUPPLY_ACTUAL_P_AD_VALUE Pressure supply actual pressure analog digital value  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1037    A5_CURRENT_SOLENOID    Current solenoid  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 103A    A5_TIME_AFTERRUN       Time in after-run  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 103D    A5_ODO_7E1_2           Odometer  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1058    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHARAC_POINT_0_MOMENT Clutch 1 adaptation basic characteristic point 0 moment  (non verificato da OBDb (dbg))
+    7E1 22 105D    A5_PQ35_CLUTCH_1_ADAPT_BASIC_CHAR_POINT_3_POS Clutch 1 adaptation basic characteristic point 3 position  (non verificato da OBDb (dbg))
+    7E1 22 1061    A5_DES_TQ_RAW          Desired torque raw  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1064    A5_ANALYSIS_CLU_1_MAX_T Analysis, clutch 1, maximum temperature, raw  (valore grezzo (raw nel nome))
+    7E1 22 106F    A5_PQ35_CLUTCH_2_ADAPT_BASIC_CHARAC_POINT_1_MOMENT Clutch 2 adaptation basic characteristic point 1 moment  (non verificato da OBDb (dbg))
+    7E1 22 1073    A5_PQ35_CLUTCH_2_ADAPT_BASIC_CHARAC_POINT_3_MOMENT Clutch 2 adaptation basic characteristic point 3 moment  (non verificato da OBDb (dbg))
+    7E1 22 1074    A5_PQ35_CLUTCH_2_ADAPT_END_POS_OPENED Clutch 2 adaptation end position opened  (non verificato da OBDb (dbg))
+    7E1 22 1075    A5_PQ35_CLUTCH_2_ADAPT_END_POS_CLOSED Clutch 2 adaptation end position closed  (non verificato da OBDb (dbg))
+    7E1 22 1077    A5_MQB_DQ200_CLUTCH_2_FRICTION_VALUE_CORRECTION_FACTOR Clutch 2 friction value correction factor  (non verificato da OBDb (dbg))
+    7E1 22 1079    A5_ANALYSIS_CLU_2_MAX_T Analysis, clutch 2, maximum temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1083    A5_PQ35_GEAR_ACTUATOR_ADAPT_SYNCHRO_POS_G1 Gear actuator adaptation synchronization position G1  (non verificato da OBDb (dbg))
+    7E1 22 1084    A5_PQ35_GANGSTELLER_A_ADAPT_NEUTRALPOS Gear selector a adaptation neutral position  (non verificato da OBDb (dbg))
+    7E1 22 1092    A5_PQ35_GANGSTELLER_B_ADAPT_NEUTRALPOS Gear selector b adaptation neutral position  (non verificato da OBDb (dbg))
+    7E1 22 10AF    A5_PQ35_GEAR_ACTUATOR_ADAPT_SYNCHRO_POS_GR Gear actuator adaptation synchronization position reverse  (non verificato da OBDb (dbg))
+    7E1 22 10B0    A5_PQ35_GEAR_ACTUATOR_ADAPT_ENGAGED_POS_GR Gear actuator adaptation engaged position GR  (non verificato da OBDb (dbg))
+    7E1 22 10F9    A5_PQ35_DL382_CLUTCH_1_ACTUAL_P_RAW_VALUE Clutch 1 actual pressure raw value  (valore grezzo (raw nel nome))
+    7E1 22 10FA    A5_PQ35_DL382_CLUTCH_2_ACTUAL_P_RAW_VALUE Clutch 2 actual pressure raw value  (valore grezzo (raw nel nome))
+    7E1 22 1100    A5_ADPT_INFLATION_TIME Adaptation inflation time, lockup clutch  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1101    A5_ADPT_CNT_TSF_LOCKUP Adaptation counter, lockup clutch  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1102    A5_ADPT_INFLATION      Adaptation inflation current PF lockup clutch  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1103    A5_ADPT_CNT_PF_LOCKUP  Adaptation counter PF lockup clutch  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 110A    A5_MQB_DQ250_LOWER_ADAPTED_COUPLING_POINT_K2_FROM_MICRO_SLIP_PATH_ADAPT Lower adapted coupling point K2 from micro-slip path adaptation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 110B    A5_MQB_DQ250_UPPER_ADAPTED_COUPLING_POINT_K1_FROM_MACRO_SLIP_PATH_ADAPT Upper adapted coupling point K1 from macro slip path adaptation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 110C    A5_MQB_DQ250_UPPER_ADAPTED_COUPLING_POINT_K2_FROM_MACRO_SLIP_PATH_ADAPT Upper adapted coupling point K2 from macro slip path adaptation  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1110    A5_PQ35_WORKING_HOURS  Working hours  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_1   Operating time, temperature range 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_2   Operating time, temperature range 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_3   Operating time, temperature range 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_4   Operating time, temperature range 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_5   Operating time, temperature range 5  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1111    A5_OP_TIME_T_RANGE_6   Operating time, temperature range 6  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1117    A5_PQ35_REACHED_MAXIMUM_T Reached maximum temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1118    A5_PQ35_CLUTCH_1_MAXIMUM_T Clutch #1 maximum temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1118    A5_PQ35_CLUTCH_2_MAXIMUM_T Clutch #2 maximum temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 1146    A5_MQB_DQ250_ENGAGED_POS_SIDE_B_GEAR_SELECTOR_5_N Engaged position side b gear selector 5 and neutral  (non verificato da OBDb (dbg))
+    7E1 22 1147    A5_MQB_DQ250_ENGAGED_POS_SIDE_B_GEAR_SELECTOR_6_R Engaged position side b gear selector 6 and reverse  (non verificato da OBDb (dbg))
+    7E1 22 1259    A5_CLU_T               Clutch temperature  (non verificato da OBDb (dbg))
+    7E1 22 125C    A5_NOMINAL_P_CLU_1     Nominal pressure clutch 1  (non verificato da OBDb (dbg))
+    7E1 22 125D    A5_NOMINAL_P_CLU_2     Nominal pressure clutch 2  (non verificato da OBDb (dbg))
+    7E1 22 1260    A5_P_CLU_1             Pressure_clutch_1  (non verificato da OBDb (dbg))
+    7E1 22 1261    A5_P_CLU_2             Pressure_clutch_2  (non verificato da OBDb (dbg))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_1 Torque converter time in temperature range 1  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_2 Torque converter time in temperature range 2  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_3 Torque converter time in temperature range 3  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_4 Torque converter time in temperature range 4  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_5 Torque converter time in temperature range 5  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_6 Torque converter time in temperature range 6  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_7 Torque converter time in temperature range 7  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FC    A5_TQ_CONV_TIME_T_RANGE_8 Torque converter time in temperature range 8  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 17FD    A5_CLU_OVERHEATING_CLU Clutch overheating, clutch  (non verificato da OBDb (dbg))
+    7E1 22 2108    A5_DRIVING_RES_INDEX   Driving resistance index  (adimensionale senza significato pubblico)
+    7E1 22 210D    A5_DRIVING_MODE_SENS   Driving mode sensor, hall sensor a  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 210E    A5_DRIVING_POS         Driving position  (adimensionale senza significato pubblico)
+    7E1 22 2110    A5_ENG_SPEC_TQ_DURING  Engine specified torque during transmission intervention  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2114    A5_MQB_TCM_KICK_DOWN   Kick down  (adimensionale senza significato pubblico)
+    7E1 22 2115    A5_DYNAMIC_SHIFT       Dynamic shift program  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2116    A5_ACCEL_7E1           Acceleration  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2117    A5_EXCESSIVE_T         Excessive temperature protection  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2118    A5_ACCEL_DECCELERATION Acceleration/deceleration mode  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2119    A5_TQ_FACTOR           Torque factor  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 211A    A5_MAX_PERMISSIBLE_ENG Max permissible engine torque  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2130    A5_TQ_CONV             Torque converter amplification  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2131    A5_TORQUE_CONVERTER_SLIP_TCM Torque converter slip  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 282C    A5_ROUTE_DATA_ACTIVE   Route data, active  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2B1B    A5_TIRE_FL_SPD         Front left wheel speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2B1C    A5_TIRE_FR_SPD         Front right wheel speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2B1D    A5_TIRE_RL_SPD         Rear left wheel speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 2B1E    A5_TIRE_RR_SPD         Rear right wheel speed  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 38BF    A5_ATF_T_2             Transmission fluid temperature 2  (non verificato da OBDb (dbg))
+    7E1 22 38C0    A5_LAUNCH_CTRL_CNT_CLU_1 Launch control counter, clutch 1  (non verificato da OBDb (dbg))
+    7E1 22 4E76    A5_AUX_HYDRAULIC_PMP_CURRENT Aux. hydraulic pump, current  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 51A6    A5_AUX_HYDRAULIC_PMP_T Aux. hydraulic pump internal temperature  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 51A7    A5_AUX_HYDRAULIC_PMP_V Aux. hydraulic pump voltage  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7078    A5_MQB_TCM_TORQUE_CONVERTER_LOCKUP_CLUTCH_STATUS Torque converter lockup clutch status  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7084    A5_FILL_P_CLU          Fill pressure, clutch a  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7085    A5_ADPT_CNT_CLU        Adaptation counter, clutch a  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7086    A5_FAST_FILL_TIME_CLU  Fast fill time, clutch a  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7087    A5_ADPT_CNT_FAST_FILL  Adaptation counter, fast fill time, clutch a  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7088    A5_FILL_P_CLU_B        Fill pressure, clutch b  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7089    A5_ADPT_CNT_CLU_B      Adaptation counter, clutch b  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708A    A5_FAST_FILL_TIME_CLU_B Fast fill time, clutch b  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708B    A5_ADPT_CNT_FAST_FILL_B Adaptation counter, fast fill time, clutch b  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708C    A5_FILL_P_CLU_C        Fill pressure, clutch c  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708D    A5_ADPT_CNT_CLU_C      Adaptation counter, clutch c  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708E    A5_FAST_FILL_TIME_CLU_C Fast fill time, clutch c  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 708F    A5_ADPT_CNT_FAST_FILL_C Adaptation counter, fast fill time, clutch c  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7090    A5_FILL_P_CLU_D        Fill pressure, clutch d  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7091    A5_ADPT_CNT_CLU_D      Adaptation counter, clutch d  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7092    A5_FAST_FILL_TIME_CLU_D Fast fill time, clutch d  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7093    A5_ADPT_CNT_FAST_FILL_D Adaptation counter, fast fill time, clutch d  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7094    A5_FILL_P_CLU_E        Fill pressure, clutch e  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7095    A5_ADPT_CNT_CLU_E      Adaptation counter, clutch e  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7096    A5_FAST_FILL_TIME_CLU_E Fast fill time, clutch e  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 7097    A5_ADPT_CNT_FAST_FILL_E Adaptation counter, fast fill time, clutch e  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 70D1    A5_SHIFT_PROCCESS_TGT  Shift process, target gear  (non verificato da OBDb per il 2022 (dbgfilter))
+    7E1 22 70D1    A5_SHIFT_PROCCESS      Shift process, selected gear  (non verificato da OBDb per il 2022 (dbgfilter))

@@ -3,7 +3,9 @@
  * temperatura liquido, carica batteria ibrida), lettura multi-PID con ripiego a PID singolo, stato
  * MIL e DTC di tutte le centraline, cancellazione DTC e istantanea diagnostica usata da /data e dal
  * Serial. Boost e coppia sono letti dalla centralina quando espone i PID 0x70 e 0x62, altrimenti
- * stimati da BoostModel.h e TorqueModel.h.
+ * stimati da BoostModel.h e TorqueModel.h. Al boot non c'è nessuna discovery: i PID del motore e il
+ * modo di lettura vengono dal blocco "Profilo vettura", da sostituire con il profilo suggerito dalla
+ * scansione completa.
  *
  * Va incluso dopo serial_logger.h e obd_scan.h.
  *
@@ -23,6 +25,54 @@
 #include "TorqueModel.h"
 #include "BoostModel.h"
 #include "dtc_descriptions.h"
+
+// ============================================================
+// Profilo vettura: sostituire con il profilo suggerito stampato a fine scansione completa
+// ============================================================
+
+// PID Mode 01 del motore 7E8 usati da lettura live e diagnostica; 5B (batteria ibrida) e 24 (sonda a tensione)
+// mancano perchè non compaiono sulle B9 termiche
+static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x01, 0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x0F, 0x10, 0x1F,
+												  0x21, 0x23, 0x30, 0x33, 0x34, 0x42, 0x44, 0x46, 0x49,
+												  0x4A, 0x4C, 0x5C, 0x5E, 0x62, 0x70, 0x8E};
+// SAE J1979 §7.1.1: la centralina accetta fino a 6 PID per richiesta
+static constexpr bool OBD_ENGINE_MULTI_PID = true;
+
+// Modo di lettura corrente: parte dal profilo e passa al PID singolo se il motore rifiuta le richieste multiple
+inline bool engineMultiPid = OBD_ENGINE_MULTI_PID;
+
+/**
+ * Vero se il PID Mode 01 è nel profilo del motore.
+ * @since 29/10/26 Mattia Alesi
+ */
+inline bool obdEngineSupports(uint8_t pid)
+{
+	for (uint8_t i = 0; i < sizeof(OBD_ENGINE_PIDS); i++)
+	{
+		if (pgm_read_byte(&OBD_ENGINE_PIDS[i]) == pid)
+			return true;
+	}
+	return false;
+}
+
+/**
+ * Interroga una centralina OBD dal suo ID di risposta: in fisico se il trasporto lo consente, altrimenti in
+ * funzionale attendendo solo la sua risposta. Ritorna il messaggio o nullptr.
+ */
+inline const ObdIsoTpRx *obdRequestEcu(uint16_t ecuId, const uint8_t *request, uint8_t requestLen, uint16_t windowMs)
+{
+	if (obdTransportPhysicalAvailable)
+		obdTransact(obdPhysicalRequestId(ecuId), request, requestLen, windowMs, ecuId);
+	else
+		obdTransact(OBD_FUNCTIONAL_REQUEST_ID, request, requestLen, windowMs, ecuId);
+	return obdCollectorFind(obdCollector, ecuId);
+}
+
+/** Interroga il motore 7E0/7E8 con le regole di obdRequestEcu(). */
+inline const ObdIsoTpRx *obdRequestEngine(const uint8_t *request, uint8_t requestLen, uint16_t windowMs)
+{
+	return obdRequestEcu(OBD_ENGINE_RESPONSE_ID, request, requestLen, windowMs);
+}
 
 static constexpr uint8_t OBD_MAX_DTC = 12;
 static constexpr unsigned long OBD_DTC_CHECK_INTERVAL_MS = 30000;
@@ -72,7 +122,8 @@ inline float engineOffMapKpa = NAN;
 inline bool milOn = false;
 inline uint8_t dtcCount = 0;
 inline uint16_t dtcCodes[OBD_MAX_DTC];
-inline uint8_t dtcEcuIndex[OBD_MAX_DTC];
+// ID di risposta della centralina che ha riportato ciascun DTC
+inline uint16_t dtcEcuId[OBD_MAX_DTC];
 inline unsigned long lastDtcCheck = 0;
 inline bool dtcCheckRequested = true;
 
@@ -147,7 +198,7 @@ inline bool obdDecodeScalar(uint8_t pid, const uint8_t *data, uint8_t len, float
 	}
 }
 
-/** Azzera valori, cache e contatori della lettura live, ad esempio dopo un nuovo scan. */
+/** Azzera valori, cache e contatori della lettura live, ad esempio dopo una nuova connessione all'adattatore. */
 inline void obdLiveResetValues()
 {
 	boostAvailable = torqueAvailable = coolantAvailable = hybBattAvailable = false;
@@ -161,12 +212,14 @@ inline void obdLiveResetValues()
 }
 
 /**
- * Prepara la lettura live sui PID che il motore ha dichiarato: un gruppo veloce (boost da 0x70 o MAP,
- * carico, RPM, MAF, coppia 0x62) letto a ogni ciclo e un gruppo lento letto a rotazione, un PID per ciclo.
+ * Prepara la lettura live sui PID del profilo vettura: un gruppo veloce (boost da 0x70 o MAP, carico, RPM,
+ * MAF, coppia 0x62) letto a ogni ciclo e un gruppo lento letto a rotazione, un PID per ciclo. Il modo di
+ * lettura riparte da quello del profilo.
  */
 inline void obdLiveConfigure()
 {
 	obdLiveResetValues();
+	engineMultiPid = OBD_ENGINE_MULTI_PID;
 	for (uint8_t slot = 0; slot < LIVE_SLOT_COUNT; slot++)
 		obdLiveSlotEnabled[slot] = obdEngineSupports(obdLiveSlotPid(slot));
 	// L'attrito serve solo a correggere la coppia letta dalla centralina
@@ -264,11 +317,13 @@ inline void obdLiveFail(uint8_t slot)
 	}
 }
 
-/** Coppia di riferimento della centralina (0x63), oppure quella di targa se non letta. */
+/**
+ * Coppia di riferimento delle percentuali 0x62 e 0x8E: quella di targa, pari al PID 0x63 delle 40 TFSI; la
+ * scansione completa stampa il 0x63 letto per il confronto.
+ */
 inline float obdReferenceTorqueNm()
 {
-	return (isnan(engineReferenceTorqueNm) || engineReferenceTorqueNm <= 0.0f) ? Audi40TFSI150kW::TORQUE_MAX_NM
-																				 : engineReferenceTorqueNm;
+	return Audi40TFSI150kW::TORQUE_MAX_NM;
 }
 
 /**
@@ -364,9 +419,25 @@ inline uint8_t obdLivePickSlots(uint8_t *slots)
 }
 
 /**
- * Esegue un ciclo di lettura live: una richiesta al motore con gli slot scelti, separazione della
- * risposta, aggiornamento dei valori. Dopo OBD_MULTI_PID_MAX_MALFORMED risposte multi-PID malformate
- * passa definitivamente al PID singolo. Ritorna false se il motore non ha risposto affatto.
+ * Verifica se il problema delle richieste multi-PID è il multi-PID stesso: interroga da solo il PID indicato e, se
+ * risponde, passa definitivamente al PID singolo. Un motore spento o un PID non supportato tacciono anche da soli e
+ * non cambiano il modo di lettura.
+ */
+inline void obdLiveConfirmMultiPidFallback(uint8_t pid)
+{
+	const uint8_t request[2] = {0x01, pid};
+	if (obdIsPositiveFor(obdRequestEngine(request, 2, OBD_LIVE_WINDOW_MS), 0x01, pid))
+	{
+		engineMultiPid = false;
+		Serial.println(F("Lettura live: il motore risponde ai PID singoli ma non alle richieste multiple, passo al PID singolo"));
+	}
+}
+
+/**
+ * Esegue un ciclo di lettura live: una richiesta al motore con gli slot scelti, separazione della risposta,
+ * aggiornamento dei valori. Per le richieste multi-PID contano come anomalia il silenzio, una risposta negativa,
+ * una malformata o una con meno PID di quelli chiesti; dopo OBD_MULTI_PID_MAX_MALFORMED anomalie di fila una
+ * richiesta singola conferma se ripiegare sul PID singolo. Ritorna false se il motore non ha risposto affatto.
  */
 inline bool obdLiveStep()
 {
@@ -381,21 +452,14 @@ inline bool obdLiveStep()
 		request[1 + i] = obdLiveSlotPid(slots[i]);
 
 	const ObdIsoTpRx *msg = obdRequestEngine(request, (uint8_t)(1 + count), OBD_LIVE_WINDOW_MS);
+	const bool engineAnswered = msg != nullptr;
 	bool answered[OBD_MAX_PIDS_PER_REQUEST] = {false};
+	uint8_t answeredCount = 0;
+	bool wellFormed = false;
 	if (msg && msg->receivedLen >= 2 && msg->data[0] == 0x41)
 	{
 		ObdPidField fields[OBD_MAX_PIDS_PER_REQUEST];
-		bool wellFormed = false;
 		uint8_t fieldCount = obdParseMultiPid(msg->data, msg->receivedLen, fields, OBD_MAX_PIDS_PER_REQUEST, &wellFormed);
-		if (count > 1)
-		{
-			obdLiveMalformedStreak = wellFormed ? 0 : (uint8_t)(obdLiveMalformedStreak + 1);
-			if (obdLiveMalformedStreak >= OBD_MULTI_PID_MAX_MALFORMED)
-			{
-				engineMultiPid = false;
-				Serial.println(F("Lettura live: risposte multi-PID malformate, passo al PID singolo"));
-			}
-		}
 		for (uint8_t f = 0; f < fieldCount; f++)
 		{
 			for (uint8_t i = 0; i < count; i++)
@@ -404,6 +468,7 @@ inline bool obdLiveStep()
 				{
 					obdLiveApply(slots[i], fields[f].data, fields[f].len);
 					answered[i] = true;
+					answeredCount++;
 					break;
 				}
 			}
@@ -415,71 +480,89 @@ inline bool obdLiveStep()
 			obdLiveFail(slots[i]);
 	}
 	obdLiveRecalc();
-	obdLiveSilentStreak = msg ? 0 : (uint8_t)(obdLiveSilentStreak + 1);
-	return msg != nullptr;
+	obdLiveSilentStreak = engineAnswered ? 0 : (uint8_t)(obdLiveSilentStreak + 1);
+
+	if (count > 1)
+	{
+		const bool anomaly = !wellFormed || answeredCount < count;
+		obdLiveMalformedStreak = anomaly ? (uint8_t)(obdLiveMalformedStreak + 1) : 0;
+		if (obdLiveMalformedStreak >= OBD_MULTI_PID_MAX_MALFORMED)
+		{
+			obdLiveMalformedStreak = 0;
+			// msg punta al collettore, che la richiesta di conferma riusa: da qui in poi non va più letto
+			uint8_t probePid = request[1];
+			for (uint8_t i = 0; i < count; i++)
+			{
+				if (!answered[i])
+				{
+					probePid = request[1 + i];
+					break;
+				}
+			}
+			obdLiveConfirmMultiPidFallback(probePid);
+		}
+	}
+	return engineAnswered;
 }
 
-/** Scrive l'abbreviazione della centralina per il display OLED: "Motore", "Cambio", "Centr. N". */
-inline void obdEcuShortName(uint8_t index, char *out, size_t size)
+/** Scrive l'abbreviazione della centralina per il display OLED dal suo ID di risposta: "Motore", "Cambio", "Centr.N". */
+inline void obdEcuShortName(uint16_t ecuId, char *out, size_t size)
 {
-	if (index >= ecuCount)
-	{
-		strncpy(out, "?", size);
-		return;
-	}
-	uint16_t ecuId = ecuResults[index].ecuId;
 	if (ecuId == 0x7E8 || ecuId == 0x7E9)
-		obdEcuDisplayName(index, out, size);
+		obdEcuDisplayName(ecuId, out, size);
 	else
 		snprintf_P(out, size, PSTR("Centr.%u"), (unsigned)(ecuId - OBD_FIRST_RESPONSE_ID + 1));
 }
 
 /**
  * Legge MIL e DTC da tutte le centraline: 0101 funzionale per stato MIL e numero di DTC confermati di
- * ciascuna, poi Mode 03 a ogni centralina con almeno un DTC, anche a MIL spenta. Senza nessuna risposta
- * a 0101 lo stato precedente resta invariato, per non far sparire i codici su un timeout.
+ * ciascuna centralina che risponde, poi Mode 03 a ogni centralina con almeno un DTC, anche a MIL spenta.
+ * Senza nessuna risposta a 0101 lo stato precedente resta invariato, per non far sparire i codici su un
+ * timeout.
  */
 inline void obdLiveCheckDtcs()
 {
 	const uint8_t statusRequest[2] = {0x01, 0x01};
 	obdTransact(OBD_FUNCTIONAL_REQUEST_ID, statusRequest, 2, OBD_SCAN_WINDOW_MS, 0);
-	uint8_t perEcu[OBD_MAX_ECUS] = {0};
-	bool anyResponse = false;
+	// Il collettore viene riusato dalle richieste Mode 03: ID e conteggi vanno copiati prima
+	uint16_t responders[OBD_MAX_ECUS];
+	uint8_t perEcu[OBD_MAX_ECUS];
+	uint8_t responderCount = 0;
 	bool mil = false;
-	for (uint8_t i = 0; i < ecuCount; i++)
+	for (uint8_t s = 0; s < obdCollector.used; s++)
 	{
-		const ObdIsoTpRx *msg = obdCollectorFind(obdCollector, ecuResults[i].ecuId);
-		if (!obdIsPositiveFor(msg, 0x01, 0x01) || msg->receivedLen < 3)
+		const ObdIsoTpRx *msg = &obdCollector.slots[s];
+		if (msg->state != OBD_ISOTP_COMPLETE || !obdIsPositiveFor(msg, 0x01, 0x01) || msg->receivedLen < 3)
 			continue;
-		anyResponse = true;
 		mil = mil || (msg->data[2] & 0x80) != 0;
-		perEcu[i] = msg->data[2] & 0x7F;
+		responders[responderCount] = (uint16_t)msg->ecuId;
+		perEcu[responderCount++] = msg->data[2] & 0x7F;
 	}
 	lastDtcCheck = millis();
 	dtcCheckRequested = false;
-	if (!anyResponse)
+	if (responderCount == 0)
 		return;
 
 	uint8_t found = 0;
 	uint16_t codes[OBD_MAX_DTC];
-	uint8_t owners[OBD_MAX_DTC];
+	uint16_t owners[OBD_MAX_DTC];
 	const uint8_t dtcRequest[1] = {0x03};
-	for (uint8_t i = 0; i < ecuCount && found < OBD_MAX_DTC; i++)
+	for (uint8_t i = 0; i < responderCount && found < OBD_MAX_DTC; i++)
 	{
 		if (perEcu[i] == 0)
 			continue;
-		const ObdIsoTpRx *msg = obdRequestEcu(i, dtcRequest, 1, OBD_SCAN_WINDOW_MS);
+		const ObdIsoTpRx *msg = obdRequestEcu(responders[i], dtcRequest, 1, OBD_SCAN_WINDOW_MS);
 		if (!msg)
 			continue;
 		uint8_t added = obdParseDtcs(msg->data, msg->receivedLen, codes + found, (uint8_t)(OBD_MAX_DTC - found));
 		for (uint8_t k = 0; k < added; k++)
-			owners[found + k] = i;
+			owners[found + k] = responders[i];
 		found = (uint8_t)(found + added);
 	}
 	milOn = mil;
 	dtcCount = found;
 	memcpy(dtcCodes, codes, sizeof(uint16_t) * found);
-	memcpy(dtcEcuIndex, owners, found);
+	memcpy(dtcEcuId, owners, sizeof(uint16_t) * found);
 
 	Serial.print(F("MIL: "));
 	Serial.print(milOn ? F("ON") : F("OFF"));
@@ -490,7 +573,7 @@ inline void obdLiveCheckDtcs()
 		char code[6];
 		char owner[16];
 		decodeDTC(dtcCodes[i], code);
-		obdEcuShortName(dtcEcuIndex[i], owner, sizeof(owner));
+		obdEcuShortName(dtcEcuId[i], owner, sizeof(owner));
 		Serial.print(F("  DTC: "));
 		Serial.print(code);
 		Serial.print(F(" ("));
@@ -589,6 +672,25 @@ static const uint8_t OBD_DIAG_PIDS[] PROGMEM = {0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x
 												0x34, 0x44, 0x33, 0x42, 0x46, 0x49, 0x4A, 0x4C, 0x01,
 												0x1F, 0x21, 0x30, 0x70, 0x62, 0x8E, 0x5C, 0x5B, 0x5E};
 static constexpr uint8_t OBD_DIAG_PID_COUNT = sizeof(OBD_DIAG_PIDS);
+
+/**
+ * Scrive in pids, senza ripetizioni, i PID del motore usati da lettura live e diagnostica: sono i candidati del
+ * profilo suggerito e della prova multi-PID della scansione completa. Ritorna quanti ne ha scritti.
+ */
+inline uint8_t obdLiveProfileCandidates(uint8_t *pids, uint8_t maxPids)
+{
+	uint8_t count = 0;
+	for (uint8_t i = 0; i < LIVE_SLOT_COUNT + OBD_DIAG_PID_COUNT && count < maxPids; i++)
+	{
+		const uint8_t pid = i < LIVE_SLOT_COUNT ? obdLiveSlotPid(i) : pgm_read_byte(&OBD_DIAG_PIDS[i - LIVE_SLOT_COUNT]);
+		bool known = false;
+		for (uint8_t k = 0; k < count && !known; k++)
+			known = pids[k] == pid;
+		if (!known)
+			pids[count++] = pid;
+	}
+	return count;
+}
 
 /** Istantanea dei PID diagnostici e delle grandezze calcolate, condivisa da /data e dal Serial. */
 struct ObdDiagSnapshot

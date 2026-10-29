@@ -156,8 +156,8 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="sb">Auto-refresh 500ms</div>
 </div>
 <div class="tabC" id="tcS">
-<div id="scR" class="empty">Carico elenco PID...</div>
-<p class="fnote">Elenco dei parametri OBD2 standard (SAE J1979) dichiarati da ogni centralina. Il report completo, con i codici, &egrave; nel Serial monitor.</p>
+<div id="scR" class="empty">Carico lo stato della scansione...</div>
+<p class="fnote">Riepilogo per nome: parametri OBD2 standard (SAE J1979) letti da ogni centralina, conteggi per le centraline UDS. Valori e unit&agrave; sono nel report del Serial monitor, da salvare con "Salva log".</p>
 </div>
 <div class="tabC" id="tcL">
 <div class="s">
@@ -171,11 +171,15 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
  * ANTEPRIMA OFFLINE: sostituisce fetch() con un simulatore degli endpoint del firmware
  * (/data, /scan-data, /probe, /probe-status, /serial-data, /debug, /brightness, /clear-dtc),
  * con valori realistici per Audi A5 F5 (B9.5) 40 TFSI DMSA: guida mista con fasi di veleggio
- * a motore spento del mild hybrid. L'HTML sotto è identico a DASHBOARD_HTML di web_dashboard.h.
+ * a motore spento del mild hybrid e una scansione completa simulata, con una centralina UDS muta.
+ * L'HTML sotto è identico a DASHBOARD_HTML di web_dashboard.h.
  */
 (function () {
   var tick = 0, debug = true, contrast = 180, brightnessMode = 'auto', dtcOn = false, seq = 0, logText = '';
-  var probe = { state: 'idle', percent: 0, seconds: 0 }, probeTicks = 0, prev = null;
+  var probe = { state: 'idle', percent: 0, seconds: 0, stopped: false, phase: 'Riepilogo' }, probeTicks = 0, prev = null;
+  // Fasi della scansione con la percentuale raggiunta alla loro fine, come obdProbePercent() del firmware
+  var PHASES = [['Centraline OBD', 7], ['PID supportati', 14], ['PID Mode 01', 22], ['Freeze frame', 25], ['Monitor Mode 06', 29],
+    ['Info veicolo', 33], ['DTC OBD', 36], ['Ricerca centraline UDS', 55], ['Letture UDS', 95], ['Riepilogo', 100]];
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function log(line) { logText += line + '\n'; seq += line.length + 1; if (logText.length > 4000) logText = logText.slice(-4000); }
 
@@ -213,54 +217,123 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     };
     prev = g;
     if (tick % 10 === 0) dtcOn = !dtcOn;
-    if (tick % 4 === 0) log('MIL: OFF, DTC: ' + (dtcOn ? 2 : 0));
+    if (tick % 4 === 0 && probe.state !== 'running') log('MIL: OFF, DTC: ' + (dtcOn ? 2 : 0));
     return g;
   }
 
-  var scan = {
-    probe: probe, adapter: { headers: true, physical: true },
-    engine: { multiPid: true, torque: 'ECU', boost: 'ECU', refTorque: 320 },
-    obfcm: { km: 23456.7, liters: 1651.2, avg: 7.04, recentKm: 118.4, recentLiters: 8.9, plausible: true },
+  // Esito finale della scansione completa: centraline OBD con nomi italiani dei PID, centraline UDS con i soli conteggi
+  var RESULT = {
+    adapter: { headers: true, physical: true, flowControl: true, pending78: true, can29: true },
+    engine: { multiPid: true, refTorque: 320 },
+    obfcm: { km: 23456.7, liters: 1651.2, avg: 7.04 },
     ecus: [
-      { name: 'Motore', detail: 'ECM-EngineControl', physical: true, probed: false, undoc: 0, undoc09: 0,
+      { name: 'Motore', detail: 'ECM-EngineControl', physical: true, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'Trim breve B1', 'Trim lungo B1', 'Press. collettore', 'RPM',
-          'Velocita\'', 'Anticipo accensione', 'Temp. aria aspirata', 'MAF', 'Farfalla', 'Lambda B1S2', 'Press. rail', 'Livello carburante',
+          'Velocita\'', 'Anticipo accensione', 'Temp. aria aspirata', 'MAF', 'Farfalla', 'Lambda B1S2', 'Press. rail',
           'Press. barometrica', 'Lambda 1 (lambda+I)', 'Temp. cat. B1S1', 'Tensione batteria', 'Lambda comandata', 'Temp. ambiente',
           'Pedale D', 'Pedale E', 'Attuatore farfalla', 'Temp. olio motore', 'Consumo motore', 'Coppia richiesta', 'Coppia effettiva',
           'Coppia riferimento', 'Pressione boost', 'Coppia attrito', 'Portata carburante', 'Contachilometri'],
-        mode09: ['VIN (telaio)', 'ID calibrazione software', 'CVN (verifica calibrazione)', 'Contatori monitor benzina (IPT)', 'Nome centralina', 'Consumo reale di vita (OBFCM)'] },
-      { name: 'Cambio', detail: 'TCM-TransmisCtrl', physical: true, probed: false, undoc: 0, undoc09: 0,
+        silent: ['Livello carburante'], extra: [],
+        dtc: [{ code: 'P0441', kind: 1, desc: 'Spurgo EVAP errato' }] },
+      { name: 'Cambio', detail: 'TCM-TransmisCtrl', physical: true, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'RPM', 'Velocita\'', 'Monitor drive cycle', 'Tensione batteria', 'Pedale D'],
-        mode09: ['ID calibrazione software', 'CVN (verifica calibrazione)', 'Nome centralina'] },
-      { name: 'Centralina 5', detail: '', physical: false, probed: false, undoc: 0, undoc09: 0,
+        silent: [], extra: [], dtc: [] },
+      { name: 'Centralina 5', detail: '', physical: false, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'RPM', 'Velocita\'', 'Monitor drive cycle', 'Tensione batteria', 'Temp. ambiente', 'Pedale D'],
-        mode09: [] }
+        silent: [], extra: [], dtc: [] }
+    ],
+    uds: [
+      { name: 'Motore', system: '', obd: 0, dtcConfirmed: 0, dtcPending: 1, stdPids: 0, vagDids: 65, silent: false },
+      { name: 'Cambio', system: '', obd: 1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 63, silent: false },
+      { name: 'Gateway', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 19, silent: false },
+      { name: 'Freni ABS/ESP', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 2, silent: false },
+      { name: 'Quadro strumenti', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 6, silent: false },
+      { name: 'Climatizzatore', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 10, silent: false },
+      { name: 'Elettronica centrale', system: '', obd: -1, dtcConfirmed: 1, dtcPending: 0, stdPids: 0, vagDids: 0, silent: false },
+      { name: 'Airbag', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 0, silent: false },
+      { name: 'Accesso e avviamento (Kessy)', system: '', obd: -1, dtcConfirmed: 0, dtcPending: 0, stdPids: 0, vagDids: 0, silent: false },
+      { name: 'Assistente di parcheggio', system: '', obd: -1, dtcConfirmed: -1, dtcPending: -1, stdPids: 0, vagDids: 0, silent: true }
     ]
   };
 
+  // Righe del report Serial emesse in ordine durante la scansione, nello stesso formato del firmware
+  var REPORT = [
+    '=== SCANSIONE COMPLETA: OBD2 e UDS in sola lettura, solo dati interpretabili ===',
+    'Centraline OBD: 3',
+    '  [Motore 7E8] risponde in funzionale sì, in fisico sì',
+    '  [Cambio 7E9] risponde in funzionale sì, in fisico sì',
+    '  [Centralina 5 7EC] risponde in funzionale sì, in fisico no',
+    '  [Motore 7E8] PID 05 Engine coolant temperature: 91 °C',
+    '  [Motore 7E8] PID 0C Engine speed: 742.25 rpm',
+    '  [Motore 7E8] PID 42 Control module voltage: 14.38 V',
+    '  [Motore 7E8] PID 63 Engine reference torque: 320 Nm',
+    '  [Motore 7E8] richiesta con 6 PID: risposta completa',
+    '  [Motore 7E8] FF 02 DTC that caused the freeze frame: P0441',
+    '  [Motore 7E8] Monitor catalizzatore banco 1: superato',
+    '  [Motore 7E8] Nome centralina: ECM-EngineControl',
+    '  [Motore 7E8] DTC in attesa: P0441 Spurgo EVAP errato',
+    '  [Gateway 710/77A] trovata con 3E 00',
+    '  [Assistente di parcheggio 70A/774] non risponde più: letture restanti saltate',
+    '  [Gateway 710/77A] Battery voltage: 12.62 V  (risposto nelle catture OBDb A5 2022)',
+    '  [Climatizzatore 746/7B0] Outside temperature: 18 °C  (risposto nelle catture OBDb A5 2022)'
+  ];
+  var reported = 0;
+
+  function phaseAt(percent) {
+    for (var i = 0; i < PHASES.length; i++) if (percent < PHASES[i][1]) return PHASES[i][0];
+    return 'Riepilogo';
+  }
+
+  function finishProbe(stopped) {
+    probe.state = 'done';
+    probe.stopped = stopped;
+    probe.percent = 100;
+    probe.phase = 'Completata';
+    if (stopped) log('Scansione interrotta su richiesta');
+    log('\n=== RIEPILOGO SCANSIONE COMPLETA (' + probe.seconds + ' s' + (stopped ? ', interrotta' : '') + ') ===');
+    log('// Profilo suggerito dalla scansione completa: sostituire il blocco "Profilo vettura" di obd_live.h');
+    log('static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x70, 0x0B, 0x04, 0x0C, 0x10, 0x62, 0x0F, 0x33, 0x23, 0x42, 0x05, 0x8E, 0x0D, 0x34, 0x44, 0x46, 0x49, 0x4A, 0x4C, 0x01, 0x1F, 0x21, 0x30, 0x5C, 0x5E};');
+    log('static constexpr bool OBD_ENGINE_MULTI_PID = true;');
+    log('=== FINE SCANSIONE COMPLETA ===');
+  }
+
   function advanceProbe() {
     if (probe.state !== 'running') return;
+    if (probe.stopRequested) { probe.stopRequested = false; finishProbe(true); return; }
     probeTicks++;
-    probe.percent = Math.min(100, Math.round(probeTicks * 100 / 30));
     probe.seconds = probeTicks;
-    if (probe.percent >= 100) {
-      probe.state = 'done';
-      scan.ecus.forEach(function (e) { e.probed = true; e.silent = []; e.extra = []; e.extra09 = []; e.silentUndoc = 0; e.extraUndoc = 0; });
-      scan.ecus[0].silent = ['Livello carburante'];
-      scan.ecus[0].extraUndoc = 1;
-      log('=== FINE SCANSIONE APPROFONDITA (30 s) ===');
-    }
+    probe.percent = Math.min(100, Math.round(probeTicks * 100 / 40));
+    probe.phase = phaseAt(probe.percent);
+    var due = Math.floor(REPORT.length * probe.percent / 100);
+    while (reported < due) log(REPORT[reported++]);
+    if (probe.percent >= 100) finishProbe(false);
   }
   setInterval(advanceProbe, 1000);
 
+  // Durante la scansione il JSON contiene solo quanto trovato finora, come obdHandleScanData()
+  function scanData() {
+    var d = { probe: probe, adapter: RESULT.adapter, ecus: [], uds: [] };
+    if (probe.state === 'idle') return d;
+    var done = probe.state === 'done';
+    if (probe.percent >= 7 || done) d.ecus = RESULT.ecus.map(function (e) {
+      var share = done ? 1 : Math.min(1, Math.max(0, (probe.percent - 14) / 8));
+      return { name: e.name, detail: probe.percent >= 33 || done ? e.detail : '', physical: e.physical, dtcRead: probe.percent >= 36 || done, undoc: e.undoc,
+        pids: e.pids.slice(0, Math.round(e.pids.length * share)), silent: done ? e.silent : [], extra: e.extra,
+        dtc: probe.percent >= 36 || done ? e.dtc : [] };
+    });
+    if (probe.percent >= 55 || done) d.uds = RESULT.uds;
+    if (done && !probe.stopped) { d.engine = RESULT.engine; d.obfcm = RESULT.obfcm; }
+    return d;
+  }
+
   function data() {
-    var g = simulate();
+    var g = simulate(), running = probe.state === 'running';
     return {
-      debug: debug, busy: probe.state === 'running', mil: dtcOn, dtcCount: dtcOn ? 2 : 0,
+      debug: debug, busy: running, scan: running, mil: dtcOn, dtcCount: dtcOn ? 2 : 0,
       boost: g.boost, coolant: g.coolant, torque: g.torque, hybBatt: null, boostSrc: 'ECU', torqueSrc: 'ECU',
       lightLevel: 640, contrast: contrast, brightnessMode: brightnessMode,
       dtc: dtcOn ? [{ code: 'P0420', ecu: 'Motore', desc: 'Efficienza catalizz.' }, { code: 'U0100', ecu: 'Cambio', desc: 'No com. centr. motore' }] : [],
-      diag: debug && probe.state !== 'running' ? g : undefined
+      diag: debug && !running ? g : undefined
     };
   }
 
@@ -274,20 +347,25 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 
   window.fetch = function (url) {
     if (url === '/data') return respond(data());
-    if (url === '/scan-data') return respond(scan);
+    if (url === '/scan-data') return respond(scanData());
     if (url === '/probe-status') return respond(probe);
     if (url === '/probe?start') {
       var started = probe.state !== 'running';
-      if (started) { probe.state = 'running'; probe.percent = 0; probe.seconds = 0; probeTicks = 0; log('=== SCANSIONE APPROFONDITA ==='); }
+      if (started) {
+        probe.state = 'running'; probe.percent = 0; probe.seconds = 0; probe.stopped = false; probe.phase = PHASES[0][0];
+        probeTicks = 0; reported = 0; advanceProbe();
+      }
       return respond({ started: started, status: probe });
     }
+    if (url === '/probe?stop') { if (probe.state === 'running') probe.stopRequested = true; return respond({ started: false, status: probe }); }
     if (url.indexOf('/debug') === 0) { debug = url.indexOf('on') > 0 ? true : url.indexOf('off') > 0 ? false : debug; return respond({ debug: debug }); }
     if (url.indexOf('/brightness?set=') === 0) { contrast = parseInt(url.split('=')[1], 10); brightnessMode = 'manual'; return respond({}); }
     if (url === '/brightness?auto') { brightnessMode = 'fading'; setTimeout(function () { brightnessMode = 'auto'; }, 2000); return respond({}); }
     if (url === '/clear-dtc') {
-      var running = prev && !prev.engineStopped;
-      if (!running) dtcOn = false;
-      return respond({ ok: !running, msg: running ? 'Rifiutato: spegnere il motore, quadro acceso' : 'DTC cancellati (3 centraline)' });
+      if (probe.state === 'running') return respond({ ok: false, msg: 'Scansione o connessione in corso, riprovare più tardi' });
+      var engineRunning = prev && !prev.engineStopped;
+      if (!engineRunning) dtcOn = false;
+      return respond({ ok: !engineRunning, msg: engineRunning ? 'Rifiutato: spegnere il motore, quadro acceso' : 'DTC cancellati (3 centraline)' });
     }
     if (url.indexOf('/serial-data') === 0) { var t = logText; logText = ''; return respond(null, t, { 'X-Seq': String(seq), 'X-Dropped': '0' }); }
     return Promise.reject(new Error('404 ' + url));
@@ -298,37 +376,56 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 })();
 </script>
 <script>
-var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']},prT=null;
-function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s')loadScan();if(w==='l')logStart();else logStop();}
+var TABS={d:['tcD','tbD'],s:['tcS','tbS'],l:['tcL','tbL']},prT=null,scanRun=false,KIND=['confermato','in attesa','permanente'];
+function swT(w){for(var k in TABS){var c=document.getElementById(TABS[k][0]),b=document.getElementById(TABS[k][1]);if(k===w){c.classList.add('act');b.classList.add('act');}else{c.classList.remove('act');b.classList.remove('act');}}if(w==='s')loadScan();if(w==='l')logStart();else if(!scanRun)logStop();}
 function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function list(a,cls){if(!a||a.length===0)return '';var h='<div class="pl'+(cls?' '+cls:'')+'">';a.forEach(function(p){h+='<span>'+esc(p)+'</span>';});return h+'</div>';}
 function loadScan(){fetch('/scan-data').then(function(r){return r.json();}).then(renderScan).catch(function(){document.getElementById('scR').innerHTML='<p class="empty">Errore di rete.</p>';});}
-function renderScan(d){var h='',p=d.probe||{};
-if(d.adapter&&!d.adapter.headers)h+='<p class="note w">Adattatore senza header CAN: elenco limitato a una centralina.</p>';
-if(d.engine){h+='<div class="s"><div class="st">Motore</div><p class="note">Coppia '+(d.engine.torque==='ECU'?'letta dalla centralina':'stimata dal modello')+' &middot; Boost '+(d.engine.boost==='ECU'?'letto dalla centralina':'stimato dal modello')+' &middot; Lettura '+(d.engine.multiPid?'multi-PID':'a PID singolo')+(d.engine.refTorque>0?' &middot; Coppia di riferimento '+d.engine.refTorque+' Nm':'')+'</p></div>';}
-if(d.obfcm){var o=d.obfcm;h+='<div class="s"><div class="st">Consumo reale di vita (OBFCM)</div><p class="note">'+(o.km>=0?o.km.toFixed(1)+' km':'km N/D')+' &middot; '+(o.liters>=0?o.liters.toFixed(1)+' L':'litri N/D')+(o.avg>=0?' &middot; media '+o.avg.toFixed(2)+' L/100 km':'')+'</p>'+(o.plausible?'':'<p class="note w">Valori non plausibili: ordine dei campi da verificare sul report Serial.</p>')+'</div>';}
-var run=p.state==='running';
-h+='<div class="s"><div class="st">Scansione approfondita</div><p class="note">Interroga ogni PID Mode 01 e InfoType Mode 09 su tutte le centraline e confronta le risposte con quanto dichiarato (circa 30 s su CAN, 60-80 s su WiFi).</p><p class="note" id="prSt">'+(run?'In corso: '+p.percent+'%':p.state==='done'?'Completata in '+p.seconds+' s':'Non eseguita')+'</p><button class="pbtn" id="prBtn" onclick="probeStart()"'+(run?' disabled':'')+'>Avvia scansione approfondita</button></div>';
-if(!d.ecus||d.ecus.length===0){h+='<p class="empty">Nessuna centralina rilevata.</p>';}
-d.ecus.forEach(function(e){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(e.name)+(e.detail?' <span class="ecnt">'+esc(e.detail)+'</span>':'')+'</span><span class="ecnt">'+e.pids.length+' PID'+(e.undoc?' + '+e.undoc+' non documentati':'')+'</span></div>';
-h+=e.pids.length?list(e.pids):'<p class="empty">Nessun PID documentato.</p>';
-if(e.mode09&&e.mode09.length){h+='<div class="lt">Informazioni veicolo (Mode 09)</div>'+list(e.mode09);}
-if(e.probed){if(e.silent&&e.silent.length||e.silentUndoc){h+='<div class="lt">Dichiarati ma senza risposta</div>'+list(e.silent,'miss')+(e.silentUndoc?'<p class="note">+ '+e.silentUndoc+' non documentati</p>':'');}
-if(e.extra&&e.extra.length||e.extra09&&e.extra09.length||e.extraUndoc){h+='<div class="lt">Rispondono senza essere dichiarati</div>'+list(e.extra,'xtra')+list(e.extra09,'xtra')+(e.extraUndoc?'<p class="note">+ '+e.extraUndoc+' non documentati</p>':'');}
-if(!(e.silent&&e.silent.length)&&!e.silentUndoc&&!(e.extra&&e.extra.length)&&!(e.extra09&&e.extra09.length)&&!e.extraUndoc)h+='<p class="note">Scansione approfondita: tutti i PID dichiarati rispondono.</p>';}
+function prText(p){return p.state==='running'?'In corso: '+p.phase+', '+p.percent+'% ('+p.seconds+' s)':p.state==='done'?(p.stopped?'Interrotta dopo ':'Completata in ')+p.seconds+' s':'Nessuna scansione eseguita';}
+function udsDtc(u){return u.dtcConfirmed<0?'DTC non letti':'DTC '+u.dtcConfirmed+' confermati, '+(u.dtcPending<0?'?':u.dtcPending)+' in attesa';}
+function renderScan(d){var h='',p=d.probe||{},a=d.adapter||{},ecus=d.ecus||[],uds=d.uds||[],run=p.state==='running';
+h+='<div class="s"><div class="st">Scansione completa</div><p class="note">Legge in sola lettura tutte le centraline OBD2 e UDS: PID standard, freeze frame, monitor, informazioni veicolo, DTC e i dati VAG con decodifica pubblica. Dura circa 1-2 minuti su CAN e 6-8 su WiFi.</p><p class="note w">Quadro acceso e auto ferma. Il report va nel Serial monitor, raccolto anche fuori dalla sua tab finch&egrave; la pagina resta aperta.</p><p class="note" id="prSt">'+esc(prText(p))+'</p><button class="pbtn" id="prBtn" onclick="probeStart()"'+(run?' disabled':'')+'>Avvia scansione completa</button><button class="pbtn" id="prStop" onclick="probeStop()"'+(run?'':' disabled')+'>Interrompi</button><button class="pbtn" onclick="logSave()">Salva log</button></div>';
+if(p.state==='idle'){document.getElementById('scR').innerHTML=h;return;}
+if(!a.headers)h+='<p class="note w">Adattatore senza header CAN: '+(a.physical?'centraline OBD2 interrogate una alla volta':'una sola centralina OBD2')+', nessuna centralina UDS.</p>';
+else if(!a.physical)h+='<p class="note w">Adattatore senza indirizzamento fisico: solo richieste funzionali, nessuna centralina UDS.</p>';
+if(!a.flowControl)h+='<p class="note w">Flow control verso le centraline UDS non disponibile: letture su pi&ugrave; frame saltate.</p>';
+if(!a.pending78)h+='<p class="note w">L\'adattatore non gestisce le attese delle centraline: letture UDS con timeout esteso.</p>';
+if(!a.can29)h+='<p class="note">CAN a 29 bit non disponibile sull\'adattatore.</p>';
+if(d.engine)h+='<div class="s"><div class="st">Profilo suggerito</div><p class="note">Lettura '+(d.engine.multiPid?'multi-PID':'a PID singolo')+(d.engine.refTorque>0?' &middot; coppia di riferimento letta '+d.engine.refTorque+' Nm':'')+' &middot; blocco da copiare in obd_live.h a fine report</p></div>';
+if(d.obfcm){var o=d.obfcm;h+='<div class="s"><div class="st">Consumo reale di vita (OBFCM)</div><p class="note">'+o.km.toFixed(1)+' km &middot; '+o.liters.toFixed(1)+' L &middot; media '+o.avg.toFixed(2)+' L/100 km</p></div>';}
+h+='<div class="lt">Centraline OBD2 ('+ecus.length+')</div>';
+if(!ecus.length)h+='<p class="empty">'+(run?'Ricerca in corso...':'Nessuna centralina OBD2 ha risposto.')+'</p>';
+ecus.forEach(function(e,i){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(e.name)+(e.detail?' <span class="ecnt">'+esc(e.detail)+'</span>':'')+'</span><span class="ecnt">'+e.pids.length+' PID'+(e.undoc?' + '+e.undoc+' non documentati':'')+'</span></div>';
+uds.forEach(function(u){if(u.obd===i)h+='<p class="note">UDS: '+udsDtc(u)+' &middot; PID standard letti: '+u.stdPids+' &middot; dati VAG letti: '+u.vagDids+(u.silent?' &middot; muta durante le letture':'')+'</p>';});
+h+=e.pids.length?list(e.pids):'<p class="empty">Nessun PID letto.</p>';
+if(e.silent&&e.silent.length)h+='<div class="lt">Dichiarati ma senza risposta</div>'+list(e.silent,'miss');
+if(e.extra&&e.extra.length)h+='<div class="lt">Rispondono senza essere dichiarati</div>'+list(e.extra,'xtra');
+if(e.dtcRead===false&&!run)h+='<p class="note w">DTC non letti: la centralina non ha risposto al Mode 03.</p>';
+if(e.dtc&&e.dtc.length){h+='<div class="lt">DTC</div>';e.dtc.forEach(function(t){h+='<div class="di"><span class="dc">'+esc(t.code)+'</span> <span class="dd">'+KIND[t.kind]+(t.desc?' &middot; '+esc(t.desc):'')+'</span></div>';});}
+if(a.physical&&!e.physical)h+='<p class="note">Risponde solo alle richieste funzionali.</p>';
 h+='</div>';});
-document.getElementById('scR').innerHTML=h;if(run)probePoll();}
-function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: attendere la fine dello scan iniziale.');if(b)b.disabled=false;return;}probePoll();}).catch(function(){if(b)b.disabled=false;});}
-function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=p.state==='running'?'In corso: '+p.percent+'%':'Completata in '+p.seconds+' s';if(p.state!=='running'){clearInterval(prT);prT=null;loadScan();}}).catch(function(){});},1000);}
+var live=uds.filter(function(u){return u.obd<0&&!u.silent;}),mute=uds.filter(function(u){return u.obd<0&&u.silent;});
+h+='<div class="lt">Centraline UDS ('+live.length+')</div>';
+if(!live.length&&!mute.length)h+='<p class="empty">'+(run?'Ricerca in corso...':'Nessuna altra centralina UDS trovata.')+'</p>';
+live.forEach(function(u){h+='<div class="ecu"><div class="eh"><span class="eid">'+esc(u.name)+(u.system&&u.system!==u.name?' <span class="ecnt">'+esc(u.system)+'</span>':'')+'</span><span class="ecnt">'+udsDtc(u)+'</span></div><p class="note">PID standard letti: '+u.stdPids+' &middot; dati VAG letti: '+u.vagDids+'</p></div>';});
+if(mute.length)h+='<div class="lt">Escluse perch&egrave; mute</div>'+list(mute.map(function(u){return u.name;}),'miss');
+document.getElementById('scR').innerHTML=h;if(run)scanFollow();}
+function scanFollow(){scanRun=true;logStart();probePoll();}
+function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: adattatore non ancora connesso o lettura in corso, riprovare tra qualche secondo.');if(b)b.disabled=false;return;}scanFollow();loadScan();}).catch(function(){if(b)b.disabled=false;});}
+function probeStop(){var b=document.getElementById('prStop');if(b)b.disabled=true;fetch('/probe?stop').catch(function(){});}
+var prN=0;
+function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){clearInterval(prT);prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){});},1000);}
+function logSave(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.getElementById('smPre').textContent],{type:'text/plain'}));a.download='obd_scan.txt';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function f(v,n,u){return v===null||v===undefined?'N/D':v.toFixed(n)+(u||'');}
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
 function set(id,t,r,y){var e=document.getElementById(id);e.textContent=t;c(e,r,y);}
-var busy=false;
-function u(){fetch('/data').then(function(r){return r.json();}).then(function(d){
+var busy=false,uN=0;
+function u(){if(scanRun&&(uN++%4))return;fetch('/data').then(function(r){return r.json();}).then(function(d){
 document.getElementById('dbgTgl').checked=d.debug;
 document.getElementById('dbgWarn').style.display=d.debug?'':'none';
 document.getElementById('busyWarn').style.display=d.busy?'':'none';
+if(d.scan&&!scanRun)scanFollow();
 if(busy&&!d.busy&&document.getElementById('tcS').classList.contains('act'))loadScan();busy=d.busy;
 document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
 var bs=d.boost!==null&&d.boost>=0?'+':'';
@@ -394,7 +491,7 @@ function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,
 function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
 function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
 function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
-function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>200000)p.textContent=p.textContent.slice(-200000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
 if(location.pathname==='/scan')swT('s');
 setInterval(u,500);u();
 </script>

@@ -1,24 +1,29 @@
 ---
 name: feedback_data_must_be_interpretable
-description: Proporre solo dati con decodifica e significato fisico da standard pubblico; in dashboard descrizioni testuali, mai indirizzi hex
+description: Leggere e proporre solo dati con decodifica pubblica e verificata (regole OBDb della selezione), niente valori grezzi; DTC UDS VAG solo come conteggi; in dashboard descrizioni testuali, mai indirizzi hex
 metadata:
   type: feedback
 ---
 
-Proporre solo feature i cui dati siano interpretabili dallo standard pubblico (SAE J1979, ISO 14229) o da fonti chiaramente
-affidabili.
+Si leggono e si propongono solo dati con decodifica e significato fisico da fonte pubblica e verificata: SAE J1979,
+ISO 14229, signalset OBDb validati sulle catture reali. Mai byte grezzi nei report, nè valori di sensori dichiarati non
+supportati.
 
-**Why:** l'utente ha escluso, con queste motivazioni:
-- Mode 06, perchè i TID sono opachi senza le label del costruttore.
-- Mode 09 IPT (contatori di completamento dei monitor readiness), pur decodificabili, perchè ritenuti inutili: restano solo
-  nella scansione approfondita, mai in dashboard.
-- Mode 22 UDS, perchè contiene informazioni proprietarie non interpretabili senza reverse engineering.
-- Brute force dei DID a 16 bit, perchè lungo e non interpretabile.
-- Indirizzi dei PID in dashboard (per esempio `0x0F`), che non gli interessano.
+**Why:** richiesta ripetuta dell'utente ("solo pid realmente interpretabili"); esclusi per questo il brute force dei DID,
+i DID VAG senza decodifica pubblica, i TID Mode 06 non standard e gli indirizzi dei PID in dashboard.
 
-**How to apply:**
-- Prima di proporre un PID, DID o TID per il monitor verificare che formula, unità e significato fisico siano pubblici e chiari.
-- Se una proposta è interpretabile solo in parte (per esempio UASID standard ma TID opaco), dichiararlo e aspettarsi un rifiuto.
-- In dashboard descrizioni testuali italiane da [pid_descriptions.h](../../pid_descriptions.h), non indirizzi esadecimali.
+**Regole della selezione OBDb** (applicate da `tools/obdb_select.ps1`, firmware e `pid_scan.ps1` usano la stessa):
+- il segnale ha un'unità fisica, una mappa di valori testuali o è booleano; non `unknown`, `hex`, `normal`, nè con "raw";
+- uno `scalar` VAG passa solo se il nome contiene come parola intera count, counter, number, misfire, ratio, factor, lambda,
+  gear o satellite, e non status, mode o state;
+- il comando non richiede `din` e vale per il 2022, non in debug (`dbg` o `dbgfilter` che include il 2022);
+- un valore si mostra solo se il suo bit di supporto vale sì; i monitor C/D dei PID `01`/`41` solo con accensione comandata;
+- i PID con scala da `4F`/`50` si escludono se quei PID dichiarano massimi non predefiniti.
+- Polarità dei booleani: la prima parola dell'unità OBDb (`noyes`, `yesno`, `offon`) è il valore del bit a 0.
 
-Vedi anche [[project_scope_obd2]].
+**DTC UDS VAG:** non si decodificano dai byte, perchè VCDS li mostra da una tabella VW proprietaria: solo conteggi per stato.
+**Mode 06:** nome del monitor ed esito per i MID standard; valore e limiti solo per i TID `01`-`0C`.
+
+**How to apply:** prima di proporre un PID, DID o TID verificare formula, unità e significato pubblici; se è interpretabile
+solo in parte dichiararlo e aspettarsi un rifiuto. In dashboard descrizioni italiane da `pid_descriptions.h` e nomi delle
+centraline, mai indirizzi esadecimali. Vedi [[project_scope_obd2]].
