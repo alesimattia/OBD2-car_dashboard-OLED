@@ -2,10 +2,10 @@
  * OBD2 Monitor per ESP8266 D1 Mini
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
- * - Pressione boost (bar), letta dalla centralina (PID 0x70) o stimata da BoostModel
- * - Coppia motore all'albero (Nm), letta dalla centralina (PID 0x62, 0x8E, 0x63) o stimata da TorqueModel
+ * - Pressione boost (bar), letta dalla centralina (PID 0x70 meno la barometrica 0x33)
+ * - Coppia motore all'albero (Nm), letta dalla centralina (PID 0x62, 0x8E, 0x63)
  * - Temperatura liquido raffreddamento (C)
- * - Carica batteria ibrida (%, PID 0x5B se la vettura lo espone)
+ * - Carica batteria al litio del mild hybrid (%): N/D finchè non c'è un DID con decodifica verificata
  *
  * All'avvio va subito al monitor con il profilo vettura di obd_live.h, senza discovery; la scansione
  * completa di centraline OBD e UDS si avvia solo dalla pagina web /scan (report su Serial e riepilogo
@@ -39,8 +39,6 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include "dtc_descriptions.h"
-#include "TorqueModel.h"
-#include "BoostModel.h"
 #include "button_handler.h"
 #include "light_sensor.h"
 #include "pid_descriptions.h"
@@ -102,7 +100,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 // Stato applicazione
 // ============================================================
 
-// Fine dell'attesa dopo "Motore non risponde": fino ad allora il monitor non interroga il motore
+// Attesa dopo "Motore non risponde": finchè è attiva, fino a engineRetryAt, il monitor non interroga il motore
+bool engineRetryPending = false;
 unsigned long engineRetryAt = 0;
 
 unsigned long lastScreenSwitch = 0;
@@ -124,8 +123,8 @@ bool otaActive = true;
 unsigned long otaDeadline = OTA_WINDOW_MS;
 bool otaClientWasConnected = false;
 
-// Invii CAN falliti di fila: con TXREQ bloccato nel MCP2515 serve una reinizializzazione
-uint8_t canTxFailures = 0;
+// Ultimo invio CAN fallito: la segnalazione su Serial si ripete solo dopo un invio riuscito
+bool canSendFailing = false;
 unsigned long lastDiagPrint = 0;
 
 // Logger seriale: cattura Serial.* nel buffer circolare leggibile via /serial-data.
@@ -224,7 +223,7 @@ void loop() {
       Serial.println(F("OTA: client disconnesso, timeout ripartito"));
     }
     // Durante la scansione completa il SoftAP resta acceso: il report si legge solo dal web
-    if (!clientNow && millis() > otaDeadline && !obdProbeRunning()) {
+    if (!clientNow && (long)(millis() - otaDeadline) > 0 && !obdProbeRunning()) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_OFF);
@@ -244,14 +243,14 @@ void loop() {
 // ============================================================
 
 /**
- * Inizializza il MCP2515 a 500 kbps accettando tutti gli ID: con MCP_ANY maschere e filtri non hanno
- * effetto e begin() lascia il chip in loopback, quindi il modo normale va impostato esplicitamente.
+ * Inizializza il MCP2515 a 500 kbps accettando tutti i frame validi a 11 e 29 bit: MCP_STDEXT con maschere e filtri a
+ * zero. MCP_ANY no, perchè carica nel buffer anche i frame interrotti da un errore CAN. begin() lascia il chip in
+ * loopback, quindi il modo normale va impostato esplicitamente e verificato.
  * @since 23/10/26 Mattia Alesi
  */
 bool canInit() {
-  if (CAN.begin(MCP_ANY, CAN_SPEED, MCP2515_CRYSTAL) != CAN_OK) return false;
-  CAN.setMode(MCP_NORMAL);
-  return true;
+  if (CAN.begin(MCP_STDEXT, CAN_SPEED, MCP2515_CRYSTAL) != CAN_OK) return false;
+  return CAN.setMode(MCP_NORMAL) == MCP2515_OK;
 }
 
 /** Svuota il buffer di ricezione CAN da messaggi pendenti */
@@ -266,21 +265,29 @@ void flushCANBuffer() {
 }
 
 /**
- * Invia un frame con DLC 8, come richiede ISO 15765-4, a 29 bit se l'ID porta OBD_ID_EXTENDED. Dopo tre invii
- * falliti di fila (buffer di trasmissione bloccati con TXREQ attivo) reinizializza il MCP2515.
+ * Invia un frame con DLC 8, come richiede ISO 15765-4, a 29 bit se l'ID porta OBD_ID_EXTENDED. Un invio fallito
+ * (nessun ACK, per esempio a quadro spento) lascia TXREQ attivo e il MCP2515 ritrasmetterebbe senza fine: il chip si
+ * reinizializza subito, così il bus torna libero.
  */
 bool canSendFrame(uint32_t id, const uint8_t* frame) {
   uint8_t data[8];
   memcpy(data, frame, 8);
   const uint8_t extended = (id & OBD_ID_EXTENDED) ? 1 : 0;
   if (CAN.sendMsgBuf(id & 0x1FFFFFFFUL, extended, 8, data) == CAN_OK) {
-    canTxFailures = 0;
+    canSendFailing = false;
     return true;
   }
-  if (++canTxFailures >= 3) {
-    Serial.println(F("CAN: trasmissione bloccata, re-init MCP2515"));
-    canInit();
-    canTxFailures = 0;
+  // A quadro spento ogni tentativo fallisce: si segnala solo il primo di una serie
+  if (!canSendFailing) Serial.println(F("CAN: trasmissione non riuscita, re-init MCP2515"));
+  canSendFailing = true;
+  canInit();
+  return false;
+}
+
+/** Vero se un messaggio multi-frame è in arrivo: i consecutive frame seguono a distanza di STmin. */
+bool canMessageInProgress() {
+  for (uint8_t i = 0; i < obdCollector.used; i++) {
+    if (obdCollector.slots[i].state == OBD_ISOTP_RECEIVING) return true;
   }
   return false;
 }
@@ -288,9 +295,10 @@ bool canSendFrame(uint32_t id, const uint8_t* frame) {
 /**
  * Trasporto su CAN nativo: invia la richiesta single frame e riassembla le risposte accettate dal modo di
  * ricezione. Al first frame invia il flow control all'ID dato da obdFlowControlId() (risposta - 8 in OBD, ID di
- * richiesta per le coppie UDS VAG) ed estende l'attesa di N_Cr; una risposta 7F xx 78 rinnova l'attesa a P2*CAN,
- * mai oltre OBD_RESPONSE_PENDING_CAP_MS dall'invio. Legge i frame a raffica e cede la CPU solo a coda vuota,
- * perchè il MCP2515 ha due buffer.
+ * richiesta per le coppie UDS VAG), in UDS solo alla centralina attesa, ed estende l'attesa di N_Cr; una risposta
+ * 7F xx 78 rinnova l'attesa a P2*CAN, mai oltre OBD_RESPONSE_PENDING_CAP_MS dall'invio. Legge i frame a raffica e
+ * cede la CPU solo a coda vuota e mai durante un multi-frame, perchè il MCP2515 ha due buffer e una pausa del WiFi
+ * li farebbe traboccare; l'attesa resta comunque limitata da N_Cr.
  * @see obd_scan.h obdTransact()
  */
 uint8_t obdTransact(uint32_t requestId, const uint8_t* request, uint8_t requestLen, uint16_t windowMs,
@@ -312,7 +320,7 @@ uint8_t obdTransact(uint32_t requestId, const uint8_t* request, uint8_t requestL
   unsigned long deadline = millis() + windowMs;
   while ((long)(millis() - deadline) < 0) {
     if (CAN.checkReceive() != CAN_MSGAVAIL) {
-      yield();
+      if (!canMessageInProgress()) yield();
       continue;
     }
     unsigned long rxId;
@@ -324,7 +332,9 @@ uint8_t obdTransact(uint32_t requestId, const uint8_t* request, uint8_t requestL
     ObdIsoTpRx* slot = obdCollectorSlot(obdCollector, rxId);
     if (!slot) continue;
 
-    if (obdIsoTpFeed(*slot, buf, len)) {
+    // In UDS il flow control va all'ID di richiesta: una risposta in ritardo di un'altra centralina non lo riceve
+    const bool udsMode = receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29;
+    if (obdIsoTpFeed(*slot, buf, len) && (!udsMode || waitForEcuId == 0 || rxId == waitForEcuId)) {
       uint8_t flowControl[8] = { 0x30, 0x00, obdFlowControlSeparationMs(receiveMode), 0, 0, 0, 0, 0 };
       canSendFrame(obdFlowControlId(receiveMode, requestId, rxId), flowControl);
     }
@@ -371,7 +381,11 @@ uint8_t obdTransportDiscoveryBurst(const uint32_t* requestIds, uint16_t count, u
       uint8_t data[8];
       memcpy(data, testerPresent, 8);
       const uint32_t id = requestIds[next];
-      if (CAN.sendMsgBuf(id & 0x1FFFFFFFUL, (id & OBD_ID_EXTENDED) ? 1 : 0, 8, data) != CAN_OK) return OBD_BURST_FAILED;
+      if (CAN.sendMsgBuf(id & 0x1FFFFFFFUL, (id & OBD_ID_EXTENDED) ? 1 : 0, 8, data) != CAN_OK) {
+        // TXREQ resterebbe attivo con ritrasmissioni senza fine: come in canSendFrame() il chip si reinizializza
+        canInit();
+        return OBD_BURST_FAILED;
+      }
       next++;
       nextSendMs += 10;
       if (next == count) listenUntil = millis() + 1000;
@@ -428,7 +442,7 @@ void executeProbeStep() {
   obdProbeStep();
   bool running = obdProbeRunning();
   if (!running || millis() - lastDraw > 500) {
-    char phase[22];
+    char phase[22];  // 21 caratteri del font 6x10 più il terminatore
     char line[22];
     strncpy_P(phase, obdProbePhaseName(), sizeof(phase) - 1);
     phase[sizeof(phase) - 1] = '\0';
@@ -462,9 +476,12 @@ void updateScreenCount() {
  * altrimenti mostra "Motore non risponde" e riprova dopo ENGINE_SILENT_RETRY_MS.
  */
 void executeMonitorMode() {
-  if ((long)(millis() - engineRetryAt) < 0) {
-    yield();
-    return;
+  if (engineRetryPending) {
+    if ((long)(millis() - engineRetryAt) < 0) {
+      yield();
+      return;
+    }
+    engineRetryPending = false;
   }
   // Pulsante fisico: short = ciclo schermate, long = clear DTC.
   ButtonEvent ev = buttonPoll();
@@ -507,6 +524,7 @@ void executeMonitorMode() {
       Serial.println(F("Il motore non risponde, nuovo tentativo tra 10 s"));
       showError("Motore non risponde", "Quadro acceso?");
       engineRetryAt = millis() + ENGINE_SILENT_RETRY_MS;
+      engineRetryPending = true;
       labelsDrawn = false;
       lastDrawnDtcScreen = 0xFF;
       return;
@@ -569,7 +587,7 @@ void drawBoostValue() {
 }
 
 /**
- * Disegna la coppia motore in Nm, letta dalla centralina o stimata; in rilascio può essere negativa.
+ * Disegna la coppia motore all'albero in Nm, letta dalla centralina; in rilascio può essere negativa.
  * Colonna sinistra, y=50. Font deve essere già impostato.
  * @see updateDisplay()
  */
@@ -602,8 +620,8 @@ void drawCoolantValue() {
 }
 
 /**
- * Disegna la carica della batteria ibrida (PID 0x5B) nella colonna destra della riga 2, y=50:
- * "100%" occupa esattamente i 28 px fra RIGHT_COL_X e il bordo.
+ * Disegna la carica della batteria al litio del mild hybrid nella colonna destra della riga 2, y=50: "100%"
+ * occupa esattamente i 28 px fra RIGHT_COL_X e il bordo. Senza un DID verificato la carica resta N/D.
  * @see updateDisplay()
  */
 void drawHybBattValue() {
@@ -721,7 +739,8 @@ void drawDTCScreen(uint8_t page) {
   // Spazio per i massimi dei contatori uint8_t, non solo per i 12 DTC di OBD_MAX_DTC
   char title[25];
   if (dtcPages > 1) {
-    snprintf(title, sizeof(title), "ERRORI (%d) pag.%d/%d", dtcCount, page + 1, dtcPages);
+    // 17 caratteri al massimo (12 DTC, 6 pagine): il font 7x14B ne contiene 18 in 128 px
+    snprintf(title, sizeof(title), "ERRORI %d pag.%d/%d", dtcCount, page + 1, dtcPages);
   } else {
     snprintf(title, sizeof(title), "ERRORI ATTIVI (%d)", dtcCount);
   }

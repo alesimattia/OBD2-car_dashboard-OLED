@@ -190,7 +190,9 @@ static const char ODIS_DOOR_REAR_PASSENGER[] PROGMEM = "Porta posteriore lato pa
 static const char ODIS_BRAKE_SENSORS[] PROGMEM = "Sensori impianto frenante";
 
 // Le centraline con due coppie (abbaglianti, trazione integrale) hanno due righe; gli ID condivisi da due
-// componenti ODIS (70A, 716, 732, 76B) hanno un nome che li comprende entrambi, distinto poi da F197
+// componenti ODIS (70A, 716, 732, 76B) hanno un nome che li comprende entrambi, distinto poi da F197.
+// L'ultima riga, 7E4/7EC, non viene da ODIS: la scansione del 22/11/2026 la conferma come la stessa centralina
+// freni di 713/77D (stessi codice ricambio e nome di sistema)
 static const ObdOdisEcu OBD_ODIS_ECUS[] PROGMEM = {
 	{0x70A, 0x774, ODIS_PARKING}, {0x730, 0x79A, ODIS_HIGH_BEAM}, {0x748, 0x7B2, ODIS_HIGH_BEAM},
 	{0x72B, 0x795, ODIS_SPECIAL_2}, {0x7E0, 0x7E8, ODIS_ENGINE}, {0x7E2, 0x7EA, ODIS_ENGINE_2},
@@ -220,7 +222,7 @@ static const ObdOdisEcu OBD_ODIS_ECUS[] PROGMEM = {
 	{0x73D, 0x7A7, ODIS_ROOF_2}, {0x71C, 0x786, ODIS_SOUND_ACTUATOR}, {0x73C, 0x7A6, ODIS_AUX_DISPLAY},
 	{0x720, 0x78A, ODIS_BRAKE_REAR_RIGHT}, {0x72E, 0x798, ODIS_MOUNTS}, {0x71F, 0x789, ODIS_BRAKE_REAR_LEFT},
 	{0x73E, 0x7A8, ODIS_DOOR_REAR_DRIVER}, {0x72A, 0x794, ODIS_REDUCER}, {0x73F, 0x7A9, ODIS_DOOR_REAR_PASSENGER},
-	{0x762, 0x7CC, ODIS_BRAKE_SENSORS}};
+	{0x762, 0x7CC, ODIS_BRAKE_SENSORS}, {0x7E4, 0x7EC, ODIS_BRAKES}};
 static constexpr uint8_t OBD_ODIS_COUNT = sizeof(OBD_ODIS_ECUS) / sizeof(OBD_ODIS_ECUS[0]);
 
 /**
@@ -276,6 +278,8 @@ static constexpr uint8_t UDS_FLAG_SKIP_19 = 0x04;
 static constexpr uint8_t UDS_FLAG_BUDGET = 0x08;
 static constexpr uint8_t UDS_FLAG_EXTENDED = 0x10;
 static constexpr uint8_t UDS_FLAG_SKIP_F4 = 0x20;
+// 19 01 rifiutato con NRC 12: i DTC si contano dalla lista 19 02
+static constexpr uint8_t UDS_FLAG_DTC_LIST = 0x40;
 
 /** Centralina UDS trovata dalla discovery, con lo stato delle sue letture e il riepilogo per la pagina /scan. */
 struct UdsEcuResult
@@ -471,9 +475,26 @@ struct ScanReply
 };
 
 /**
+ * Vero se la risposta positiva ripete l'identificatore chiesto: DID per il 22, sub-funzione per il 19, PID, MID o
+ * InfoType per le richieste OBD con un solo parametro. Così una risposta arrivata in ritardo alla richiesta
+ * precedente non viene presa per quella corrente.
+ */
+inline bool obdScanEchoMatches(const uint8_t *request, uint8_t requestLen, const ObdIsoTpRx *msg)
+{
+	if (request[0] == 0x22)
+		return requestLen >= 3 && msg->receivedLen >= 3 && msg->data[1] == request[1] && msg->data[2] == request[2];
+	const bool singleObdParameter = ((request[0] == 0x01 || request[0] == 0x06 || request[0] == 0x09) && requestLen == 2) ||
+									(request[0] == 0x02 && requestLen == 3);
+	if (request[0] == 0x19 || singleObdParameter)
+		return requestLen >= 2 && msg->receivedLen >= 2 && msg->data[1] == request[1];
+	return true;
+}
+
+/**
  * Invia una richiesta e ne classifica l'esito: risposta positiva o negativa di responseId, multi-frame rimasto a
- * metà, silenzio, errore di trasporto. Gli errori di trasporto consecutivi si contano per saltare la fase (regola 5);
- * le attese 7F xx 78 le gestisce già il trasporto. Il messaggio resta valido fino alla richiesta successiva.
+ * metà, silenzio, errore di trasporto. Una risposta positiva che non ripete l'identificatore chiesto vale silenzio.
+ * Gli errori di trasporto consecutivi si contano per saltare la fase (regola 5); le attese 7F xx 78 le gestisce già
+ * il trasporto. Il messaggio resta valido fino alla richiesta successiva.
  */
 inline ScanReply obdScanRequest(uint32_t requestId, uint32_t responseId, uint8_t receiveMode, const uint8_t *request,
 								uint8_t requestLen, uint16_t windowMs)
@@ -496,7 +517,7 @@ inline ScanReply obdScanRequest(uint32_t requestId, uint32_t responseId, uint8_t
 			reply.result = SCAN_RESULT_NEGATIVE;
 			reply.nrc = nrc;
 		}
-		else if (msg->data[0] == (uint8_t)(request[0] + 0x40))
+		else if (msg->data[0] == (uint8_t)(request[0] + 0x40) && obdScanEchoMatches(request, requestLen, msg))
 		{
 			reply.result = SCAN_RESULT_POSITIVE;
 			reply.message = msg;
@@ -549,7 +570,9 @@ inline ScanReply obdScanUdsRequest(uint8_t index, const uint8_t *request, uint8_
 	}
 	if (reply.result != SCAN_RESULT_TRANSPORT)
 		ecu.silence = 0;
-	if (reply.result == SCAN_RESULT_NEGATIVE && serviceFlag &&
+	// 19 01 rifiutato come sub-funzione (NRC 12) non esclude il servizio: la lettura dei DTC ripiega su 19 02
+	const bool dtcCountRefused = request[0] == 0x19 && request[1] == 0x01 && reply.nrc == 0x12;
+	if (reply.result == SCAN_RESULT_NEGATIVE && serviceFlag && !dtcCountRefused &&
 		(reply.nrc == 0x11 || reply.nrc == 0x7F || reply.nrc == 0x7E || reply.nrc == 0x12))
 	{
 		ecu.flags |= serviceFlag;
@@ -927,10 +950,11 @@ inline void obdPrintInfoType(uint8_t infoType, const uint8_t *data, uint16_t len
 	}
 }
 
-// DID di identificazione UDS con significato pubblico: ISO 14229 e VAG confermati da dump reali; F190 (VIN) escluso
-static const uint16_t OBD_IDENT_DIDS[] PROGMEM = {0xF180, 0xF181, 0xF182, 0xF186, 0xF187, 0xF188, 0xF189, 0xF18A,
-												  0xF18B, 0xF18C, 0xF18E, 0xF191, 0xF192, 0xF193, 0xF194, 0xF195,
-												  0xF196, 0xF197, 0xF198, 0xF199, 0xF19A, 0xF19B, 0xF19C, 0xF19D,
+// DID di identificazione UDS con significato pubblico: ISO 14229 e VAG confermati da dump reali; F190 (VIN) escluso.
+// Il nome di sistema F197 è il primo, così il nome della centralina vale per tutte le righe del suo blocco
+static const uint16_t OBD_IDENT_DIDS[] PROGMEM = {0xF197, 0xF180, 0xF181, 0xF182, 0xF186, 0xF187, 0xF188, 0xF189,
+												  0xF18A, 0xF18B, 0xF18C, 0xF18E, 0xF191, 0xF192, 0xF193, 0xF194,
+												  0xF195, 0xF196, 0xF198, 0xF199, 0xF19A, 0xF19B, 0xF19C, 0xF19D,
 												  0xF19E, 0xF19F, 0xF1A0, 0xF1A2, 0xF1A3, 0xF1AA};
 static constexpr uint8_t OBD_IDENT_DID_COUNT = sizeof(OBD_IDENT_DIDS) / sizeof(OBD_IDENT_DIDS[0]);
 static const char OBD_IDENT_F180[] PROGMEM = "ID software di boot";
@@ -964,9 +988,9 @@ static const char OBD_IDENT_F1A2[] PROGMEM = "Versione file ODX";
 static const char OBD_IDENT_F1A3[] PROGMEM = "Versione hardware VW";
 static const char OBD_IDENT_F1AA[] PROGMEM = "Nome di sistema officina VW";
 static const char *const OBD_IDENT_NAMES[] PROGMEM = {
-	OBD_IDENT_F180, OBD_IDENT_F181, OBD_IDENT_F182, OBD_IDENT_F186, OBD_IDENT_F187, OBD_IDENT_F188, OBD_IDENT_F189,
-	OBD_IDENT_F18A, OBD_IDENT_F18B, OBD_IDENT_F18C, OBD_IDENT_F18E, OBD_IDENT_F191, OBD_IDENT_F192, OBD_IDENT_F193,
-	OBD_IDENT_F194, OBD_IDENT_F195, OBD_IDENT_F196, OBD_IDENT_F197, OBD_IDENT_F198, OBD_IDENT_F199, OBD_IDENT_F19A,
+	OBD_IDENT_F197, OBD_IDENT_F180, OBD_IDENT_F181, OBD_IDENT_F182, OBD_IDENT_F186, OBD_IDENT_F187, OBD_IDENT_F188,
+	OBD_IDENT_F189, OBD_IDENT_F18A, OBD_IDENT_F18B, OBD_IDENT_F18C, OBD_IDENT_F18E, OBD_IDENT_F191, OBD_IDENT_F192,
+	OBD_IDENT_F193, OBD_IDENT_F194, OBD_IDENT_F195, OBD_IDENT_F196, OBD_IDENT_F198, OBD_IDENT_F199, OBD_IDENT_F19A,
 	OBD_IDENT_F19B, OBD_IDENT_F19C, OBD_IDENT_F19D, OBD_IDENT_F19E, OBD_IDENT_F19F, OBD_IDENT_F1A0, OBD_IDENT_F1A2,
 	OBD_IDENT_F1A3, OBD_IDENT_F1AA};
 
@@ -1062,7 +1086,7 @@ inline PGM_P obdProbePhaseName()
 	case SCAN_UDS11_DISCOVERY:
 	case SCAN_UDS29_DISCOVERY:
 	case SCAN_UDS_CONFIRM:
-		return PSTR("Ricerca centraline UDS");
+		return PSTR("Centraline UDS");
 	case SCAN_FLOW_CONTROL_TEST:
 	case SCAN_UDS_READ:
 		return PSTR("Letture UDS");
@@ -1687,8 +1711,10 @@ inline int8_t obdUdsFindOrAdd(uint32_t requestId, uint32_t responseId)
 }
 
 /**
- * ID candidati della discovery UDS: a 11 bit le richieste VAG 700-773 e 7E0-7E7 (sopra 773 ci sono le risposte,
- * convenzione richiesta + 6A), a 29 bit 17FC0000-17FC00FF. Ritorna quanti ID ha scritto.
+ * ID candidati della discovery UDS: a 11 bit le richieste VAG 70A-773 e 7E0-7E7 (sopra 773 ci sono le risposte,
+ * convenzione richiesta + 6A), a 29 bit 17FC0000-17FC00FF. Ritorna quanti ID ha scritto. 700-709 non hanno coppie
+ * ODIS e le loro risposte (76A-773) sono a loro volta richieste: sulla vettura il 3E 00 a 700 riceve 18 risposte
+ * insieme, che riempirebbero i due buffer del MCP2515 durante la raffica.
  */
 inline uint16_t obdUdsCandidates(bool extended, uint32_t *ids)
 {
@@ -1699,7 +1725,7 @@ inline uint16_t obdUdsCandidates(bool extended, uint32_t *ids)
 			ids[count++] = OBD_ID_EXTENDED | 0x17FC0000UL | low;
 		return count;
 	}
-	for (uint32_t id = 0x700; id <= 0x773; id++)
+	for (uint32_t id = 0x70A; id <= 0x773; id++)
 		ids[count++] = id;
 	for (uint32_t id = 0x7E0; id <= 0x7E7; id++)
 		ids[count++] = id;
@@ -2099,11 +2125,20 @@ inline void obdProbeStepUdsRead()
 		if (obdProbe.item < 3)
 		{
 			static const uint8_t masks[3] = {0x08, 0x04, 0x01};
-			const uint8_t request[3] = {0x19, 0x01, masks[obdProbe.item]};
+			const bool list = (ecu.flags & UDS_FLAG_DTC_LIST) != 0;
+			const uint8_t request[3] = {0x19, (uint8_t)(list ? 0x02 : 0x01), masks[obdProbe.item]};
 			ScanReply reply = obdScanUdsRequest(obdProbe.ecu, request, 3);
+			// 19 01 rifiutato come sub-funzione: la stessa maschera si ripete con 19 02
+			if (!list && reply.result == SCAN_RESULT_NEGATIVE && reply.nrc == 0x12)
+			{
+				ecu.flags |= UDS_FLAG_DTC_LIST;
+				more = true;
+				break;
+			}
 			uint16_t count;
 			if (reply.result == SCAN_RESULT_POSITIVE &&
-				obdParseDtcCount(reply.message->data, reply.message->receivedLen, &count))
+				(list ? obdParseDtcListCount(*reply.message, &count)
+					  : obdParseDtcCount(reply.message->data, reply.message->receivedLen, &count)))
 			{
 				if (obdProbe.item == 0)
 					ecu.dtcConfirmed = count;
@@ -2218,11 +2253,16 @@ inline void obdProbeStepSummary()
 	obdProbe.item++;
 }
 
-/** Fase 17: profilo motore suggerito, pronto da incollare nel blocco "Profilo vettura" di obd_live.h. */
+/**
+ * Fase 17: profilo suggerito, pronto da incollare nel blocco "Profilo vettura" di obd_live.h: PID del motore,
+ * modo di lettura e centraline OBD che rispondono solo alle richieste fisiche.
+ */
 inline void obdProbeStepProfile()
 {
 	int8_t engine = obdFindEcu(OBD_ENGINE_RESPONSE_ID);
 	Serial.println(F("\n// Profilo suggerito dalla scansione completa: sostituire il blocco \"Profilo vettura\" di obd_live.h"));
+	if (obdProbe.stopped)
+		Serial.println(F("// Scansione interrotta: profilo parziale, da non usare senza una scansione completa"));
 	if (engine < 0)
 	{
 		Serial.println(F("// Motore 7E8 non trovato: profilo non disponibile"));
@@ -2244,11 +2284,21 @@ inline void obdProbeStepProfile()
 		Serial.println(F("};"));
 		Serial.print(F("static constexpr bool OBD_ENGINE_MULTI_PID = "));
 		Serial.println(scanMultiPid6 ? F("true;") : F("false;"));
+		Serial.print(F("static const uint16_t OBD_PHYSICAL_ONLY_ECUS[] PROGMEM = {"));
+		for (uint8_t i = 0; i < ecuCount; i++)
+		{
+			if (ecuResults[i].respondsFunctional || !ecuResults[i].respondsPhysical)
+				continue;
+			Serial.print(F("0x"));
+			Serial.print(ecuResults[i].ecuId, HEX);
+			Serial.print(F(", "));
+		}
+		Serial.println(F("0};"));
 		if (!isnan(scanReferenceTorqueNm))
 		{
 			Serial.print(F("// Coppia di riferimento letta (PID 63): "));
 			obdPrintNumber(scanReferenceTorqueNm);
-			Serial.println(F(" Nm, confrontarla con TORQUE_MAX_NM di EngineConstants.h"));
+			Serial.println(F(" Nm"));
 		}
 	}
 	obdProbeEnter(SCAN_RESTORE);
@@ -2263,8 +2313,7 @@ inline void obdProbeStep()
 {
 	if (!obdProbeRunning())
 		return;
-	if (millis() - obdSerialServedMs < 3000 && WebSerial::logHeadSeq() - obdSerialServedSeq > 2048)
-		return;
+	// L'interruzione passa prima dell'attesa del browser, che altrimenti la rimanderebbe
 	if (obdProbe.stopRequested && obdProbe.phase < SCAN_SUMMARY)
 	{
 		obdProbe.stopRequested = false;
@@ -2273,6 +2322,8 @@ inline void obdProbeStep()
 		obdProbeEnter(SCAN_SUMMARY);
 		return;
 	}
+	if (millis() - obdSerialServedMs < 3000 && WebSerial::logHeadSeq() - obdSerialServedSeq > 2048)
+		return;
 	switch (obdProbe.phase)
 	{
 	case SCAN_OBD_FUNCTIONAL:
@@ -2407,10 +2458,10 @@ struct ObdJsonStream
 			put(c);
 	}
 
-	/** Accoda testo formattato con formato PROGMEM. */
+	/** Accoda testo formattato con formato PROGMEM; il frammento più lungo, quello dell'adattatore, è di 95 caratteri. */
 	void printfP(PGM_P format, ...)
 	{
-		char temp[96];
+		char temp[128];
 		va_list args;
 		va_start(args, format);
 		vsnprintf_P(temp, sizeof(temp), format, args);

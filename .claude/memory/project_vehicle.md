@@ -12,8 +12,10 @@ trazione anteriore, rapporti 3.188 / 2.190 / 1.517 / 1.057 / 0.738 / 0.557 / 0.4
 cifra del VIN `N`, produzione maggio 2022): è l'anno usato per i filtri OBDb.
 
 **Mild hybrid 12 V:** BAS (slave LIN della centralina motore) e batteria Li-ion 12 V 10 Ah. Veleggio a motore spento fra
-55 e 160 km/h, start-stop sotto 22 km/h: la centralina motore risponde con RPM, carico e MAF a zero. Potenza del BAS e carica
-della batteria non sono esposte dall'OBD standard; i dati della batteria 12 V stanno nei DID UDS del gateway `710/77A`.
+55 e 160 km/h, start-stop sotto 22 km/h: la centralina motore risponde con RPM e carico a zero. Potenza del BAS e carica
+della batteria Li-ion non sono esposte dall'OBD standard nè da DID pubblici: la MQ-BMS `17FC00AE` risponde solo
+all'identificazione; i DID del gateway `710/77A` (`2A0x`, `2AF7`) sono della batteria AGM da 68 Ah. Relè interno della
+batteria Li-ion chiuso dall'avviamento (SSP A6). DMSA_engine.pdf in DOCS (SSP 683) non tratta il mild hybrid.
 
 **Centraline OBD della vettura** (scan reale 22/11/2026, [[project_scan_state]]; CAN 11/500, nessuna risposta OBD a 29 bit):
 - `0x7E8` motore J623 `R4 2.0l TFSI`: 48 PID `01 03 04 05 06 07 0B 0C 0D 0E 0F 11 13 15 1C 1F 21 23 2E 2F 30 31 33 34 3C 41 42 43 44 45 46 47 49 4A 4C 51 56 5E 62 63 67 70 8B 8E 9D 9E A4 A6`; multi-PID a 6 ok.
@@ -32,5 +34,5 @@ telematica 1. Elenco completo in README §5 "Centraline UDS della vettura".
 **Fonti nel repo:** in `DOCS/` la scheda eTD Audi, `references.lnk` con le fonti web e il report dello scan reale
 `pid_scan_20261122_195218.txt` ([[project_scan_state]]).
 
-**How to apply:** prima di proporre PID nuovi verificare che il motore li abbia letti nella scansione completa; per coppia e boost la
-centralina è la fonte primaria, `TorqueModel.h`/`BoostModel.h` sono il ripiego (vedi [[feedback_helpers_readonly]]).
+**How to apply:** prima di proporre PID nuovi verificare che il motore li abbia letti nella scansione completa; boost, coppia,
+marcia e consumi si leggono sempre dalla centralina, senza modelli ([[feedback_read_not_estimate]]).

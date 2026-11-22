@@ -10,7 +10,7 @@ metadata:
 scansione; dopo la chiusura una riconnessione WiFi non lo riaccende.
 
 **Endpoint:** `/dashboard`, `/scan` (stessa pagina sulla tab "PID supportati"), `/data` (campi `busy` e `scan`),
-`/scan-data`, `/probe?start|stop`, `/probe-status`, `/serial-data`, `/debug?on|off`, `/brightness?set=N|auto`, `/clear-dtc`;
+`/scan-data`, `/probe?start|stop`, `/probe-status`, `/serial-data`, `/debug?on|off`, `/brightness?set=N|auto`, `/clear-dtc` (solo POST);
 OTA `/ota` (WiFi) o `/update` (CAN). Schema JSON in README §11.2-11.4.
 
 **ELM327 WiFi (WIFI_conn):** rete `WiFi_OBDII` aperta, TCP `192.168.0.10:35000`, init `ATZ ATE0 ATL0 ATS0 ATH1`, protocollo
@@ -23,10 +23,13 @@ su Windows l'estensione `.lnk` non si apre con doppio clic, va aperto con un edi
 
 **Anteprime offline:** `monitor_preview.html` è `DASHBOARD_HTML` di `web_dashboard.h` con titolo e banner di anteprima più
 uno script che simula gli endpoint, compresa una scansione completa con una centralina UDS muta: quando cambia la pagina si
-rigenera copiando l'HTML del firmware e tenendo lo script, fine riga CRLF. `ui_preview.html` ha 20 schede OLED. Il README le
+rigenera copiando l'HTML del firmware (senza la riga vuota iniziale) e tenendo titolo, banner e script, fine riga LF come
+ogni file del repo. `ui_preview.html` ha 20 schede OLED. Il README le
 mostra con gli screenshot `DOCS/monitor_preview.png` (tab Dashboard) e `DOCS/ui_preview.png`, cliccabili verso la versione
 live su raw.githack.com, perchè GitHub non renderizza gli iframe. Gli screenshot si ricatturano quando cambiano le parti
-mostrate, con Edge già presente (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`) in `--headless=new` con
+mostrate. Sul Mac con Brave headless via Playwright globale (script nello scratchpad): `ui_preview.html` con viewport
+1200×940 e `screens` filtrato in `page.evaluate` sulle schede 7, 10, 11 e 13c, poi `renderAll()`; `monitor_preview.html`
+con viewport 480×1600 dopo 4 s. Su Windows con Edge già presente (`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`) in `--headless=new` con
 `--screenshot`, `--virtual-time-budget=4000` e `--user-data-dir` nello scratchpad: dashboard a `--window-size=480,1600`; OLED
 a `--window-size=1200,940` da una copia di `ui_preview.html` nello scratchpad filtrata sulle schede 7, 10, 11 e 13c. Con il
 simulatore che ha timer attivi Edge può non terminare: va lanciato su una copia nello scratchpad e fermato se si blocca.

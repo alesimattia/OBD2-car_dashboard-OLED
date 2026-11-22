@@ -5,6 +5,6 @@
   "port": "/dev/tty.Bluetooth-Incoming-Port",
   "output": "build",
   "buildPreferences": [
-    ["build.extra_flags", "-I/Users/alesimattia/Documents/OBD2-car_dashboard-OLED"]
+    ["build.extra_flags", "-I/Users/alesimattia/Documents/PROGETTi/OBD2-car_dashboard-OLED"]
   ]
 }

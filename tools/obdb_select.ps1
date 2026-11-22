@@ -50,6 +50,12 @@ $GateOverrides = @{
 $UserIncludedSignals = @('A5_OIL_P_VLV_SWITCH', 'A5_PISTON_COOLING')
 # Refusi dei nomi OBDb che renderebbero il dato fuorviante: nel PID 70 entrambi gli stati dicono "bressure A"
 $NameCorrections = @{ 'BP_A' = 'Boost pressure A control status'; 'BP_B' = 'Boost pressure B control status' }
+# Correzioni verificate sulla vettura: dove OBDb ha più varianti dello stesso DID per anni diversi, la variante che la
+# scansione reale conferma sostituisce quella dell'anno modello. 028D (temperatura centralina motore): la vettura
+# risponde in decimi di kelvin come la variante OBDb dal 2023, non in decimi di grado (0x0BA3 = 24.8 °C nella
+# scansione del 22/11/2026, invece di 297.9 °C saturati a 150). La variante corretta ignora filtro anni e dbgfilter.
+$VehicleCorrections = @{ 'A5_ECU_TEMP' = 'A5_ECU_TEMP_KELVIN' }
+$AppliedCorrections = New-Object System.Collections.Generic.List[string]
 $ScalarStatePattern = '\b(status|mode|state)\b'
 # Monitor dei byte C/D di 01/41 definiti da OBDb solo per l'accensione comandata
 $SparkMonitorPrefixes = @('EGR', 'HTR', 'O2S', 'ACRF', 'AIR', 'EVAP', 'HCAT', 'CAT')
@@ -247,6 +253,13 @@ function Get-Selection($SignalSet, [string] $Source, $CaptureSupport) {
     foreach ($command in $SignalSet.commands) {
         $identifier = Get-CommandIdentifier $command
         $commandExclusion = Get-CommandExclusion $command
+        $signalIds = @($command.signals | ForEach-Object { $_.id })
+        $replaced = @($signalIds | Where-Object { $VehicleCorrections.ContainsKey($_) })
+        if ($replaced.Count -gt 0) {
+            foreach ($id in $replaced) { $AppliedCorrections.Add(('{0} 22 {1}: {2} sostituito da {3}' -f $command.hdr, $identifier.Id, $id, $VehicleCorrections[$id])) }
+            continue
+        }
+        if (-not $command.din -and @($signalIds | Where-Object { $VehicleCorrections.Values -contains $_ }).Count -gt 0) { $commandExclusion = $null }
         $captureKey = '{0}.{1}.22{2}' -f $command.hdr, $command.rax, $identifier.Id
         $capture = $null
         if ($Source -eq 'A5') {
@@ -327,6 +340,7 @@ function Write-SelectionText($Sae, $A5) {
         }
     }
     $lines.Add("Nomi corretti rispetto a OBDb: $(($NameCorrections.Keys | Sort-Object) -join ', ')")
+    $lines.Add("Correzioni verificate sulla vettura: $($AppliedCorrections -join '; ')")
     $lines.Add("Inclusi per scelta dopo la revisione: $($UserIncludedSignals -join ', ')")
     foreach ($entry in @(@('SAE', $Sae), @('A5', $A5))) {
         $lines.Add('')

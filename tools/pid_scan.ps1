@@ -766,6 +766,14 @@ function Get-UdsDtcCount([byte[]] $Message) {
     return ([int]$Message[4] -shl 8) -bor $Message[5]
 }
 
+# Conta i DTC di una risposta positiva 59 02 dalla lunghezza dichiarata del messaggio, come obdParseDtcListCount():
+# [59 02 maschera disponibile, n × (DTC a 3 byte, stato)]; i codici VAG non si decodificano. $null se non è una lista.
+function Get-UdsDtcListCount($Slot) {
+    $data = $Slot.Data
+    if ($data.Count -lt 3 -or $data[0] -ne 0x59 -or $data[1] -ne 0x02 -or $Slot.ExpectedLength -lt 3 -or ($Slot.ExpectedLength - 3) % 4 -ne 0) { return $null }
+    return [int](($Slot.ExpectedLength - 3) / 4)
+}
+
 # Copia un contenuto come testo se è stampabile, con il riempimento finale di zeri, spazi o FF tolto, come
 # obdCopyPrintableText(); un contenuto binario ritorna $null e non si mostra. MaxChars è la capienza del buffer del firmware.
 function ConvertFrom-PrintableText([byte[]] $Data, [int] $MaxChars) {
@@ -1100,12 +1108,12 @@ function Register-StnFlowControlPair([string] $RequestId, [string] $ResponseId) 
 }
 
 # Ultima difesa contro i servizi vietati: passano solo le richieste di lettura della scansione (OBD 01 02 03 06 07 09 0A,
-# UDS 22, 19 01 e 3E 00) e mai il VIN (09 02 e 22 F190), qualunque sia il chiamante.
+# UDS 22, 19 01, 19 02 e 3E 00) e mai il VIN (09 02 e 22 F190), qualunque sia il chiamante.
 function Assert-ReadOnlyRequest([byte[]] $Request) {
     $service = [int]$Request[0]
     $allowed = @(0x01, 0x02, 0x03, 0x06, 0x07, 0x09, 0x0A, 0x19, 0x22, 0x3E)
     $blocked = $allowed -notcontains $service
-    if ($service -eq 0x19 -and ($Request.Length -lt 2 -or $Request[1] -ne 0x01)) { $blocked = $true }
+    if ($service -eq 0x19 -and ($Request.Length -lt 2 -or @(0x01, 0x02) -notcontains $Request[1])) { $blocked = $true }
     if ($service -eq 0x3E -and ($Request.Length -lt 2 -or $Request[1] -ne 0x00)) { $blocked = $true }
     if ($service -eq 0x09 -and $Request.Length -ge 2 -and $Request[1] -eq 0x02) { $blocked = $true }
     for ($i = 1; $service -eq 0x22 -and $i + 1 -lt $Request.Length; $i += 2) {
@@ -1256,8 +1264,22 @@ function Register-TransportOutcome([bool] $IsError) {
     if ($scan.TransportErrors -ge $script:ScanTables.Constants['OBD_SCAN_TRANSPORT_ERROR_LIMIT']) { throw $script:PhaseSkippedMarker }
 }
 
+# Vero se la risposta positiva ripete l'identificatore chiesto, come obdScanEchoMatches(): DID per il 22, sub-funzione
+# per il 19, PID, MID o InfoType per le richieste OBD con un solo parametro.
+function Test-ScanEcho([byte[]] $Request, [byte[]] $Data) {
+    if ($Request[0] -eq 0x22) {
+        return ($Request.Length -ge 3 -and $Data.Length -ge 3 -and $Data[1] -eq $Request[1] -and $Data[2] -eq $Request[2])
+    }
+    $singleObdParameter = ((@(0x01, 0x06, 0x09) -contains $Request[0]) -and $Request.Length -eq 2) -or ($Request[0] -eq 0x02 -and $Request.Length -eq 3)
+    if ($Request[0] -eq 0x19 -or $singleObdParameter) {
+        return ($Request.Length -ge 2 -and $Data.Length -ge 2 -and $Data[1] -eq $Request[1])
+    }
+    return $true
+}
+
 # Invia una richiesta e ne classifica l'esito come obdScanRequest(): risposta positiva o negativa dell'ID atteso,
-# multi-frame rimasto a metà (fermo al first frame o con un frame perso), silenzio, errore di trasporto.
+# multi-frame rimasto a metà (fermo al first frame o con un frame perso), silenzio, errore di trasporto. Una risposta
+# positiva che non ripete l'identificatore chiesto vale silenzio.
 function Send-ScanRequest([string] $RequestId, [string] $ResponseId, [string] $Mode, [byte[]] $Request) {
     $reply = @{ Result = 'Silent'; Nrc = 0; Message = $null; Slot = $null }
     $null = Invoke-ObdTransact $RequestId $Request $ResponseId $Mode
@@ -1274,9 +1296,10 @@ function Send-ScanRequest([string] $RequestId, [string] $ResponseId, [string] $M
             $reply.Result = 'Negative'
             $reply.Nrc = [int]$data[2]
         }
-        elseif ($data[0] -eq (($Request[0] + 0x40) -band 0xFF)) {
+        elseif ($data[0] -eq (($Request[0] + 0x40) -band 0xFF) -and (Test-ScanEcho $Request $data)) {
             $reply.Result = 'Positive'
             $reply.Message = $data
+            $reply.Slot = $slot
         }
         return $reply
     }
@@ -1345,7 +1368,9 @@ function Send-ScanUdsRequest($Ecu, [byte[]] $Request) {
         return $reply
     }
     if ($reply.Result -ne 'Transport') { $Ecu.Silence = 0 }
-    if ($reply.Result -eq 'Negative' -and $null -ne $serviceFlag -and @(0x11, 0x7F, 0x7E, 0x12) -contains $reply.Nrc) {
+    # 19 01 rifiutato come sub-funzione (NRC 12) non esclude il servizio: la lettura dei DTC ripiega su 19 02
+    $dtcCountRefused = $Request[0] -eq 0x19 -and $Request[1] -eq 0x01 -and $reply.Nrc -eq 0x12
+    if ($reply.Result -eq 'Negative' -and $null -ne $serviceFlag -and -not $dtcCountRefused -and @(0x11, 0x7F, 0x7E, 0x12) -contains $reply.Nrc) {
         $Ecu[$serviceFlag] = $true
         Add-ReportLine ((Get-UdsTag $Ecu) + ('servizio {0:X2} non supportato (NRC {1:X2}), richieste restanti saltate' -f $Request[0], $reply.Nrc))
     }
@@ -1861,6 +1886,7 @@ function Add-UdsEcu([string] $RequestId, [string] $ResponseId) {
         Skip22       = $false
         Skip19       = $false
         SkipF4       = $false
+        DtcList      = $false
         Failure      = $null
         Silence      = 0
         F4NrcStreak  = 0
@@ -1892,7 +1918,7 @@ function Find-DiscoveryResponder([string] $ExpectedId) {
 }
 
 # Fasi 11-12: discovery UDS in sequenza, perchè l'ELM327 invia una richiesta per comando: 3E 00 alle richieste VAG
-# 700-773 e 7E0-7E7 con attesa sull'ID ODIS atteso, oppure a 17FC0000-17FC00FF a 29 bit; una volta 22 F197 agli ID ODIS
+# 70A-773 e 7E0-7E7 con attesa sull'ID ODIS atteso, oppure a 17FC0000-17FC00FF a 29 bit; una volta 22 F197 agli ID ODIS
 # muti. Le risposte fuori elenco ODIS si confermano dopo. NO DATA è la norma e non ferma la ricerca.
 function Invoke-PhaseUdsDiscovery([bool] $Extended) {
     $scan = $script:ScanState
@@ -1903,7 +1929,8 @@ function Invoke-PhaseUdsDiscovery([bool] $Extended) {
         for ($low = 0x00; $low -le 0xFF; $low++) { $candidates.Add('17FC00{0:X2}' -f $low) }
     }
     else {
-        for ($value = 0x700; $value -le 0x773; $value++) { $candidates.Add('{0:X3}' -f $value) }
+        # 700-709 non hanno coppie ODIS e le loro risposte (76A-773) sono a loro volta richieste, come obdUdsCandidates()
+        for ($value = 0x70A; $value -le 0x773; $value++) { $candidates.Add('{0:X3}' -f $value) }
         for ($value = 0x7E0; $value -le 0x7E7; $value++) { $candidates.Add('{0:X3}' -f $value) }
     }
     foreach ($requestId in $candidates) {
@@ -2065,16 +2092,46 @@ function Read-UdsObdbDids($Ecu) {
 }
 
 # Conteggio dei DTC UDS con 19 01 e le maschere 08 (confermati), 04 (in attesa) e 01 (falliti ora): i codici VAG non
-# seguono la codifica SAE, quindi se ne riportano solo i conteggi.
+# seguono la codifica SAE, quindi se ne riportano solo i conteggi. Se 19 01 è rifiutato come sub-funzione (NRC 12) la
+# stessa maschera si ripete con 19 02 e i DTC si contano dalla lunghezza della lista, come il firmware.
 function Read-UdsDtcCounts($Ecu) {
     $masks = @(0x08, 0x04, 0x01)
     $fields = @('DtcConfirmed', 'DtcPending', 'DtcFailed')
     for ($index = 0; $index -lt 3; $index++) {
-        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, 0x01, $masks[$index]))
+        $subFunction = if ($Ecu.DtcList) { 0x02 } else { 0x01 }
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, $subFunction, $masks[$index]))
+        if ($subFunction -eq 0x01 -and $reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x12) {
+            $Ecu.DtcList = $true
+            $subFunction = 0x02
+            $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, $subFunction, $masks[$index]))
+        }
         if ($reply.Result -ne 'Positive') { continue }
-        $count = Get-UdsDtcCount $reply.Message
+        $count = if ($subFunction -eq 0x02) { Get-UdsDtcListCount $reply.Slot } else { Get-UdsDtcCount $reply.Message }
         if ($null -ne $count) { $Ecu[$fields[$index]] = $count }
     }
+}
+
+# Prova dei DID candidati per la carica della batteria al litio del mild hybrid sulla centralina MQ-BMS
+# (17FC00AE/17FE00AE). Non esiste una decodifica pubblica, quindi si leggono nella default session alcuni DID delle
+# batterie VAG a 48 V di OBDb Audi-Q8: carica 028C e F45B, stato 7448, corrente 1E3D, tensioni di cella 1E3B e 1E3C,
+# temperatura 2A0B. Se ne scrivono i byte grezzi in una sezione separata: è un'eccezione alla regola "niente byte
+# grezzi", approvata per trovare il DID. Va eseguita a motore acceso, perchè il relè della batteria si chiude
+# all'avviamento.
+function Read-MhevBatteryProbe($Ecu) {
+    $candidates = @(0x028C, 0xF45B, 0x7448, 0x1E3D, 0x1E3B, 0x1E3C, 0x2A0B)
+    Add-ReportLine '=== PROVA DID BATTERIA AL LITIO MHEV (decodifica non verificata, byte grezzi) ==='
+    foreach ($did in $candidates) {
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($did -shr 8), ($did -band 0xFF)))
+        $outcome = switch ($reply.Result) {
+            'Positive' { ($reply.Message | ForEach-Object { '{0:X2}' -f $_ }) -join ' ' }
+            'Negative' { 'NRC {0:X2}' -f $reply.Nrc }
+            'Incomplete' { "risposta non completata dall'adattatore" }
+            'Transport' { 'errore di trasporto' }
+            default { 'nessuna risposta, o lettura saltata per le regole failsafe' }
+        }
+        Add-ReportLine ('  DID {0:X4}: {1}' -f $did, $outcome)
+    }
+    Add-ReportLine '=== FINE PROVA DID BATTERIA AL LITIO MHEV ==='
 }
 
 # Fase 15: letture UDS per centralina, in ordine identificazione, PID standard F4xx, F600/F800, DID VAG OBDb e conteggio
@@ -2089,6 +2146,7 @@ function Invoke-PhaseUdsRead {
             Read-UdsMonitorDeclarations $ecu
             Read-UdsObdbDids $ecu
             Read-UdsDtcCounts $ecu
+            if ($ecu.ResponseId -eq '17FE00AE') { Read-MhevBatteryProbe $ecu }
         }
         catch {
             if ($_.Exception.Message -eq $script:PhaseSkippedMarker -or (Test-FatalScanError $_.Exception)) { throw }
@@ -2183,12 +2241,14 @@ function Add-ScanSummary {
     }
 }
 
-# Fase 17: profilo motore suggerito come obdProbeStepProfile(), pronto da incollare nel blocco "Profilo vettura" di
-# obd_live.h: PID dei candidati a cui il motore ha risposto, esito della prova a 6 PID e coppia del PID 63 se letta.
+# Fase 17: profilo suggerito come obdProbeStepProfile(), pronto da incollare nel blocco "Profilo vettura" di
+# obd_live.h: PID dei candidati a cui il motore ha risposto, esito della prova a 6 PID, centraline OBD che rispondono
+# solo alle richieste fisiche e coppia del PID 63 se letta.
 function Add-ScanProfile {
     $scan = $script:ScanState
     Add-ReportLine ''
     Add-ReportLine '// Profilo suggerito dalla scansione completa: sostituire il blocco "Profilo vettura" di obd_live.h'
+    if ($scan.Stopped) { Add-ReportLine '// Scansione interrotta: profilo parziale, da non usare senza una scansione completa' }
     $engine = Find-ObdEcu '7E8'
     if ($null -eq $engine) {
         Add-ReportLine '// Motore 7E8 non trovato: profilo non disponibile'
@@ -2198,8 +2258,10 @@ function Add-ScanProfile {
         Add-ReportLine ('static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {' + ($pids -join ', ') + '};')
         $multiPid = if ($scan.MultiPid6) { 'true' } else { 'false' }
         Add-ReportLine "static constexpr bool OBD_ENGINE_MULTI_PID = $multiPid;"
+        $physicalOnly = @($scan.ObdEcus | Where-Object { -not $_.RespondsFunctional -and $_.RespondsPhysical } | ForEach-Object { '0x' + $_.Id + ', ' })
+        Add-ReportLine ('static const uint16_t OBD_PHYSICAL_ONLY_ECUS[] PROGMEM = {' + ($physicalOnly -join '') + '0};')
         if ($null -ne $scan.ReferenceTorqueNm) {
-            Add-ReportLine ('// Coppia di riferimento letta (PID 63): ' + (Format-ScanNumber $scan.ReferenceTorqueNm) + ' Nm, confrontarla con TORQUE_MAX_NM di EngineConstants.h')
+            Add-ReportLine ('// Coppia di riferimento letta (PID 63): ' + (Format-ScanNumber $scan.ReferenceTorqueNm) + ' Nm')
         }
     }
     Add-ReportLine '=== FINE SCANSIONE COMPLETA ==='
@@ -2222,10 +2284,10 @@ function Invoke-FullScan {
     Invoke-ScanPhase 'Monitor Mode 06' { Invoke-PhaseMode06 }
     Invoke-ScanPhase 'Info veicolo' { Invoke-PhaseMode09 }
     Invoke-ScanPhase 'DTC OBD' { Invoke-PhaseObdDtc }
-    Invoke-ScanPhase 'Ricerca centraline UDS' { Invoke-PhaseObd29 }
-    Invoke-ScanPhase 'Ricerca centraline UDS' { Invoke-PhaseUdsDiscovery $false }
-    Invoke-ScanPhase 'Ricerca centraline UDS' { Invoke-PhaseUdsDiscovery $true }
-    Invoke-ScanPhase 'Ricerca centraline UDS' { Invoke-PhaseUdsConfirm }
+    Invoke-ScanPhase 'Centraline UDS' { Invoke-PhaseObd29 }
+    Invoke-ScanPhase 'Centraline UDS' { Invoke-PhaseUdsDiscovery $false }
+    Invoke-ScanPhase 'Centraline UDS' { Invoke-PhaseUdsDiscovery $true }
+    Invoke-ScanPhase 'Centraline UDS' { Invoke-PhaseUdsConfirm }
     Invoke-ScanPhase 'Letture UDS' { Invoke-PhaseFlowControlTest }
     Invoke-ScanPhase 'Letture UDS' { Invoke-PhaseUdsRead }
     Add-ScanSummary

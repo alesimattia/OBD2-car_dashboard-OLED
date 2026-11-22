@@ -10,7 +10,7 @@ Per "quali PID espone l'A5", "cosa fa un Mode", "come si decodifica o si calcola
 1. **README §5 e §9**: §5 dati vettura, rapporti del cambio, logiche mild hybrid e tabella centraline; §5.1 scansione
    completa (fasi, failsafe, profilo suggerito, OBFCM); §5.2 PID letti dal firmware con formula e uso; §5.3 PID e calcoli
    potenziali non implementati; §5.4 Mode OBD2/UDS con colonna Monitored; §5.5 scansione da PC con `tools/pid_scan.ps1`;
-   §9 modelli fisici e calcoli derivati con il campo JSON; §15.1 fonti e licenze.
+   §9 calcoli derivati (letture, stime, calcoli esatti) con il campo JSON; §15.1 fonti e licenze.
 2. **`tools/obdb/`**: copie dei signalset `SAEJ1979.json` e `Audi-A5.json` e del supporto per anno delle catture A5 ai
    commit fissati in `tools/obdb_select.ps1` (CC-BY-SA-4.0), `selection.txt` con ogni segnale incluso o escluso e il
    motivo, `selection.json`. Le risposte reali con i valori attesi stanno nei casi di test di `OBDb/Audi-A5`

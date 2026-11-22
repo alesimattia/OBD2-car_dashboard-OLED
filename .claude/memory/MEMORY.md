@@ -3,11 +3,12 @@
 - [OBD2 e UDS su VAG](project_obd2_vag.md): cosa la B9.5 espone via OBD standard e via UDS, coppie di ID ODIS, discovery, flow control, DTC UDS solo come conteggi, sola lettura
 - [Architettura sketch](project_architecture.md): header condivisi obd_proto/obd_scan/obd_live/obdb_signals, contratto di trasporto per sketch, scansione completa a passi, lettura multi-PID, pulsante, web, strumenti in tools/ e tabelle lette da pid_scan.ps1
 - [Decisioni di scope](project_scope_obd2.md): boot senza scansione con profilo statico, scansione completa OBD2 + UDS in sola lettura solo dal web, servizi ammessi e vietati, lettura live solo sul motore
-- [Stato della scansione completa](project_scan_state.md): report reale 22/11/2026 in DOCS, decisioni aperte (profilo obd_live.h, 0x63 = 370 Nm, BATT N/D, DID non plausibili), procedura per report futuri
-- [Helper non modificabili](feedback_helpers_readonly.md): formule, costanti e soglie di TorqueModel.h e BoostModel.h appartengono all'utente
-- [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md): solo decodifiche pubbliche e verificate (regole della selezione OBDb), niente byte grezzi, DTC UDS VAG solo conteggi, niente indirizzi hex in dashboard
-- [Non configurare la macchina di sviluppo](feedback_no_machine_config.md): niente install/config di tool sulla workstation, build manuale a carico dell'utente
-- [Endpoint, DOCS e anteprime](reference_endpoints.md): SoftAP, endpoint web, comandi ELM327, file DOCS, rigenerazione delle anteprime e ricattura degli screenshot con Edge headless
+- [Stato della scansione completa](project_scan_state.md): report reale 22/11/2026 in DOCS, firmware allineato; da verificare sul prossimo report: prova DID batteria Li-ion MHEV, 19 02, 0xA4 in marcia
+- [Leggere, non stimare](feedback_read_not_estimate.md): parametro esposto dalle centraline → si legge, mai modelli o costanti; modelli inutilizzati cancellati; restano stimati solo AFR, altitudine, efficienza intercooler
+- [Contenuto della dashboard](feedback_dashboard_content.md): BATT = carica Li-ion MHEV (N/D finchè manca un DID verificato), mai tensione 12 V; niente indicatori già presenti nel cockpit
+- [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md): solo decodifiche pubbliche e verificate (regole della selezione OBDb), DID sospetti solo corretti e mai esclusi, niente byte grezzi (eccezione: prova DID MHEV), DTC UDS VAG solo conteggi, niente indirizzi hex
+- [Non configurare la workstation Windows](feedback_no_machine_config.md): niente install/config di tool su pc-030, build manuale a carico dell'utente; sul Mac arduino-cli e pwsh approvati
+- [Endpoint, DOCS e anteprime](reference_endpoints.md): SoftAP, endpoint web, comandi ELM327, file DOCS, rigenerazione delle anteprime e ricattura degli screenshot (Brave/Playwright sul Mac, Edge su Windows)
 - [Riferimenti documentali OBD2](reference_obd2_docs.md): mappa di README §5 e §9, tools/obdb, obd_proto.h, obd_scan.h, pid_descriptions.h, report in DOCS e fonti esterne
-- [Come si compila su pc-030](reference_build.md): build.ps1 di verifica, board e opzioni ESP8266, il -I per gli header condivisi, toolchain portable, librerie stub, test C++ con MSVC e test PowerShell
+- [Come si compila e si verifica](reference_build.md): sul Mac arduino-cli con librerie reali, test clang e pwsh; su pc-030 build.ps1, toolchain portable, librerie stub, MSVC
 - [vLinker FS USB](reference_vlinker_fs.md): scansione completa da PC con tools\pid_scan.ps1 (README §5.5), comandi ELM/STN, driver FTDI e baud 115200, vincoli USB e seriali, HEX-V2 non utilizzabile

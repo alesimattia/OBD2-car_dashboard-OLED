@@ -39,6 +39,7 @@
 
 	// Blocco della pressione lunga dopo la scansione completa: BTN_LONG scatta a tasto ancora premuto, quindi chi
 	// tiene premuto per interromperla cancellerebbe i DTC (Mode 04) appena il monitor riprende
+	inline bool buttonLongPressBlocked = false;
 	inline bool buttonLongPressAwaitRelease = false;
 	inline unsigned long buttonLongPressBlockedUntil = 0;
 
@@ -49,14 +50,23 @@
 	 */
 	inline void buttonBlockLongPress()
 	{
+		buttonLongPressBlocked = true;
 		buttonLongPressAwaitRelease = true;
 		buttonLongPressBlockedUntil = millis() + 5000;
 	}
 
-	/** Vero se una BTN_LONG va eseguita, cioè se il blocco di buttonBlockLongPress() è scaduto. */
+	/**
+	 * Vero se una BTN_LONG va eseguita, cioè se il blocco di buttonBlockLongPress() è scaduto. Il flag evita il
+	 * confronto con una scadenza mai impostata, che dopo 24,8 giorni di millis() risulterebbe nel futuro.
+	 */
 	inline bool buttonLongPressAllowed()
 	{
-		return !buttonLongPressAwaitRelease && (long)(millis() - buttonLongPressBlockedUntil) >= 0;
+		if (!buttonLongPressBlocked)
+			return true;
+		if (buttonLongPressAwaitRelease || (long)(millis() - buttonLongPressBlockedUntil) < 0)
+			return false;
+		buttonLongPressBlocked = false;
+		return true;
 	}
 
 	inline ButtonEvent buttonPoll()

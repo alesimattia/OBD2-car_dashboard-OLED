@@ -86,9 +86,9 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </div>
 <div class="tabC act" id="tcD">
 <div class="s"><div class="st">Dati principali</div><div class="mg">
-<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u" id="u_boost">bar</div></div>
+<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u">bar</div></div>
 <div class="mc"><div class="l">TEMP</div><div class="v" id="d_cool">--</div><div class="u">&deg;C</div></div>
-<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u" id="u_torq">Nm</div></div>
+<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u">Nm</div></div>
 <div class="mc"><div class="l">BATTERIA IBRIDA</div><div class="v" id="d_hyb">--</div><div class="u">%</div></div>
 </div></div>
 <div class="s"><div class="st">Luce ambiente</div>
@@ -104,19 +104,17 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="s debug" style="display:none"><div class="st">Motore</div><div class="g">
 <div class="i"><span class="l">Carico</span><span class="v" id="d_load">--</span></div>
 <div class="i"><span class="l">RPM</span><span class="v" id="d_rpm">--</span></div>
-<div class="i"><span class="l">MAF</span><span class="v" id="d_maf">--</span></div>
 <div class="i"><span class="l">Press. rail</span><span class="v" id="d_rail">--</span></div>
 <div class="i"><span class="l">Lambda</span><span class="v" id="d_lam">--</span></div>
 <div class="i"><span class="l">Lambda cmd</span><span class="v" id="d_lamc">--</span></div>
 <div class="i"><span class="l">Air/Fuel Ratio</span><span class="v" id="d_afr">--</span></div>
 <div class="i"><span class="l">Temp. liq.</span><span class="v" id="d_cool2">--</span></div>
-<div class="i"><span class="l">Temp. olio</span><span class="v" id="d_oil">--</span></div>
 <div class="i"><span class="l">IAT</span><span class="v" id="d_iat">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Veicolo</div><div class="g">
 <div class="i"><span class="l">Velocit&agrave;</span><span class="v" id="d_spd">--</span></div>
 <div class="i"><span class="l">Farfalla</span><span class="v" id="d_thr">--</span></div>
-<div class="i"><span class="l">Rapporto cambio</span><span class="v" id="d_gear">--</span></div>
+<div class="i"><span class="l">Marcia</span><span class="v" id="d_gear">--</span></div>
 <div class="i"><span class="l">Acceleraz.</span><span class="v" id="d_acc">--</span></div>
 <div class="i"><span class="l">Pedale D</span><span class="v" id="d_pD">--</span></div>
 <div class="i"><span class="l">Pedale E</span><span class="v" id="d_pE">--</span></div>
@@ -139,7 +137,6 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Motore</span><span class="v" id="d_eng">--</span></div>
 <div class="i"><span class="l">Drift pedale</span><span class="v" id="d_drift">--</span></div>
 <div class="i"><span class="l">Taglio iniezione</span><span class="v" id="d_dfco">--</span></div>
-<div class="i"><span class="l">Eff. volum.</span><span class="v" id="d_ve">--</span></div>
 <div class="i"><span class="l">&Delta; farfalla</span><span class="v" id="d_dt">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Ambiente</div><div class="g">
@@ -179,7 +176,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
   var probe = { state: 'idle', percent: 0, seconds: 0, stopped: false, phase: 'Riepilogo' }, probeTicks = 0, prev = null;
   // Fasi della scansione con la percentuale raggiunta alla loro fine, come obdProbePercent() del firmware
   var PHASES = [['Centraline OBD', 7], ['PID supportati', 14], ['PID Mode 01', 22], ['Freeze frame', 25], ['Monitor Mode 06', 29],
-    ['Info veicolo', 33], ['DTC OBD', 36], ['Ricerca centraline UDS', 55], ['Letture UDS', 95], ['Riepilogo', 100]];
+    ['Info veicolo', 33], ['DTC OBD', 36], ['Centraline UDS', 55], ['Letture UDS', 95], ['Riepilogo', 100]];
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function log(line) { logText += line + '\n'; seq += line.length + 1; if (logText.length > 4000) logText = logText.slice(-4000); }
 
@@ -194,26 +191,26 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     var map = coasting ? baro : fullLoad ? boostKpa - 4 : rnd(35, 95);
     var torquePct = coasting ? 0 : load * 0.95;
     var friction = coasting ? 0 : 6 + rpm / 1500;
-    var torque = coasting ? 0 : Math.round((torquePct - friction) * 3.2);
+    var torque = coasting ? 0 : Math.round((torquePct - friction) * 3.7);
     var lambda = coasting ? null : fullLoad ? rnd(0.86, 0.92) : rnd(0.98, 1.02);
-    var maf = coasting ? 0 : rpm * load / 2200 + 2;
-    var fuelLh = coasting ? 0 : maf * 3600 / (14.7 * (lambda || 1) * 745);
-    var wheelRpm = speed * 1000 / (60 * 2.0);
-    var gear = (!coasting && speed > 5 && rpm > 0) ? rpm / (wheelRpm * 4.234) : null;
+    // Solo per la simulazione: la portata d'aria non è un dato della vettura, che non espone il MAF
+    var air = coasting ? 0 : rpm * load / 2200 + 2;
+    var fuelLh = coasting ? 0 : air * 3600 / (14.7 * (lambda || 1) * 745);
+    var gear = coasting || speed < 5 ? 0 : speed < 20 ? 1 : speed < 35 ? 2 : speed < 55 ? 3 : speed < 80 ? 4 : speed < 110 ? 5 : speed < 140 ? 6 : 7;
     var powerKw = coasting ? 0 : torque * rpm / 9549;
     var g = {
-      engineStopped: coasting, load: load, coolant: Math.round(rnd(88, 107)), oilTemp: Math.round(rnd(95, 105)),
+      engineStopped: coasting, load: load, coolant: Math.round(rnd(88, 107)),
       map: Math.round(map), boostKpa: boostKpa, rpm: Math.round(rpm), speed: Math.round(speed), iat: Math.round(rnd(28, 38)),
-      maf: maf, railBar: coasting ? 0 : Math.round(fullLoad ? rnd(280, 345) : rnd(80, 160)), lambda: lambda, lambdaCmd: lambda,
-      o2v: null, o2ma: lambda === null ? null : (lambda - 1) * 2, baro: baro, volts: coasting ? rnd(12.6, 12.9) : rnd(14.1, 14.8),
+      railBar: coasting ? 0 : Math.round(fullLoad ? rnd(280, 345) : rnd(80, 160)), lambda: lambda, lambdaCmd: lambda,
+      o2ma: lambda === null ? null : (lambda - 1) * 2, baro: baro, volts: coasting ? rnd(12.6, 12.9) : rnd(14.1, 14.8),
       ambient: 18, pedalD: Math.round(load * 0.8), pedalE: Math.round(load * 0.4), throttle: Math.round(coasting ? 0 : load * 0.9),
-      runtime: tick, kmMil: 0, starts: 14, boost: (boostKpa - baro) / 100, boostSrc: 'ECU', fuelSrc: 'ECU', torque: torque,
+      runtime: tick, kmMil: 0, starts: 14, boost: (boostKpa - baro) / 100, torque: torque,
       powerKw: powerKw, afr: lambda === null ? null : lambda * 14.7, fuelLh: fuelLh,
       fuelL100: speed > 3 ? fuelLh / speed * 100 : null, bsfc: powerKw > 1 ? Math.round(fuelLh * 745 / powerKw) : null,
       altitude: 110, airDensity: map * 1000 / (287.05 * 303), intercoolerEff: boostKpa > baro + 5 ? Math.round(rnd(60, 80)) : null,
-      pressureRatio: boostKpa / baro, volEff: coasting ? null : Math.round(rnd(85, 98)), driftPedal: Math.round(rnd(0, 2)),
-      deltaThrottlePedal: Math.round(rnd(-4, 8)), gearRatio: gear, accel: prev ? (speed - prev.speed) / 3.6 / 0.5 : null,
-      boostRate: prev ? ((boostKpa - baro) / 100 - prev.boost) / 0.5 : null, dfco: !coasting && load < 1
+      pressureRatio: boostKpa / baro, driftPedal: Math.round(rnd(0, 2)),
+      deltaThrottlePedal: Math.round(rnd(-4, 8)), gear: gear, accel: prev ? (speed - prev.speed) / 3.6 / 0.5 : null,
+      boostRate: prev ? ((boostKpa - baro) / 100 - prev.boost) / 0.5 : null, dfco: !coasting && fuelLh <= 0
     };
     prev = g;
     if (tick % 10 === 0) dtcOn = !dtcOn;
@@ -224,21 +221,21 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
   // Esito finale della scansione completa: centraline OBD con nomi italiani dei PID, centraline UDS con i soli conteggi
   var RESULT = {
     adapter: { headers: true, physical: true, flowControl: true, pending78: true, can29: true },
-    engine: { multiPid: true, refTorque: 320 },
+    engine: { multiPid: true, refTorque: 370 },
     obfcm: { km: 23456.7, liters: 1651.2, avg: 7.04 },
     ecus: [
       { name: 'Motore', detail: 'ECM-EngineControl', physical: true, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'Trim breve B1', 'Trim lungo B1', 'Press. collettore', 'RPM',
-          'Velocita\'', 'Anticipo accensione', 'Temp. aria aspirata', 'MAF', 'Farfalla', 'Lambda B1S2', 'Press. rail',
+          'Velocita\'', 'Anticipo accensione', 'Temp. aria aspirata', 'Farfalla', 'Lambda B1S2', 'Press. rail',
           'Press. barometrica', 'Lambda 1 (lambda+I)', 'Temp. cat. B1S1', 'Tensione batteria', 'Lambda comandata', 'Temp. ambiente',
-          'Pedale D', 'Pedale E', 'Attuatore farfalla', 'Temp. olio motore', 'Consumo motore', 'Coppia richiesta', 'Coppia effettiva',
-          'Coppia riferimento', 'Pressione boost', 'Coppia attrito', 'Portata carburante', 'Contachilometri'],
+          'Pedale D', 'Pedale E', 'Attuatore farfalla', 'Consumo motore', 'Coppia effettiva',
+          'Coppia riferimento', 'Pressione boost', 'Coppia attrito', 'Portata carburante', 'Marcia attuale', 'Contachilometri'],
         silent: ['Livello carburante'], extra: [],
         dtc: [{ code: 'P0441', kind: 1, desc: 'Spurgo EVAP errato' }] },
       { name: 'Cambio', detail: 'TCM-TransmisCtrl', physical: true, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'RPM', 'Velocita\'', 'Monitor drive cycle', 'Tensione batteria', 'Pedale D'],
         silent: [], extra: [], dtc: [] },
-      { name: 'Centralina 5', detail: '', physical: false, undoc: 0,
+      { name: 'Freni ABS/ESP', detail: 'BSCM-BrakeSystem', physical: true, undoc: 0,
         pids: ['Stato MIL + #DTC', 'Carico motore', 'Temp. liquido', 'RPM', 'Velocita\'', 'Monitor drive cycle', 'Tensione batteria', 'Temp. ambiente', 'Pedale D'],
         silent: [], extra: [], dtc: [] }
     ],
@@ -262,11 +259,11 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     'Centraline OBD: 3',
     '  [Motore 7E8] risponde in funzionale sì, in fisico sì',
     '  [Cambio 7E9] risponde in funzionale sì, in fisico sì',
-    '  [Centralina 5 7EC] risponde in funzionale sì, in fisico no',
+    '  [Freni ABS/ESP 7EC] risponde in funzionale no, in fisico sì',
     '  [Motore 7E8] PID 05 Engine coolant temperature: 91 °C',
     '  [Motore 7E8] PID 0C Engine speed: 742.25 rpm',
     '  [Motore 7E8] PID 42 Control module voltage: 14.38 V',
-    '  [Motore 7E8] PID 63 Engine reference torque: 320 Nm',
+    '  [Motore 7E8] PID 63 Engine reference torque: 370 Nm',
     '  [Motore 7E8] richiesta con 6 PID: risposta completa',
     '  [Motore 7E8] FF 02 DTC that caused the freeze frame: P0441',
     '  [Motore 7E8] Monitor catalizzatore banco 1: superato',
@@ -292,8 +289,10 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     if (stopped) log('Scansione interrotta su richiesta');
     log('\n=== RIEPILOGO SCANSIONE COMPLETA (' + probe.seconds + ' s' + (stopped ? ', interrotta' : '') + ') ===');
     log('// Profilo suggerito dalla scansione completa: sostituire il blocco "Profilo vettura" di obd_live.h');
-    log('static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x70, 0x0B, 0x04, 0x0C, 0x10, 0x62, 0x0F, 0x33, 0x23, 0x42, 0x05, 0x8E, 0x0D, 0x34, 0x44, 0x46, 0x49, 0x4A, 0x4C, 0x01, 0x1F, 0x21, 0x30, 0x5C, 0x5E};');
+    log('static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x70, 0x0C, 0x62, 0x8E, 0x05, 0x33, 0x63, 0x04, 0x0B, 0x0D, 0x0F, 0x23, 0x34, 0x44, 0x42, 0x46, 0x49, 0x4A, 0x4C, 0x01, 0x1F, 0x21, 0x30, 0x5E, 0x9D, 0xA4};');
     log('static constexpr bool OBD_ENGINE_MULTI_PID = true;');
+    log('static const uint16_t OBD_PHYSICAL_ONLY_ECUS[] PROGMEM = {0x7EC, 0};');
+    log('// Coppia di riferimento letta (PID 63): 370 Nm');
     log('=== FINE SCANSIONE COMPLETA ===');
   }
 
@@ -330,7 +329,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     var g = simulate(), running = probe.state === 'running';
     return {
       debug: debug, busy: running, scan: running, mil: dtcOn, dtcCount: dtcOn ? 2 : 0,
-      boost: g.boost, coolant: g.coolant, torque: g.torque, hybBatt: null, boostSrc: 'ECU', torqueSrc: 'ECU',
+      boost: g.boost, coolant: g.coolant, torque: g.torque, hybBatt: null,
       lightLevel: 640, contrast: contrast, brightnessMode: brightnessMode,
       dtc: dtcOn ? [{ code: 'P0420', ecu: 'Motore', desc: 'Efficienza catalizz.' }, { code: 'U0100', ecu: 'Cambio', desc: 'No com. centr. motore' }] : [],
       diag: debug && !running ? g : undefined
@@ -372,7 +371,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
   };
   log('=== OBD2 Monitor ===');
   log('Audi A5 F5 (B9.5) 40 TFSI DMSA S tronic');
-  log('Lettura live: multi-PID, 5 PID veloci e 8 lenti');
+  log('Lettura live: multi-PID, 4 PID veloci e 3 lenti');
 })();
 </script>
 <script>
@@ -414,14 +413,14 @@ function scanFollow(){scanRun=true;logStart();probePoll();}
 function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: adattatore non ancora connesso o lettura in corso, riprovare tra qualche secondo.');if(b)b.disabled=false;return;}scanFollow();loadScan();}).catch(function(){if(b)b.disabled=false;});}
 function probeStop(){var b=document.getElementById('prStop');if(b)b.disabled=true;fetch('/probe?stop').catch(function(){});}
 var prN=0;
-function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){clearInterval(prT);prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){});},1000);}
+function probePoll(){if(prT)return;var tok={};prT=tok;(function step(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){if(prT!==tok)return;var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){}).finally(function(){if(prT===tok)setTimeout(step,1000);});})();}
 function logSave(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.getElementById('smPre').textContent],{type:'text/plain'}));a.download='obd_scan.txt';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function f(v,n,u){return v===null||v===undefined?'N/D':v.toFixed(n)+(u||'');}
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
 function set(id,t,r,y){var e=document.getElementById(id);e.textContent=t;c(e,r,y);}
 var busy=false,uN=0;
-function u(){if(scanRun&&(uN++%4))return;fetch('/data').then(function(r){return r.json();}).then(function(d){
+function u(){if(scanRun&&(uN++%4))return Promise.resolve();return fetch('/data').then(function(r){return r.json();}).then(function(d){
 document.getElementById('dbgTgl').checked=d.debug;
 document.getElementById('dbgWarn').style.display=d.debug?'':'none';
 document.getElementById('busyWarn').style.display=d.busy?'':'none';
@@ -430,10 +429,8 @@ if(busy&&!d.busy&&document.getElementById('tcS').classList.contains('act'))loadS
 document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
 var bs=d.boost!==null&&d.boost>=0?'+':'';
 set('d_boost',d.boost===null?'N/D':bs+d.boost.toFixed(2),d.boost>1.5,d.boost>1.3);
-document.getElementById('u_boost').textContent=d.boost===null?'bar':(d.boostSrc==='ECU'?'bar misurato':'bar stimato');
 set('d_cool',d.coolant===null?'N/D':d.coolant,d.coolant>115,d.coolant>110);
 set('d_torq',d.torque===null?'N/D':d.torque,false,false);
-document.getElementById('u_torq').textContent=d.torque===null?'Nm':(d.torqueSrc==='ECU'?'Nm misurata':'Nm stimata');
 set('d_hyb',d.hybBatt===null?'N/D':d.hybBatt,false,false);
 document.getElementById('d_ldr').textContent=d.lightLevel===null?'N/D':d.lightLevel;
 document.getElementById('d_ctr').textContent=d.contrast;
@@ -444,25 +441,23 @@ if(d.debug&&g){
 var lean=g.lambda!==null&&g.lambda>1.15&&!g.dfco&&!g.engineStopped;
 set('d_load',f(g.load,1,' %'));
 set('d_rpm',f(g.rpm,0,''));
-set('d_maf',f(g.maf,1,' g/s'));
 set('d_rail',f(g.railBar,0,' bar'),g.railBar!==null&&((g.railBar<30&&g.rpm>0)),g.railBar>360);
 set('d_lam',f(g.lambda,3,''),g.lambda!==null&&(g.lambda<0.75||lean));
 set('d_lamc',f(g.lambdaCmd,3,''));
 set('d_afr',f(g.afr,1,''));
 set('d_cool2',f(g.coolant,0,' °C'),g.coolant>115,g.coolant>110);
-set('d_oil',f(g.oilTemp,0,' °C'));
 set('d_iat',f(g.iat,0,' °C'));
 set('d_spd',f(g.speed,0,' km/h'));
 set('d_pD',f(g.pedalD,0,' %'));
 set('d_pE',f(g.pedalE,0,' %'));
 set('d_thr',f(g.throttle,0,' %'));
-set('d_gear',f(g.gearRatio,2,''));
+set('d_gear',f(g.gear,0,''));
 set('d_acc',f(g.accel,2,' m/s²'));
 set('d_fl100',f(g.fuelL100,1,' L/100'));
-set('d_flh',g.fuelLh===null?'N/D':g.fuelLh.toFixed(2)+' L/h '+(g.fuelSrc==='ECU'?'(ECU)':'(stima)'));
+set('d_flh',f(g.fuelLh,2,' L/h'));
 set('d_bsfc',f(g.bsfc,0,' g/kWh'),g.bsfc>400&&g.load>50);
 set('d_pow',g.powerKw===null?'N/D':g.powerKw.toFixed(1)+' kW / '+(g.powerKw*1.36).toFixed(1)+' CV');
-set('d_boost2',g.boost===null?'N/D':(g.boost>=0?'+':'')+g.boost.toFixed(2)+' bar '+(g.boostSrc==='ECU'?'(ECU)':'(stima)'),g.boost>1.5,g.boost>1.3);
+set('d_boost2',g.boost===null?'N/D':(g.boost>=0?'+':'')+g.boost.toFixed(2)+' bar',g.boost>1.5,g.boost>1.3);
 set('d_bkpa',f(g.boostKpa,1,' kPa'));
 set('d_pr',f(g.pressureRatio,2,''));
 set('d_ic',f(g.intercoolerEff,0,' %'),g.intercoolerEff!==null&&g.intercoolerEff<40);
@@ -471,7 +466,6 @@ set('d_volt',f(g.volts,2,' V'),g.volts!==null&&(g.volts<11.8||g.volts>15.3),g.vo
 set('d_eng',g.engineStopped?'FERMO':'ACCESO');
 set('d_drift',f(g.driftPedal,0,' %'),g.driftPedal>5,g.driftPedal>=3);
 set('d_dfco',g.dfco===null?'N/D':g.dfco?'ATTIVO':'OFF');
-set('d_ve',f(g.volEff,0,' %'),g.volEff!==null&&g.volEff<60);
 set('d_dt',f(g.deltaThrottlePedal,0,' %'));
 set('d_amb',f(g.ambient,0,' °C'));
 set('d_bar',f(g.baro,0,' kPa'));
@@ -485,15 +479,15 @@ var db=document.getElementById('dtcBox');
 document.getElementById('milB').style.display=d.mil?'':'none';
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+esc(d.dtc[i].ecu)+(d.dtc[i].desc?' &middot; '+esc(d.dtc[i].desc):'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(function(){});}
-function clrDtc(){if(!confirm('Cancellare i codici DTC di tutte le centraline?\nSi perde lo storico errori e si resettano i monitor di readiness.\nIl motore deve essere spento con il quadro acceso.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(function(r){return r.json();}).then(function(d){alert(d.msg);}).catch(function(){alert('Errore di rete');}).finally(function(){b.disabled=false;b.textContent='CANCELLA';});}
+function clrDtc(){if(!confirm('Cancellare i codici DTC di tutte le centraline?\nSi perde lo storico errori e si resettano i monitor di readiness.\nIl motore deve essere spento con il quadro acceso.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc',{method:'POST'}).then(function(r){return r.json();}).then(function(d){alert(d.msg);}).catch(function(){alert('Errore di rete');}).finally(function(){b.disabled=false;b.textContent='CANCELLA';});}
 var logSeq=-1,logTimer=null,logErr=0;
-function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,250);}
-function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
+function logStart(){if(logTimer)return;var tok={};logTimer=tok;logFetch(tok);}
+function logStop(){logTimer=null;}
 function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
 function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
-function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+function logFetch(tok){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){if(logTimer!==tok)return;logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';}).finally(function(){if(logTimer===tok)setTimeout(function(){logFetch(tok);},250);});}
 if(location.pathname==='/scan')swT('s');
-setInterval(u,500);u();
+(function uLoop(){u().finally(function(){setTimeout(uLoop,500);});})();
 </script>
 </body>
 </html>

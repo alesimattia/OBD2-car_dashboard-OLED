@@ -129,19 +129,20 @@ struct ObdObfcm
 };
 
 // Byte di dati di ogni PID Mode 01 secondo la tabella SAE J1979 pubblica; 0 = lunghezza non nota.
-// Serve a separare i PID di una risposta multi-PID e a segnalare risposte di lunghezza anomala.
+// Serve a separare i PID di una risposta multi-PID e a segnalare risposte di lunghezza anomala. 0x55-0x58, 0x68,
+// 0xA7 e 0xA8 seguono OBDb (0x56 risponde con 1 byte sulla vettura).
 static const uint8_t OBD_PID_DATA_LEN[256] OBD_PROGMEM = {
 	/* 0x00 */ 4, 4, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1,
 	/* 0x10 */ 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2,
 	/* 0x20 */ 4, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1,
 	/* 0x30 */ 1, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 2, 2, 2, 2,
 	/* 0x40 */ 4, 4, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 4,
-	/* 0x50 */ 4, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 1,
-	/* 0x60 */ 4, 1, 1, 2, 5, 2, 5, 3, 3, 7, 5, 5, 5, 11, 9, 3,
+	/* 0x50 */ 4, 1, 1, 2, 2, 1, 1, 1, 1, 2, 1, 1, 1, 2, 2, 1,
+	/* 0x60 */ 4, 1, 1, 2, 5, 2, 5, 3, 7, 7, 5, 5, 5, 11, 9, 3,
 	/* 0x70 */ 10, 6, 5, 5, 5, 7, 7, 5, 9, 9, 7, 7, 9, 1, 1, 13,
 	/* 0x80 */ 4, 41, 41, 9, 1, 10, 5, 5, 13, 41, 41, 7, 17, 1, 1, 7,
 	/* 0x90 */ 3, 5, 2, 3, 12, 0, 0, 0, 9, 9, 6, 4, 17, 4, 2, 9,
-	/* 0xA0 */ 4, 9, 2, 9, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0,
+	/* 0xA0 */ 4, 9, 2, 9, 4, 4, 4, 9, 9, 4, 0, 0, 0, 0, 0, 0,
 	/* 0xB0 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	/* 0xC0 */ 4, 0, 0, 2, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	/* 0xD0 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -220,11 +221,12 @@ static inline uint32_t obdFlowControlId(uint8_t receiveMode, uint32_t requestId,
 
 /**
  * Separazione minima (STmin, ms) chiesta nel flow control: 5 ms nei modi UDS, dove le risposte VAG arrivano a decine
- * di frame e i due buffer del MCP2515 andrebbero in overflow; 0 in OBD, per non rallentare la lettura live.
+ * di frame; 1 ms in OBD, dove la risposta multi-PID della lettura live è di 3-4 frame. Con 0 i frame arriverebbero
+ * ogni 0,23 ms e i due buffer del MCP2515 andrebbero in overflow a ogni pausa del WiFi più lunga di mezzo millisecondo.
  */
 static inline uint8_t obdFlowControlSeparationMs(uint8_t receiveMode)
 {
-	return (receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29) ? 5 : 0;
+	return (receiveMode == OBD_RX_UDS11 || receiveMode == OBD_RX_UDS29) ? 5 : 1;
 }
 
 /** Vero per i PID che riportano una bitmap di supporto (0x00, 0x20, ..., 0xE0) invece di un dato. */
@@ -989,6 +991,19 @@ static inline bool obdParseDtcCount(const uint8_t *msg, uint16_t len, uint16_t *
 	if (len < 6 || msg[0] != 0x59 || msg[1] != 0x01)
 		return false;
 	*count = (uint16_t)((msg[4] << 8) | msg[5]);
+	return true;
+}
+
+/**
+ * Conta i DTC di una risposta positiva 59 02 [maschera disponibile, n × (DTC a 3 byte, stato)] dalla lunghezza
+ * dichiarata del messaggio, valida anche se il buffer l'ha troncata: i codici VAG non si decodificano.
+ */
+static inline bool obdParseDtcListCount(const ObdIsoTpRx &rx, uint16_t *count)
+{
+	if (rx.receivedLen < 3 || rx.data[0] != 0x59 || rx.data[1] != 0x02 || rx.expectedLen < 3 ||
+		(rx.expectedLen - 3) % 4 != 0)
+		return false;
+	*count = (uint16_t)((rx.expectedLen - 3) / 4);
 	return true;
 }
 

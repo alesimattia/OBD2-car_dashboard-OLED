@@ -10,8 +10,10 @@ PowerShell 5.1 senza dipendenze, file UTF-8 con BOM. Esegue le stesse fasi e reg
 ([[project_scope_obd2]]), legge segnali da `tools\obdb\selection.json` e tabelle dagli header del firmware, e scrive
 `pid_scan_<data>_<ora>.txt` nella cartella dello script anche dopo un errore o un Ctrl+C, con riepilogo, profilo suggerito e
 traccia TX/RX in coda. Ogni richiesta passa da `Assert-ReadOnlyRequest`, che ammette solo i servizi di lettura e blocca il VIN.
-Con dot-source non parte (guard finale): così i test nello scratchpad lo caricano e sostituiscono `Invoke-ElmCommand`
-con uno stub.
+Con dot-source non parte (guard finale): così i test nello scratchpad lo caricano e sostituiscono `Invoke-ElmCommand` (o
+`Send-ScanUdsRequest`) con uno stub; sul Mac gira con `pwsh` 7.7 ([[reference_build]]). Come il firmware: ripiego `19 02` ed eco
+obbligatoria nelle risposte positive (`Test-ScanEcho`). Solo nello script: se trova `17FE00AE`, la prova DID della batteria
+Li-ion MHEV (`Read-MhevBatteryProbe`, sezione separata con byte grezzi; da lanciare a motore acceso).
 
 **Comandi ELM327/STN dello script:** `ATS1` e `ATH1` (riga a 29 bit in 4 token di ID), protocollo trovato con `ATSP0` e poi
 fissato, gemello a 29 bit (`ATSP7` per il 6, `ATSP9` per l'8) con `ATCP`; `ATAT0` per le richieste funzionali, `ATAT1` per

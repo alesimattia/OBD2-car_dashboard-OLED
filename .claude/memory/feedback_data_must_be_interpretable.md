@@ -21,6 +21,10 @@ i DID VAG senza decodifica pubblica, i TID Mode 06 non standard e gli indirizzi 
 - i PID con scala da `4F`/`50` si escludono se quei PID dichiarano massimi non predefiniti.
 - Polarità dei booleani: la prima parola dell'unità OBDb (`noyes`, `yesno`, `offon`) è il valore del bit a 0.
 
+**DID con valori sospetti:** la selezione non esclude DID per valori implausibili letti sulla vettura; si applicano solo
+correzioni determinabili, in `$VehicleCorrections` di `tools/obdb_select.ps1` (028D: variante Kelvin di OBDb, confermata da
+`0x0BA3` = 24.8 °C). Un'ipotesi da un solo punto (11F1 /4 invece di /2) non è una correzione determinabile.
+**Eccezione ai byte grezzi:** solo la prova DID della batteria Li-ion MHEV di `pid_scan.ps1` ([[project_scope_obd2]]).
 **DTC UDS VAG:** non si decodificano dai byte, perchè VCDS li mostra da una tabella VW proprietaria: solo conteggi per stato.
 **Mode 06:** nome del monitor ed esito per i MID standard; valore e limiti solo per i TID `01`-`0C`.
 

@@ -7,6 +7,8 @@ Genera le tabelle dei segnali che la scansione completa sa decodificare. Le usan
 Lo script parte dai signalset [OBDb](https://github.com/OBDb), le definizioni pubbliche per decodificare i PID OBD2
 (`OBDb/SAEJ1979`) e i DID UDS dell'Audi A5 (`OBDb/Audi-A5`). Tiene solo i segnali realmente interpretabili per l'anno
 modello scelto e scarta quelli opachi, in debug o non validi per quell'anno. I criteri sono nel README, §5.1.
+Quando OBDb ha più varianti dello stesso DID per anni diversi e la scansione della vettura conferma quella di un altro
+anno, la tabella `$VehicleCorrections` dello script la sostituisce: oggi `028D`, che la vettura riporta in kelvin.
 
 Produce tre file:
 

@@ -188,12 +188,17 @@
 
 		// Decay: ogni LDR_CALIBRATION_DECAY_MS, riavvicina i bound all'EMA
 		// di LDR_CALIBRATION_DECAY_STEP unita' se sono "lontani" piu' di LDR_CALIBRATION_DECAY_MARGIN.
+		// Il range non scende mai sotto LDR_CALIBRATION_MIN_RANGE: sotto quella soglia adcToContrast() passerebbe al
+		// range di ripiego e, al primo cambio di luce, tornerebbe su un range strettissimo, con il contrasto che salta
+		// da un estremo all'altro.
 		if (now - br.lastCalibrationDecayMs >= LDR_CALIBRATION_DECAY_MS) {
 			br.lastCalibrationDecayMs = now;
-			if (br.ldrMinObserved < emaInt - LDR_CALIBRATION_DECAY_MARGIN) {
+			const bool roomToShrink = br.ldrMaxObserved - br.ldrMinObserved - LDR_CALIBRATION_DECAY_STEP >= LDR_CALIBRATION_MIN_RANGE;
+			if (roomToShrink && br.ldrMinObserved < emaInt - LDR_CALIBRATION_DECAY_MARGIN) {
 				br.ldrMinObserved += LDR_CALIBRATION_DECAY_STEP;
 			}
-			if (br.ldrMaxObserved > emaInt + LDR_CALIBRATION_DECAY_MARGIN) {
+			if (br.ldrMaxObserved - br.ldrMinObserved - LDR_CALIBRATION_DECAY_STEP >= LDR_CALIBRATION_MIN_RANGE &&
+				br.ldrMaxObserved > emaInt + LDR_CALIBRATION_DECAY_MARGIN) {
 				br.ldrMaxObserved -= LDR_CALIBRATION_DECAY_STEP;
 			}
 		}
@@ -239,8 +244,9 @@
 			case BR_AUTO: {
 				uint8_t t = adcToContrast((int)br.ldrEma);
 				if (abs((int)t - (int)br.currentContrast) >= BR_HYST_DELTA) {
-					br.currentContrast = t;
-					u8g2.setContrast(t);
+					// Il cambio passa dalla dissolvenza: anche un salto ampio di luce non abbaglia nè spegne il pannello di colpo
+					br.targetContrast = t;
+					br.mode = BR_FADING;
 				}
 				break;
 			}

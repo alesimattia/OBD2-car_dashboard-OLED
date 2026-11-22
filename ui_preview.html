@@ -477,7 +477,7 @@ const screens = [
   {
     title: '7. Monitor dati (principale)',
     tag: 'monitor', tagLabel: 'MONITOR',
-    desc: 'Boost dal PID 0x70 e coppia all\'albero da 0x62/0x8E rispetto alla coppia di targa. BATT (PID 0x5B) è N/D se la centralina non lo espone, come atteso sulle B9 termiche.',
+    desc: 'Boost dal PID 0x70 meno la pressione barometrica 0x33, coppia all\'albero da 0x62/0x8E rispetto alla coppia di riferimento 0x63 (370 Nm). BATT è la carica della batteria al litio del mild hybrid: N/D finchè non c\'è un DID con decodifica verificata.',
     drawLand(o) {
       const rx = 100;
       o.draw7x14B(0, 0, "BOOST");
@@ -493,7 +493,7 @@ const screens = [
   {
     title: '8. Monitor (pieno carico)',
     tag: 'monitor', tagLabel: 'MONITOR',
-    desc: 'Coppia piena 320 Nm. "100%" a x=100 tocca il bordo, come succederebbe con una batteria ibrida esposta via OBD.',
+    desc: 'Coppia piena 320 Nm. "100%" a x=100 tocca il bordo, come succederà quando la carica della batteria al litio sarà leggibile.',
     drawLand(o) {
       const rx = 100;
       o.draw7x14B(0, 0, "BOOST");
@@ -541,9 +541,9 @@ const screens = [
   {
     title: '11. Errori DTC (pagina 1)',
     tag: 'dtc', tagLabel: 'DTC',
-    desc: 'Codici letti da tutte le centraline che rispondono al PID 01, anche a MIL spenta, con la centralina che li ha memorizzati.',
+    desc: 'Codici letti da tutte le centraline che rispondono al PID 01, anche a MIL spenta, con la centralina che li ha memorizzati; l\'ESP, che risponde solo in fisico, si interroga così.',
     drawLand(o) {
-      o.draw7x14B(0, 0, "ERRORI (3) pag.1/2");
+      o.draw7x14B(0, 0, "ERRORI 3 pag.1/2");
       o.draw6x10(0, 20, "P0420 Motore");
       o.draw6x10(0, 31, "Efficienza catalizz.");
       o.draw6x10(0, 42, "P0171 Motore");
@@ -555,7 +555,7 @@ const screens = [
     tag: 'dtc', tagLabel: 'DTC',
     desc: 'Seconda pagina DTC. Alterna automaticamente ogni 5 secondi; la lettura OBD continua anche su queste pagine.',
     drawLand(o) {
-      o.draw7x14B(0, 0, "ERRORI (3) pag.2/2");
+      o.draw7x14B(0, 0, "ERRORI 3 pag.2/2");
       o.draw6x10(0, 20, "U0100 Cambio");
       o.draw6x10(0, 31, "No com. centr. motore");
     },
@@ -563,7 +563,7 @@ const screens = [
   {
     title: '13a. Clear DTC: invio',
     tag: 'monitor', tagLabel: 'BUTTON',
-    desc: 'Pulsante fisico tenuto premuto >=2.5s: OBD2 Mode 04 in broadcast a tutte le centraline. A fine scansione completa la pressione lunga resta ignorata finchè il pulsante non è rilasciato e per altri 5 s.',
+    desc: 'Pulsante fisico tenuto premuto >=2.5s: OBD2 Mode 04 in broadcast a tutte le centraline, e in fisico a quelle che rispondono solo così. A fine scansione completa la pressione lunga resta ignorata finchè il pulsante non è rilasciato e per altri 5 s.',
     drawLand(o) {
       o.draw6x10(37, 11, "CLEAR DTC");
       o.draw6x10(16, 32, "Invio Mode 04...");

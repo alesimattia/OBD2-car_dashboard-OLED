@@ -125,9 +125,9 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 </div>
 <div class="tabC act" id="tcD">
 <div class="s"><div class="st">Dati principali</div><div class="mg">
-<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u" id="u_boost">bar</div></div>
+<div class="mc"><div class="l">BOOST</div><div class="v" id="d_boost">--</div><div class="u">bar</div></div>
 <div class="mc"><div class="l">TEMP</div><div class="v" id="d_cool">--</div><div class="u">&deg;C</div></div>
-<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u" id="u_torq">Nm</div></div>
+<div class="mc"><div class="l">COPPIA</div><div class="v" id="d_torq">--</div><div class="u">Nm</div></div>
 <div class="mc"><div class="l">BATTERIA IBRIDA</div><div class="v" id="d_hyb">--</div><div class="u">%</div></div>
 </div></div>
 <div class="s"><div class="st">Luce ambiente</div>
@@ -143,19 +143,17 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="s debug" style="display:none"><div class="st">Motore</div><div class="g">
 <div class="i"><span class="l">Carico</span><span class="v" id="d_load">--</span></div>
 <div class="i"><span class="l">RPM</span><span class="v" id="d_rpm">--</span></div>
-<div class="i"><span class="l">MAF</span><span class="v" id="d_maf">--</span></div>
 <div class="i"><span class="l">Press. rail</span><span class="v" id="d_rail">--</span></div>
 <div class="i"><span class="l">Lambda</span><span class="v" id="d_lam">--</span></div>
 <div class="i"><span class="l">Lambda cmd</span><span class="v" id="d_lamc">--</span></div>
 <div class="i"><span class="l">Air/Fuel Ratio</span><span class="v" id="d_afr">--</span></div>
 <div class="i"><span class="l">Temp. liq.</span><span class="v" id="d_cool2">--</span></div>
-<div class="i"><span class="l">Temp. olio</span><span class="v" id="d_oil">--</span></div>
 <div class="i"><span class="l">IAT</span><span class="v" id="d_iat">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Veicolo</div><div class="g">
 <div class="i"><span class="l">Velocit&agrave;</span><span class="v" id="d_spd">--</span></div>
 <div class="i"><span class="l">Farfalla</span><span class="v" id="d_thr">--</span></div>
-<div class="i"><span class="l">Rapporto cambio</span><span class="v" id="d_gear">--</span></div>
+<div class="i"><span class="l">Marcia</span><span class="v" id="d_gear">--</span></div>
 <div class="i"><span class="l">Acceleraz.</span><span class="v" id="d_acc">--</span></div>
 <div class="i"><span class="l">Pedale D</span><span class="v" id="d_pD">--</span></div>
 <div class="i"><span class="l">Pedale E</span><span class="v" id="d_pE">--</span></div>
@@ -178,7 +176,6 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
 <div class="i"><span class="l">Motore</span><span class="v" id="d_eng">--</span></div>
 <div class="i"><span class="l">Drift pedale</span><span class="v" id="d_drift">--</span></div>
 <div class="i"><span class="l">Taglio iniezione</span><span class="v" id="d_dfco">--</span></div>
-<div class="i"><span class="l">Eff. volum.</span><span class="v" id="d_ve">--</span></div>
 <div class="i"><span class="l">&Delta; farfalla</span><span class="v" id="d_dt">--</span></div>
 </div></div>
 <div class="s debug" style="display:none"><div class="st">Ambiente</div><div class="g">
@@ -244,14 +241,14 @@ function scanFollow(){scanRun=true;logStart();probePoll();}
 function probeStart(){var b=document.getElementById('prBtn');if(b)b.disabled=true;fetch('/probe?start').then(function(r){return r.json();}).then(function(d){if(!d.started&&d.status.state!=='running'){alert('Scansione non avviabile: adattatore non ancora connesso o lettura in corso, riprovare tra qualche secondo.');if(b)b.disabled=false;return;}scanFollow();loadScan();}).catch(function(){if(b)b.disabled=false;});}
 function probeStop(){var b=document.getElementById('prStop');if(b)b.disabled=true;fetch('/probe?stop').catch(function(){});}
 var prN=0;
-function probePoll(){if(prT)return;prT=setInterval(function(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){clearInterval(prT);prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){});},1000);}
+function probePoll(){if(prT)return;var tok={};prT=tok;(function step(){fetch('/probe-status').then(function(r){return r.json();}).then(function(p){if(prT!==tok)return;var s=document.getElementById('prSt');if(s)s.textContent=prText(p);if(p.state!=='running'){prT=null;scanRun=false;setTimeout(function(){if(!scanRun&&!document.getElementById('tcL').classList.contains('act'))logStop();},5000);loadScan();}else if(++prN%5===0&&document.getElementById('tcS').classList.contains('act'))loadScan();}).catch(function(){}).finally(function(){if(prT===tok)setTimeout(step,1000);});})();}
 function logSave(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([document.getElementById('smPre').textContent],{type:'text/plain'}));a.download='obd_scan.txt';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);}
 var brT;function brSet(v){clearTimeout(brT);brT=setTimeout(function(){fetch('/brightness?set='+v);},200);}
 function f(v,n,u){return v===null||v===undefined?'N/D':v.toFixed(n)+(u||'');}
 function c(e,r,y){e.className='v'+(r?' al':y?' w':'');}
 function set(id,t,r,y){var e=document.getElementById(id);e.textContent=t;c(e,r,y);}
 var busy=false,uN=0;
-function u(){if(scanRun&&(uN++%4))return;fetch('/data').then(function(r){return r.json();}).then(function(d){
+function u(){if(scanRun&&(uN++%4))return Promise.resolve();return fetch('/data').then(function(r){return r.json();}).then(function(d){
 document.getElementById('dbgTgl').checked=d.debug;
 document.getElementById('dbgWarn').style.display=d.debug?'':'none';
 document.getElementById('busyWarn').style.display=d.busy?'':'none';
@@ -260,10 +257,8 @@ if(busy&&!d.busy&&document.getElementById('tcS').classList.contains('act'))loadS
 document.querySelectorAll('.debug').forEach(function(e){e.style.display=d.debug?'':'none';});
 var bs=d.boost!==null&&d.boost>=0?'+':'';
 set('d_boost',d.boost===null?'N/D':bs+d.boost.toFixed(2),d.boost>1.5,d.boost>1.3);
-document.getElementById('u_boost').textContent=d.boost===null?'bar':(d.boostSrc==='ECU'?'bar misurato':'bar stimato');
 set('d_cool',d.coolant===null?'N/D':d.coolant,d.coolant>115,d.coolant>110);
 set('d_torq',d.torque===null?'N/D':d.torque,false,false);
-document.getElementById('u_torq').textContent=d.torque===null?'Nm':(d.torqueSrc==='ECU'?'Nm misurata':'Nm stimata');
 set('d_hyb',d.hybBatt===null?'N/D':d.hybBatt,false,false);
 document.getElementById('d_ldr').textContent=d.lightLevel===null?'N/D':d.lightLevel;
 document.getElementById('d_ctr').textContent=d.contrast;
@@ -274,25 +269,23 @@ if(d.debug&&g){
 var lean=g.lambda!==null&&g.lambda>1.15&&!g.dfco&&!g.engineStopped;
 set('d_load',f(g.load,1,' %'));
 set('d_rpm',f(g.rpm,0,''));
-set('d_maf',f(g.maf,1,' g/s'));
 set('d_rail',f(g.railBar,0,' bar'),g.railBar!==null&&((g.railBar<30&&g.rpm>0)),g.railBar>360);
 set('d_lam',f(g.lambda,3,''),g.lambda!==null&&(g.lambda<0.75||lean));
 set('d_lamc',f(g.lambdaCmd,3,''));
 set('d_afr',f(g.afr,1,''));
 set('d_cool2',f(g.coolant,0,' °C'),g.coolant>115,g.coolant>110);
-set('d_oil',f(g.oilTemp,0,' °C'));
 set('d_iat',f(g.iat,0,' °C'));
 set('d_spd',f(g.speed,0,' km/h'));
 set('d_pD',f(g.pedalD,0,' %'));
 set('d_pE',f(g.pedalE,0,' %'));
 set('d_thr',f(g.throttle,0,' %'));
-set('d_gear',f(g.gearRatio,2,''));
+set('d_gear',f(g.gear,0,''));
 set('d_acc',f(g.accel,2,' m/s²'));
 set('d_fl100',f(g.fuelL100,1,' L/100'));
-set('d_flh',g.fuelLh===null?'N/D':g.fuelLh.toFixed(2)+' L/h '+(g.fuelSrc==='ECU'?'(ECU)':'(stima)'));
+set('d_flh',f(g.fuelLh,2,' L/h'));
 set('d_bsfc',f(g.bsfc,0,' g/kWh'),g.bsfc>400&&g.load>50);
 set('d_pow',g.powerKw===null?'N/D':g.powerKw.toFixed(1)+' kW / '+(g.powerKw*1.36).toFixed(1)+' CV');
-set('d_boost2',g.boost===null?'N/D':(g.boost>=0?'+':'')+g.boost.toFixed(2)+' bar '+(g.boostSrc==='ECU'?'(ECU)':'(stima)'),g.boost>1.5,g.boost>1.3);
+set('d_boost2',g.boost===null?'N/D':(g.boost>=0?'+':'')+g.boost.toFixed(2)+' bar',g.boost>1.5,g.boost>1.3);
 set('d_bkpa',f(g.boostKpa,1,' kPa'));
 set('d_pr',f(g.pressureRatio,2,''));
 set('d_ic',f(g.intercoolerEff,0,' %'),g.intercoolerEff!==null&&g.intercoolerEff<40);
@@ -301,7 +294,6 @@ set('d_volt',f(g.volts,2,' V'),g.volts!==null&&(g.volts<11.8||g.volts>15.3),g.vo
 set('d_eng',g.engineStopped?'FERMO':'ACCESO');
 set('d_drift',f(g.driftPedal,0,' %'),g.driftPedal>5,g.driftPedal>=3);
 set('d_dfco',g.dfco===null?'N/D':g.dfco?'ATTIVO':'OFF');
-set('d_ve',f(g.volEff,0,' %'),g.volEff!==null&&g.volEff<60);
 set('d_dt',f(g.deltaThrottlePedal,0,' %'));
 set('d_amb',f(g.ambient,0,' °C'));
 set('d_bar',f(g.baro,0,' kPa'));
@@ -315,15 +307,15 @@ var db=document.getElementById('dtcBox');
 document.getElementById('milB').style.display=d.mil?'':'none';
 if(d.dtcCount>0){db.className='db';var h='';for(var i=0;i<d.dtc.length;i++){h+='<div class="di"><span class="dc">'+d.dtc[i].code+'</span> <span class="dd">'+esc(d.dtc[i].ecu)+(d.dtc[i].desc?' &middot; '+esc(d.dtc[i].desc):'')+'</span></div>';}document.getElementById('dtcL').innerHTML=h;}else{db.className='db hid';}
 }).catch(function(){});}
-function clrDtc(){if(!confirm('Cancellare i codici DTC di tutte le centraline?\nSi perde lo storico errori e si resettano i monitor di readiness.\nIl motore deve essere spento con il quadro acceso.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc').then(function(r){return r.json();}).then(function(d){alert(d.msg);}).catch(function(){alert('Errore di rete');}).finally(function(){b.disabled=false;b.textContent='CANCELLA';});}
+function clrDtc(){if(!confirm('Cancellare i codici DTC di tutte le centraline?\nSi perde lo storico errori e si resettano i monitor di readiness.\nIl motore deve essere spento con il quadro acceso.'))return;var b=document.getElementById('btnClr');b.disabled=true;b.textContent='...';fetch('/clear-dtc',{method:'POST'}).then(function(r){return r.json();}).then(function(d){alert(d.msg);}).catch(function(){alert('Errore di rete');}).finally(function(){b.disabled=false;b.textContent='CANCELLA';});}
 var logSeq=-1,logTimer=null,logErr=0;
-function logStart(){if(logTimer)return;logFetch();logTimer=setInterval(logFetch,250);}
-function logStop(){if(logTimer){clearInterval(logTimer);logTimer=null;}}
+function logStart(){if(logTimer)return;var tok={};logTimer=tok;logFetch(tok);}
+function logStop(){logTimer=null;}
 function logClr(){var p=document.getElementById('smPre');p.textContent='';p.scrollTop=p.scrollHeight;}
 function logScrollEnd(){var p=document.getElementById('smPre');p.scrollTop=p.scrollHeight;}
-function logFetch(){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';});}
+function logFetch(tok){var url=logSeq<0?'/serial-data':'/serial-data?since='+logSeq;fetch(url).then(function(r){var nx=r.headers.get('X-Seq'),dr=r.headers.get('X-Dropped');return r.text().then(function(t){return{t:t,seq:nx,dr:dr};});}).then(function(o){if(logTimer!==tok)return;logErr=0;var p=document.getElementById('smPre'),st=document.getElementById('smStat');var atEnd=(p.scrollHeight-p.scrollTop-p.clientHeight)<30;if(o.seq!=null)logSeq=parseInt(o.seq);if(o.dr==='1')p.textContent+='\n[--- byte persi: buffer pieno ---]\n';if(o.t)p.textContent+=o.t;if(p.textContent.length>400000)p.textContent=p.textContent.slice(-400000);if(atEnd)p.scrollTop=p.scrollHeight;st.className='smStat'+(o.dr==='1'?' drp':'');st.textContent='cursor '+logSeq+(o.dr==='1'?' (overflow rilevato)':'')+(atEnd?'':' [scroll bloccato]');}).catch(function(){logErr++;var st=document.getElementById('smStat');st.className='smStat drp';st.textContent='errore di rete ('+logErr+')';}).finally(function(){if(logTimer===tok)setTimeout(function(){logFetch(tok);},250);});}
 if(location.pathname==='/scan')swT('s');
-setInterval(u,500);u();
+(function uLoop(){u().finally(function(){setTimeout(uLoop,500);});})();
 </script>
 </body>
 </html>
@@ -357,22 +349,17 @@ static void jsonDiagPid(ObdJsonStream &json, PGM_P key, uint8_t pid, float scale
 static void jsonDiagnostics(ObdJsonStream &json)
 {
 	const ObdDiagSnapshot &s = obdDiag;
-	float lambda = 0.0f;
-	const bool hLambda = obdDiagGet(s, 0x24, &lambda) || obdDiagGet(s, 0x34, &lambda);
 	json.printfP(PSTR(",\"diag\":{\"engineStopped\":%s"), s.engineStopped ? "true" : "false");
 	jsonDiagPid(json, PSTR("load"), 0x04, 1, 1);
 	jsonDiagPid(json, PSTR("coolant"), 0x05, 1, 0);
-	jsonDiagPid(json, PSTR("oilTemp"), 0x5C, 1, 0);
 	jsonDiagPid(json, PSTR("map"), 0x0B, 1, 0);
 	jsonDiagPid(json, PSTR("boostKpa"), 0x70, 1, 1);
 	jsonDiagPid(json, PSTR("rpm"), 0x0C, 1, 0);
 	jsonDiagPid(json, PSTR("speed"), 0x0D, 1, 0);
 	jsonDiagPid(json, PSTR("iat"), 0x0F, 1, 0);
-	jsonDiagPid(json, PSTR("maf"), 0x10, 1, 1);
 	jsonDiagPid(json, PSTR("railBar"), 0x23, 0.01f, 0);
-	jsonNumberField(json, PSTR("lambda"), hLambda, lambda, 3);
+	jsonDiagPid(json, PSTR("lambda"), 0x34, 1, 3);
 	jsonDiagPid(json, PSTR("lambdaCmd"), 0x44, 1, 3);
-	jsonNumberField(json, PSTR("o2v"), s.hasO2Voltage, s.o2Voltage, 3);
 	jsonNumberField(json, PSTR("o2ma"), s.hasO2Current, s.o2CurrentMa, 2);
 	jsonDiagPid(json, PSTR("baro"), 0x33, 1, 0);
 	jsonDiagPid(json, PSTR("volts"), 0x42, 1, 2);
@@ -383,23 +370,20 @@ static void jsonDiagnostics(ObdJsonStream &json)
 	jsonDiagPid(json, PSTR("runtime"), 0x1F, 1, 0);
 	jsonDiagPid(json, PSTR("kmMil"), 0x21, 1, 0);
 	jsonDiagPid(json, PSTR("starts"), 0x30, 1, 0);
+	jsonDiagPid(json, PSTR("fuelLh"), 0x5E, 1, 2);
+	jsonDiagPid(json, PSTR("gear"), 0xA4, 1, 0);
 	jsonNumberField(json, PSTR("boost"), s.boostOk, s.boostBar, 2);
-	json.printfP(PSTR(",\"boostSrc\":\"%s\",\"fuelSrc\":\"%s\""), s.boostMeasured ? "ECU" : "stima",
-				 s.fuelFromEcu ? "ECU" : "stima");
 	jsonNumberField(json, PSTR("torque"), s.torqueOk, (float)s.torqueNm, 0);
 	jsonNumberField(json, PSTR("powerKw"), s.powerOk, s.powerKw, 1);
 	jsonNumberField(json, PSTR("afr"), s.afrOk, s.afr, 1);
-	jsonNumberField(json, PSTR("fuelLh"), s.fuelOk, s.fuelLh, 2);
 	jsonNumberField(json, PSTR("fuelL100"), s.fuelL100Ok, s.fuelL100, 1);
 	jsonNumberField(json, PSTR("bsfc"), s.bsfcOk, (float)s.bsfc, 0);
 	jsonNumberField(json, PSTR("altitude"), s.altitudeOk, (float)s.altitude, 0);
 	jsonNumberField(json, PSTR("airDensity"), s.airDensityOk, s.airDensity, 3);
 	jsonNumberField(json, PSTR("intercoolerEff"), s.intercoolerOk, (float)s.intercoolerEff, 0);
 	jsonNumberField(json, PSTR("pressureRatio"), s.pressureRatioOk, s.pressureRatio, 2);
-	jsonNumberField(json, PSTR("volEff"), s.volEffOk, (float)s.volEff, 0);
 	jsonNumberField(json, PSTR("driftPedal"), s.driftOk, (float)s.driftPedal, 0);
 	jsonNumberField(json, PSTR("deltaThrottlePedal"), s.deltaOk, (float)s.deltaThrottlePedal, 0);
-	jsonNumberField(json, PSTR("gearRatio"), s.gearOk, s.gearRatio, 2);
 	jsonNumberField(json, PSTR("accel"), s.accelOk, s.accel, 2);
 	jsonNumberField(json, PSTR("boostRate"), s.boostRateOk, s.boostRate, 2);
 	if (s.dfcoOk)
@@ -430,8 +414,6 @@ static void handleData(ESP8266WebServer &server)
 	jsonNumberField(json, PSTR("coolant"), coolantAvailable, (float)coolantC, 0);
 	jsonNumberField(json, PSTR("torque"), torqueAvailable, (float)torqueNm, 0);
 	jsonNumberField(json, PSTR("hybBatt"), hybBattAvailable, (float)hybBattPct, 0);
-	json.printfP(PSTR(",\"boostSrc\":\"%s\",\"torqueSrc\":\"%s\""), boostMeasured ? "ECU" : "stima",
-				 torqueMeasured ? "ECU" : "stima");
 	jsonNumberField(json, PSTR("lightLevel"), br.ldrPresent, br.ldrEma, 0);
 	json.printfP(PSTR(",\"contrast\":%u,\"brightnessMode\":\"%s\""), br.currentContrast, brightnessModeName());
 
@@ -517,6 +499,19 @@ void setupWebDashboard(ESP8266WebServer &server)
 		bool dropped = false;
 		size_t n = WebSerial::logReadFrom(since, chunk, sizeof(chunk),
 																			&nextSeq, &dropped);
+		// Un carattere UTF-8 spezzato fra due blocchi diventerebbe "\uFFFD" nel browser: il blocco si chiude prima
+		// del suo byte iniziale e il resto arriva con la richiesta successiva
+		size_t tail = n;
+		uint8_t continuation = 0;
+		while (tail > 0 && continuation < 3 && (chunk[tail - 1] & 0xC0) == 0x80) { tail--; continuation++; }
+		if (tail > 1) {
+			const uint8_t lead = chunk[tail - 1];
+			const uint8_t needed = (lead & 0xE0) == 0xC0 ? 1 : (lead & 0xF0) == 0xE0 ? 2 : (lead & 0xF8) == 0xF0 ? 3 : 0;
+			if (needed > continuation) {
+				nextSeq -= (uint32_t)(n - (tail - 1));
+				n = tail - 1;
+			}
+		}
 		// La scansione completa attende finchè un browser che legge il log ha troppo arretrato
 		obdSerialServedSeq = nextSeq;
 		obdSerialServedMs = millis();
@@ -564,8 +559,8 @@ void setupWebDashboard(ESP8266WebServer &server)
 			ldr, br.currentContrast, brightnessModeName(), br.ldrAtOverride);
 		server.send(200, "application/json", j); });
 	// Cancellazione DTC di tutte le centraline (OBD2 Mode 04, obd_live.h), rifiutata durante la scansione completa e
-	// la connessione all'adattatore
-	server.on("/clear-dtc", HTTP_GET, [&server]()
+	// la connessione all'adattatore. Solo POST: un GET può partire da un prefetch del browser
+	server.on("/clear-dtc", HTTP_POST, [&server]()
 			  {
 		char message[64];
 		bool ok = false;

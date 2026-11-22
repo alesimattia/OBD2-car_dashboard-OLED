@@ -15,5 +15,8 @@ c'è e poi lo installo" è fuori ambito.
 o librerie mancano, si ferma stampando i comandi. Il core esp8266 3.1.2 è installato lì su richiesta dell'utente; le librerie
 `mcp_can` e `U8g2` non lo sono, per sua decisione. Dettagli in [[reference_build]].
 
+**Mac:** la regola vale per la workstation Windows. Sul Mac l'utente usa arduino-cli di Homebrew e ha fatto installare
+PowerShell (formula Homebrew `powershell`, il cask non esiste più); vedi [[reference_build]].
+
 **How to apply:** se uno strumento manca, segnalarlo in breve e demandare all'utente la verifica o la build; non modificare
 configurazioni VSCode o di sistema senza richiesta esplicita.

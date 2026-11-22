@@ -2,10 +2,10 @@
  * OBD2 WiFi Monitor per ESP8266 LOLIN D1 Mini ed ESP-01
  *
  * Mostra in tempo reale su display OLED SH1106 128x64:
- * - Pressione boost (bar), letta dalla centralina (PID 0x70) o stimata da BoostModel
- * - Coppia motore all'albero (Nm), letta dalla centralina (PID 0x62, 0x8E, 0x63) o stimata da TorqueModel
+ * - Pressione boost (bar), letta dalla centralina (PID 0x70 meno la barometrica 0x33)
+ * - Coppia motore all'albero (Nm), letta dalla centralina (PID 0x62, 0x8E, 0x63)
  * - Temperatura liquido raffreddamento (C)
- * - Carica batteria ibrida (%, PID 0x5B se la vettura lo espone)
+ * - Carica batteria al litio del mild hybrid (%): N/D finchè non c'è un DID con decodifica verificata
  *
  * Comunica con un adattatore ELM327 WiFi tramite comandi AT su TCP, con gli header CAN attivi
  * per distinguere le risposte delle diverse centraline. Dopo la connessione va subito al monitor con il
@@ -40,8 +40,6 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include "dtc_descriptions.h"
-#include "TorqueModel.h"
-#include "BoostModel.h"
 // "Generic ESP8266 Module" è il profilo ESP-01: liberi solo GPIO0/GPIO2 (I2C OLED) e RX/TX, nessun ADC,
 // quindi pulsante su RX con la seriale in sola trasmissione e niente LDR.
 #if defined(ARDUINO_ESP8266_GENERIC)
@@ -121,7 +119,8 @@ U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 enum AppMode { MODE_CONNECT,
                MODE_MONITOR };
 AppMode currentMode = MODE_CONNECT;
-// Fine dell'attesa dopo "Motore non risponde": fino ad allora la riconnessione non parte
+// Attesa dopo "Motore non risponde": finchè è attiva, fino a engineRetryAt, la riconnessione non parte
+bool engineRetryPending = false;
 unsigned long engineRetryAt = 0;
 
 unsigned long lastScreenSwitch = 0;
@@ -246,7 +245,7 @@ void loop() {
       Serial.println(F("OTA: client disconnesso, timeout ripartito"));
     }
     // Durante la scansione completa il SoftAP resta acceso: su ESP-01 il report si legge solo dal web
-    if (!clientNow && millis() > otaDeadline && !obdProbeRunning()) {
+    if (!clientNow && (long)(millis() - otaDeadline) > 0 && !obdProbeRunning()) {
       httpServer.stop();
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
@@ -704,9 +703,12 @@ void elmTestCountSuffix() {
  * scadere dell'attesa, servendo intanto il web server dal loop.
  */
 void executeConnectMode() {
-  if ((long)(millis() - engineRetryAt) < 0) {
-    yield();
-    return;
+  if (engineRetryPending) {
+    if ((long)(millis() - engineRetryAt) < 0) {
+      yield();
+      return;
+    }
+    engineRetryPending = false;
   }
   obdTransportReady = false;
 
@@ -816,7 +818,7 @@ void executeProbeStep() {
   obdProbeStep();
   bool running = obdProbeRunning();
   if (!running || millis() - lastDraw > 500) {
-    char phase[22];
+    char phase[22];  // 21 caratteri del font 6x10 più il terminatore
     char line[22];
     strncpy_P(phase, obdProbePhaseName(), sizeof(phase) - 1);
     phase[sizeof(phase) - 1] = '\0';
@@ -902,6 +904,7 @@ void executeMonitorMode() {
     elmClient.stop();
     obdTransportReady = false;
     engineRetryAt = millis() + ENGINE_SILENT_RETRY_MS;
+    engineRetryPending = true;
     labelsDrawn = false;
     currentMode = MODE_CONNECT;
     return;
@@ -965,7 +968,7 @@ void drawBoostValue() {
 }
 
 /**
- * Disegna la coppia motore in Nm, letta dalla centralina o stimata; in rilascio può essere negativa.
+ * Disegna la coppia motore all'albero in Nm, letta dalla centralina; in rilascio può essere negativa.
  * Colonna sinistra, y=50.
  * @see updateDisplay()
  */
@@ -998,8 +1001,8 @@ void drawCoolantValue() {
 }
 
 /**
- * Disegna la carica della batteria ibrida (PID 0x5B) nella colonna destra della riga 2, y=50:
- * "100%" occupa esattamente i 28 px fra RIGHT_COL_X e il bordo.
+ * Disegna la carica della batteria al litio del mild hybrid nella colonna destra della riga 2, y=50: "100%"
+ * occupa esattamente i 28 px fra RIGHT_COL_X e il bordo. Senza un DID verificato la carica resta N/D.
  * @see updateDisplay()
  */
 void drawHybBattValue() {
@@ -1117,7 +1120,8 @@ void drawDTCScreen(uint8_t page) {
   // Spazio per i massimi dei contatori uint8_t, non solo per i 12 DTC di OBD_MAX_DTC
   char title[25];
   if (dtcPages > 1) {
-    snprintf(title, sizeof(title), "ERRORI (%d) pag.%d/%d", dtcCount, page + 1, dtcPages);
+    // 17 caratteri al massimo (12 DTC, 6 pagine): il font 7x14B ne contiene 18 in 128 px
+    snprintf(title, sizeof(title), "ERRORI %d pag.%d/%d", dtcCount, page + 1, dtcPages);
   } else {
     snprintf(title, sizeof(title), "ERRORI ATTIVI (%d)", dtcCount);
   }

@@ -7,7 +7,7 @@ Audi A5: 184 segnali inclusi (più 0 di supporto) su 169 comandi
     esclusi  291: non verificato da OBDb per il 2022 (dbgfilter)
     esclusi   94: non verificato da OBDb (dbg)
     esclusi   59: richiede la sessione diagnostica 03 (din)
-    esclusi   42: non valido per l'anno modello 2022
+    esclusi   41: non valido per l'anno modello 2022
     esclusi   11: unità non interpretabile (unknown)
     esclusi    9: valore grezzo (raw nel nome)
     esclusi    4: adimensionale senza significato pubblico
@@ -77,6 +77,7 @@ Controllo: valori senza bit di supporto abbinato in PID che ne hanno (da verific
     PID C6  PM_INDUC_L2        Particulate level two inducement status
     PID C6  PM_INDUC_L1        Particulate level one inducement status
 Nomi corretti rispetto a OBDb: BP_A, BP_B
+Correzioni verificate sulla vettura: 7E0 22 028D: A5_ECU_TEMP sostituito da A5_ECU_TEMP_KELVIN
 Inclusi per scelta dopo la revisione: A5_OIL_P_VLV_SWITCH, A5_PISTON_COOLING
 
 ==================== INCLUSI SAE ====================
@@ -1469,7 +1470,7 @@ Mode 01 PID DC
     A5_GPS_SATS_VISIBLE    Satellites, visible [scalar]
     A5_GPS_SATS_TRACKED    Satellites, tracked [scalar]
 7E0/7E8 22 028D  [catture: risposto]
-    A5_ECU_TEMP            Control module temperature [celsius]
+    A5_ECU_TEMP_KELVIN     Control module temperature [celsius]
 7E0/7E8 22 1002  [catture: risposto]
     A5_AC_COMP_T           A/c compressor torque, requested [newtonMeters]
 7E0/7E8 22 1004  [catture: risposto]
@@ -1799,7 +1800,6 @@ Mode 01 PID DC
     74F 22 467C    A5_LIGHT_ASSISTANCE_NUM_STREET_LAMPS Light assistance, number of street lamps  (non verificato da OBDb (dbg))
     74F 22 467C    A5_LIGHT_ASSISTANCE_TOT Light assistance, total brightness  (non verificato da OBDb (dbg))
     773 22 1814    A5_SIM_CARD_SIM_CARD   SIM card, SIM card in main unit  (non verificato da OBDb per il 2022 (dbgfilter))
-    7E0 22 028D    A5_ECU_TEMP_KELVIN     Control module temperature  (non valido per l'anno modello 2022)
     7E0 22 1000    A5_AAT_7E0_2           Ambient temperature  (non verificato da OBDb per il 2022 (dbgfilter))
     7E0 22 1007    A5_PQ35_CAMS_START     Camshaft start position  (non verificato da OBDb per il 2022 (dbgfilter))
     7E0 22 100C    A5_PQ35_FUEL_LVL_2     Fuel level variant  (richiede la sessione diagnostica 03 (din))

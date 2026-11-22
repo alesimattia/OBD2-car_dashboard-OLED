@@ -12,35 +12,50 @@ metadata:
 - `obd_scan.h`: scansione completa come macchina a stati, un passo per giro di `loop()` (`obdProbeStep`), regole failsafe in
   `obdScanRequest`/`obdScanUdsRequest`, nomi ODIS, report Serial, JSON `/scan-data`, flag `obdBusy` e `obdTransportReady`.
   Le fasi `SCAN_*` sono numerate nell'ordine di esecuzione: la regola dei 5 errori di trasporto salta a `phase + 1`.
-- `obd_live.h`: blocco "Profilo vettura", richieste al motore su `7E0`, lettura live, DTC dalle centraline che rispondono
-  al `0101`, clear DTC, istantanea diagnostica condivisa da `/data` e Serial; calcoli derivati in `obdDiagCompute()`.
+- `obd_live.h`: blocco "Profilo vettura" (`OBD_ENGINE_PIDS`, `OBD_ENGINE_MULTI_PID`, `OBD_PHYSICAL_ONLY_ECUS` chiusa da 0),
+  richieste al motore su `7E0`, lettura live, DTC (`0101` funzionale + fisico alle solo-fisiche), clear DTC (Mode 04
+  funzionale + fisico; NRC 11/12 non sono rifiuti), istantanea diagnostica per `/data` e Serial, calcoli in
+  `obdDiagCompute()`, costanti `OBD_FUEL_STOICHIOMETRIC_AFR`/`OBD_GAS_CONSTANT_AIR`. Nessun modello: TorqueModel.h,
+  BoostModel.h, EngineConstants.h cancellati il 22/11/2026 ([[feedback_read_not_estimate]]).
 - Ogni sketch implementa il trasporto: `obdTransact()` con modo di ricezione (`OBD_RX_OBD11/UDS11/OBD29/UDS29`),
   `obdTransportDiscoveryBurst()` (raffica `3E 00` sul CAN nativo, non disponibile sull'ELM327) e `obdTransportRestore()`.
 
-**Trasporto:** CAN nativo con flow control all'ID dato da `obdFlowControlId()` (risposta − 8 in OBD, ID di richiesta in UDS,
-STmin 5 ms in UDS); attese `7F xx 78` rinnovate fino a 10 s complessivi. ELM327 con `ATH1`, `ATSH`/`ATCP`, filtri
+**Trasporto:** CAN nativo: `MCP_STDEXT` con maschere a zero (`MCP_ANY` carica anche frame interrotti da errori), `setMode`
+verificato; invio fallito → `canInit()` subito (TXREQ ritrasmetterebbe senza fine); flow control all'ID di
+`obdFlowControlId()` (risposta − 8 in OBD, ID di richiesta in UDS e solo verso `waitForEcuId`), BS 0, STmin 1 ms in OBD e
+5 ms in UDS; niente `yield()` mentre una slot è RECEIVING (2 buffer MCP2515, pause WiFi > 0,5 ms perdono frame); attese
+`7F xx 78` rinnovate fino a 10 s complessivi. ELM327 con `ATH1`, `ATSH`/`ATCP`, filtri
 `ATCF`/`ATCM` nei modi UDS e `ATAR` per tornare all'automatico, ripiego `ATSTFF` per i cloni che non gestiscono i `78`.
 
-**Lettura live:** una richiesta multi-PID al motore per ciclo; ripiego a PID singolo dopo 3 anomalie di fila (silenzio, NRC,
-malformata o con meno PID), confermato con una richiesta singola. Boost `(70 − BARO)/100`, coppia `(62 − 8E)/100 ×
-TORQUE_MAX_NM`; senza i PID, BoostModel/TorqueModel. Motore muto per 10 cicli: re-init se CAN in bus-off, altrimenti
-schermata "Motore non risponde" e nuovo tentativo dopo 10 s (WiFi: riconnessione all'ELM).
+**Lettura live:** una richiesta multi-PID al motore per ciclo: veloci `70 0C 62 8E`, uno lento a rotazione fra `05 33 63`
+(`0x63` in `referenceTorqueNm`, mai azzerato, esce dalla rotazione appena letto); risposta ~22 byte. Boost `(70 − 33)/100`,
+coppia `(62 − 8E) × 63 / 100`, PID mancante → N/D. Campi applicati solo se la risposta è `wellFormed`; PID presente ma non
+decodificabile = lettura fallita; ISO-TP rimasto a metà (frame persi) non è nè anomalia nè silenzio. Ripiego a PID singolo
+dopo 3 anomalie (silenzio, NRC, malformata, meno PID) confermato con una richiesta singola. Motore muto per 10 cicli: re-init
+se bus-off, altrimenti "Motore non risponde" e nuovo tentativo dopo 10 s (flag `engineRetryPending`, WiFi: riconnessione).
 
 **Pulsante:** durante la scansione un click la interrompe; a fine scansione la pressione lunga (Mode 04) è ignorata finchè
-`buttonPoll()` non vede il pulsante rilasciato e per altri 5 s.
+`buttonPoll()` non vede il pulsante rilasciato e per altri 5 s (flag `buttonLongPressBlocked`: mai confronti con
+`millis() - 0`, che dopo 24,8 giorni risulterebbero nel futuro).
 
-**OLED:** caselle BOOST, TEMP, COPPIA, BATT (PID `5B`); pagine DTC con centralina di provenienza; schermata della scansione
-con fase e avanzamento.
+**OLED:** caselle BOOST, TEMP, COPPIA, BATT (carica Li-ion MHEV, `N/D` finchè non c'è un DID verificato,
+[[feedback_dashboard_content]]); pagine DTC con nome ODIS della centralina, titolo "ERRORI n pag.x/y" (≤ 17 caratteri);
+schermata della scansione con fase (≤ 21 caratteri) e avanzamento.
 
 **Luminosità (`light_sensor.h`, condiviso):** LDR opzionale su A0, filtrato con mediana mobile su 5 campioni e poi EMA
 (α 0.15). LDR assente (A0 a massa) e buio totale sono indistinguibili, mentre la presenza si prova: finchè nessuna lettura
 filtrata arriva a 12 il contrasto resta a `defaultBrightness` = 128 e le letture non entrano in EMA e calibrazione; dalla
 prima lettura ≥ 12 la presenza vale fino al riavvio. Scelta dell'utente: niente sensore I²C, rischio accettato che un filo
 interrotto in marcia lasci il display al minimo fino al riavvio. `LDR_ENABLED` a 0 (profilo ESP-01) non legge mai l'ADC.
+Il decay della calibrazione non stringe il range sotto `LDR_CALIBRATION_MIN_RANGE`; in `auto` ogni cambio oltre l'isteresi
+passa da `BR_FADING`.
 
 **Web:** handler senza `handleClient()` annidati e senza bus durante scansione e connessione (`busy`); `/probe?start|stop`
 imposta solo lo stato. `/serial-data` aggiorna `obdSerialServedSeq`/`Ms`: la scansione attende se un browser che legge il log
-ha più di 2 KB di arretrato. Durante la scansione il SoftAP non scade e la pagina legge il log anche fuori dalla sua tab.
+ha più di 2 KB di arretrato (lo stop della scansione si controlla prima di questa attesa). Durante la scansione il SoftAP
+non scade e la pagina legge il log anche fuori dalla sua tab. `/clear-dtc` solo POST. JS: `u()`, `logFetch` e `probePoll`
+una richiesta alla volta (`setTimeout` dopo la risposta, token contro le catene vecchie); `/serial-data` chiude il blocco
+da 1024 byte su un confine di carattere UTF-8.
 
 **Strumenti in `tools/`:** `obdb_select.ps1` (selezione OBDb, `obdb_signals.h`, `obdb/selection.json`, `obdb/selection.txt`)
 e `pid_scan.ps1` (scansione da PC); nel repository restano solo file usati dall'utente o dal firmware, i test di verifica
