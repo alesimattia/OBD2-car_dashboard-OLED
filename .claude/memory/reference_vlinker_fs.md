@@ -16,13 +16,13 @@ con uno stub.
 **Comandi ELM327/STN dello script:** `ATS1` e `ATH1` (riga a 29 bit in 4 token di ID), protocollo trovato con `ATSP0` e poi
 fissato, gemello a 29 bit (`ATSP7` per il 6, `ATSP9` per l'8) con `ATCP`; `ATAT0` per le richieste funzionali, `ATAT1` per
 le fisiche; in UDS `ATFCSH`, `ATFCSD300005`, `ATFCSM1` e, se `STI` risponde, la coppia registrata con `STCFCPA` o `STCAFCP`.
-Si ferma se le righe non portano l'header. Non verificati su adattatore reale: gestione dei `78`, `ATFCSM1`, `ATAT1`,
-`ATSP7`, `STCFCPA`.
+Si ferma se le righe non portano l'header. Verificati sull'auto il 22/11/2026: `78` (18 attese, tutte risolte), `ATFCSM1`,
+`ATAT1`, `ATSP7`, `STCFCPA` accettato; scansione 337 s.
 
 **Adattatore**
 - Bridge USB FTDI con driver VCP, spesso già presente in Windows: compare come porta COM.
 - 115200 baud di fabbrica. Dal firmware 2.2.92 un'utility Vgate può cambiarlo in modo permanente, per questo lo script prova anche 38400, 230400 e 500000.
-- A `ATI` risponde come ELM327 v2.2 o v2.3: è un compatibile, non il chip ELM originale. Ha anche comandi proprietari `VT...`.
+- A `ATI` risponde come ELM327 v2.3 (unità dell'utente: STN1170 v4.3.2 a `STI`, su COM3 a 115200): è un compatibile, non il chip ELM originale. Ha anche comandi proprietari `VT...`.
 - Le unità prodotte prima del 7/2/2025 hanno problemi su alcune porte USB 3.0 e vanno collegate tramite un hub USB 2.0.
 - La latenza FTDI di default (16 ms) rallenta le risposte ma non le altera.
 - La porta COM è esclusiva: con FORScan o VCDS aperti lo script non la apre.

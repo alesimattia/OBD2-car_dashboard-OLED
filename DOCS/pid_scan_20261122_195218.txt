@@ -1,0 +1,7544 @@
+Scansione completa OBD2 e UDS da PC  2026-11-22 19:52:18
+Selezione OBDb anno modello 2022: 205 PID SAE, 169 DID VAG; elenco ODIS di 88 coppie
+Adattatore: COM3 @ 115200 | ATI: ELM327 v2.3 | AT@1: OBDII to RS232 Interpreter | STI: STN1170 v4.3.2
+Protocollo: 6 AUTO, ISO 15765-4 (CAN 11/500) | Tensione: 13.8V
+
+=== SCANSIONE COMPLETA: OBD2 e UDS in sola lettura, solo dati interpretabili ===
+Centraline OBD: 3
+  [Cambio 7E9] risponde in funzionale sì, in fisico sì
+  [Motore 7E8] risponde in funzionale sì, in fisico sì
+  [Centralina 5 7EC] risponde in funzionale no, in fisico sì
+  [Cambio 7E9] PID 01 Malfunction indicator lamp: spento
+  [Cambio 7E9] PID 01 Number of DTCs stored in this ECU: 0
+  [Cambio 7E9] PID 01 Comprehensive component monitoring ready: sì
+  [Cambio 7E9] PID 01 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Motore 7E8] PID 01 Malfunction indicator lamp: spento
+  [Motore 7E8] PID 01 Number of DTCs stored in this ECU: 0
+  [Motore 7E8] PID 01 Comprehensive component monitoring ready: sì
+  [Motore 7E8] PID 01 Fuel system monitoring ready: sì
+  [Motore 7E8] PID 01 Misfire monitoring ready: sì
+  [Motore 7E8] PID 01 EGR system monitoring ready: sì
+  [Motore 7E8] PID 01 Oxygen sensor heater monitoring ready: sì
+  [Motore 7E8] PID 01 Oxygen sensor monitoring ready: sì
+  [Motore 7E8] PID 01 Catalyst monitoring ready: sì
+  [Motore 7E8] PID 01 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Centralina 5 7EC] PID 01 Malfunction indicator lamp: spento
+  [Centralina 5 7EC] PID 01 Number of DTCs stored in this ECU: 0
+  [Centralina 5 7EC] PID 01 Comprehensive component monitoring ready: sì
+  [Centralina 5 7EC] PID 01 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Motore 7E8] PID 03 Fuel system 1 status: Closed loop - using oxygen sensor(s) as feedback for fuel control
+  [Motore 7E8] PID 03 Fuel system 2 status: No status reported: this fuel system is not running or not present, e.g. the engine is off
+  [Cambio 7E9] PID 04 Calculated engine load: 14.51 %
+  [Motore 7E8] PID 04 Calculated engine load: 12.941 %
+  [Centralina 5 7EC] PID 04 Calculated engine load: 13.725 %
+  [Cambio 7E9] PID 05 Engine coolant temperature: 65 °C
+  [Motore 7E8] PID 05 Engine coolant temperature: 65 °C
+  [Centralina 5 7EC] PID 05 Engine coolant temperature: 65 °C
+  [Motore 7E8] PID 06 Short term fuel trim (bank 1): 0.781 %
+  [Motore 7E8] PID 07 Long term fuel trim (bank 1): 0.781 %
+  [Motore 7E8] PID 0B Intake manifold absolute pressure: 23 kPa
+  [Cambio 7E9] PID 0C Engine RPM: 800.5 rpm
+  [Motore 7E8] PID 0C Engine RPM: 810 rpm
+  [Centralina 5 7EC] PID 0C Engine RPM: 799 rpm
+  [Cambio 7E9] PID 0D Vehicle speed: 0 km/h
+  [Motore 7E8] PID 0D Vehicle speed: 0 km/h
+  [Centralina 5 7EC] PID 0D Vehicle speed: 0 km/h
+  [Motore 7E8] PID 0E Timing advance: -7 °
+  [Motore 7E8] PID 0F Intake air temperature: 15 °C
+  [Motore 7E8] PID 11 Absolute throttle position: 12.157 %
+  [Motore 7E8] PID 13 02S Bank 2, Sensor 4 present: no
+  [Motore 7E8] PID 13 02S Bank 2, Sensor 3 present: no
+  [Motore 7E8] PID 13 02S Bank 2, Sensor 2 present: no
+  [Motore 7E8] PID 13 02S Bank 2, Sensor 1 present: no
+  [Motore 7E8] PID 13 02S Bank 1, Sensor 4 present: no
+  [Motore 7E8] PID 13 02S Bank 1, Sensor 3 present: no
+  [Motore 7E8] PID 13 02S Bank 1, Sensor 2 present: sì
+  [Motore 7E8] PID 13 02S Bank 1, Sensor 1 present: sì
+  [Motore 7E8] PID 15 O2S Output Voltage Bank 1, Sensor 2: 0.645 V
+  [Motore 7E8] PID 15 SHRTFT associated with O2S12: nessun valore
+  [Motore 7E8] PID 1C OBD requirements to which vehicle is designed: EOBD
+  [Motore 7E8] PID 1F Time since engine start: 284 s
+  [Motore 7E8] PID 21 Distance traveled while MIL was activated: 0 km
+  [Motore 7E8] PID 23 Fuel rail pressure: 10080 kPa
+  [Motore 7E8] PID 2E Commanded evaporative purge: 5.49 %
+  [Motore 7E8] PID 2F Fuel tank level: 26.667 %
+  [Motore 7E8] PID 30 Number of warm-ups since diagnostic trouble codes cleared: 124
+  [Motore 7E8] PID 31 Distance traveled since diagnostic trouble codes cleared: 2308 km
+  [Motore 7E8] PID 33 Barometric pressure: 99 kPa
+  [Motore 7E8] PID 34 Lambda value, Equivalence Ratio Bank 1, Sensor 1: 0.999
+  [Motore 7E8] PID 34 Wide Range O2S Current, O2 Sensor Bank 1, Sensor 1: -0.012 mA
+  [Motore 7E8] PID 3C Catalyst temperature bank 1, sensor 1: 336.2 °C
+  [Cambio 7E9] PID 41 Comprehensive component monitoring completed: sì
+  [Cambio 7E9] PID 41 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Motore 7E8] PID 41 Comprehensive component monitoring completed: sì
+  [Motore 7E8] PID 41 Fuel system monitoring completed: sì
+  [Motore 7E8] PID 41 Misfire monitoring completed: sì
+  [Motore 7E8] PID 41 EGR system monitoring completed: no
+  [Motore 7E8] PID 41 Oxygen sensor heater monitoring completed: no
+  [Motore 7E8] PID 41 Oxygen sensor monitoring completed: no
+  [Motore 7E8] PID 41 Catalyst monitoring completed: no
+  [Motore 7E8] PID 41 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Centralina 5 7EC] PID 41 Comprehensive component monitoring completed: sì
+  [Centralina 5 7EC] PID 41 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Cambio 7E9] PID 42 Control module voltage: 13.5 V
+  [Motore 7E8] PID 42 Control module voltage: 13.42 V
+  [Centralina 5 7EC] PID 42 Control module voltage: 13.976 V
+  [Motore 7E8] PID 43 Absolute load value: 16.471 %
+  [Motore 7E8] PID 44 Commanded equivalence ratio: 1
+  [Motore 7E8] PID 45 Relative throttle position: 1.961 %
+  [Motore 7E8] PID 46 Ambient air temperature: 15 °C
+  [Centralina 5 7EC] PID 46 Ambient air temperature: 15 °C
+  [Motore 7E8] PID 47 Absolute throttle position B: 11.765 %
+  [Cambio 7E9] PID 49 Accelerator pedal position D: 14.902 %
+  [Motore 7E8] PID 49 Accelerator pedal position D: 14.902 %
+  [Centralina 5 7EC] PID 49 Accelerator pedal position D: 14.902 %
+  [Motore 7E8] PID 4A Accelerator pedal position E: 14.902 %
+  [Motore 7E8] PID 4C Commanded throttle actuator control: 2.353 %
+  [Motore 7E8] PID 51 Type of fuel currently being used by the vehicle: Gasoline/petrol
+  [Motore 7E8] PID 56 Long term secondary O2 sensor fuel trim (bank 1): 0 %
+  [Motore 7E8] PID 5E Engine fuel rate: 0.9 L/h
+  [Motore 7E8] PID 62 Actual engine torque: 6 %
+  [Motore 7E8] PID 63 Engine reference torque: 370 Nm
+  [Motore 7E8] PID 67 Engine coolant temperature 1: 67 °C
+  [Motore 7E8] PID 67 Engine coolant temperature 2: 13 °C
+  [Motore 7E8] PID 70 Boost pressure sensor A: 99.719 kPa
+  [Motore 7E8] PID 8B Particulate filter regen in progress: no
+  [Motore 7E8] PID 8B Normalized trigger for particulate filter regen: 1.176 %
+  [Motore 7E8] PID 8B Average distance between particulate filter regens: 0 km
+  [Motore 7E8] PID 8E Engine Friction - Percent Torque: 6 %
+  [Motore 7E8] PID 9D Engine fuel rate (alternate): 0.18 g/s
+  [Motore 7E8] PID 9D Vehicle fuel rate: 0.18 g/s
+  [Motore 7E8] PID 9E Engine exhaust flow rate: 10 kg/h
+  [Motore 7E8] PID A4 Transmission actual gear: 0
+  [Motore 7E8] PID A6 Odometer: 127615.7 km
+  [Motore 7E8] richiesta con 2 PID: risposta completa
+  [Motore 7E8] richiesta con 6 PID: risposta completa
+  [Motore 7E8] Monitor Sonda lambda banco 1 sensore 1: 4 test superati, 0 falliti
+  [Motore 7E8] Monitor Sonda lambda banco 1 sensore 2: 3 test superati, 0 falliti
+  [Motore 7E8]     Tempo di commutazione ricco-magro: 0 (limiti 0 - 1000) ms
+  [Motore 7E8] Monitor Catalizzatore banco 1: 1 test superati, 0 falliti
+  [Motore 7E8] Monitor Fasatura variabile banco 1: 4 test superati, 0 falliti
+  [Motore 7E8] Monitor Flusso di spurgo evaporazione: 1 test superati, 0 falliti
+  [Motore 7E8] Monitor Riscaldatore sonda lambda banco 1 sensore 1: 2 test superati, 0 falliti
+  [Motore 7E8] Monitor Riscaldatore sonda lambda banco 1 sensore 2: 1 test superati, 0 falliti
+  [Motore 7E8] Monitor Mancate accensioni cilindro 1: 2 test superati, 0 falliti
+  [Motore 7E8]     Media mancate accensioni ultimi 10 cicli: 2 (limiti 0 - 65535) 
+  [Motore 7E8]     Mancate accensioni nel ciclo: 0 (limiti 0 - 65535) 
+  [Motore 7E8] Monitor Mancate accensioni cilindro 2: 2 test superati, 0 falliti
+  [Motore 7E8]     Media mancate accensioni ultimi 10 cicli: 2 (limiti 0 - 65535) 
+  [Motore 7E8]     Mancate accensioni nel ciclo: 0 (limiti 0 - 65535) 
+  [Motore 7E8] Monitor Mancate accensioni cilindro 3: 2 test superati, 0 falliti
+  [Motore 7E8]     Media mancate accensioni ultimi 10 cicli: 3 (limiti 0 - 65535) 
+  [Motore 7E8]     Mancate accensioni nel ciclo: 1 (limiti 0 - 65535) 
+  [Motore 7E8] Monitor Mancate accensioni cilindro 4: 2 test superati, 0 falliti
+  [Motore 7E8]     Media mancate accensioni ultimi 10 cicli: 2 (limiti 0 - 65535) 
+  [Motore 7E8]     Mancate accensioni nel ciclo: 0 (limiti 0 - 65535) 
+  [Cambio 7E9] ID calibrazione software: 8W2155DE00011000
+  [Cambio 7E9] Nome centralina: TCM-TransmisCtrl
+  [Motore 7E8] ID calibrazione software: 8W0115R 0004BEBJ
+  [Motore 7E8] Contatori di completamento dei monitor (IPT): OBDCOND=1766 IGNCNTR=11292 CATCOMP1=4567 CATCOND1=1766 CATCOMP2=0 CATCOND2=0 O2SCOMP1=3555 O2SCOND1=1766 O2SCOMP2=0 O2SCOND2=0 EGRCOMP=8390 EGRCOND=1766 AIRCOMP=0 AIRCOND=0 EVAPCOMP=0 EVAPCOND=0 SO2SCOMP1=4237 SO2SCOND1=1766 SO2SCOMP2=0 SO2SCOND2=0
+  [Motore 7E8] Nome centralina: ECM-EngineControl
+  [Motore 7E8] Consumo reale di vita (OBFCM): 127614 km, 10543.44 L, media 8.262 L/100 km
+  [Centralina 5 7EC] ID calibrazione software: 8W0379AR0872  00
+  [Centralina 5 7EC] Nome centralina: BSCM-BrakeSystem
+  [Cambio 7E9] DTC confermati: nessuno
+  [Motore 7E8] DTC confermati: nessuno
+  [Centralina 5 7EC] DTC confermati: nessuno
+  [Cambio 7E9] DTC in attesa: nessuno
+  [Motore 7E8] DTC in attesa: nessuno
+  [Centralina 5 7EC] DTC in attesa: nessuno
+  [Centralina 5 7EC] DTC permanenti: servizio non supportato
+OBD a 29 bit: 0 centraline rispondono
+Centraline UDS trovate: 25
+Flow control verso le centraline UDS: funziona
+  [Elettronica piantone sterzo 70C/776] Sessione diagnostica attiva: predefinita
+  [Elettronica piantone sterzo 70C/776] Codice ricambio costruttore: 4N0907129MN
+  [Elettronica piantone sterzo 70C/776] Versione software costruttore: 0009
+  [Elettronica piantone sterzo 70C/776] Numero hardware costruttore: 4N0907129MN
+  [Elettronica piantone sterzo 70C/776] Nome di sistema: Lenks.Modul
+  [Elettronica piantone sterzo 70C/776] Data di calibrazione: 2000-01-01
+  [Elettronica piantone sterzo 70C/776] File ODX: EV_SMLSKLOAU736
+  [Elettronica piantone sterzo 70C/776] Versione file ODX: 007012
+  [Elettronica piantone sterzo 70C/776] Versione hardware VW: H03
+  [Elettronica piantone sterzo 70C/776] Nome di sistema officina VW: J527
+  [Elettronica piantone sterzo 70C/776] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Elettronica centrale 70E/778] Sessione diagnostica attiva: predefinita
+  [Elettronica centrale 70E/778] Codice ricambio costruttore: 8W1907063BN
+  [Elettronica centrale 70E/778] Versione software costruttore: 0728
+  [Elettronica centrale 70E/778] Numero hardware costruttore: 8W1907063N
+  [Elettronica centrale 70E/778] Nome di sistema: BCM1 MLBevo
+  [Elettronica centrale 70E/778] Data di calibrazione: 2022-06-01
+  [Elettronica centrale 70E/778] File ODX: EV_BCM1BOSCHAU651
+  [Elettronica centrale 70E/778] Numero set dati VW: 8W6909514D
+  [Elettronica centrale 70E/778] Versione file ODX: 018005
+  [Elettronica centrale 70E/778] Versione hardware VW: H10
+  [Elettronica centrale 70E/778] Nome di sistema officina VW: J519
+  [Elettronica centrale 70E/778] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Gateway 710/77A] Sessione diagnostica attiva: predefinita
+  [Gateway 710/77A] Codice ricambio costruttore: 8W0907468F
+  [Gateway 710/77A] Versione software costruttore: 0613
+  [Gateway 710/77A] Fornitore: --------------------------------
+  [Gateway 710/77A] Data di produzione: 2022-05-01
+  [Gateway 710/77A] Numero di serie: F0640412676191
+  [Gateway 710/77A] Numero hardware costruttore: 80B907468A
+  [Gateway 710/77A] Omologazione emissioni: -------
+  [Gateway 710/77A] Nome di sistema: Gateway
+  [Gateway 710/77A] Data di calibrazione: 2022-06-28
+  [Gateway 710/77A] File ODX: EV_Gatew31xAU65x
+  [Gateway 710/77A] Numero set dati VW: 8W0909515T
+  [Gateway 710/77A] Versione file ODX: 003250
+  [Gateway 710/77A] Versione hardware VW: H08
+  [Gateway 710/77A] Nome di sistema officina VW: J533
+  [Gateway] DID 123A Bze_q_lad: 8826.2 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 123A Bze_q_elad: 8694.6 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A00 Start/stop battery target voltage: 13.5 V  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A06 12V battery capacity: 68 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A07 Start/stop battery voltage: 13.384 V  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A09 Start/stop battery current: 1.564 A  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A0A Start/stop battery temperature: 14 °C  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A0B Start/stop battery sensor temperature: 13 °C  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A0C Start/stop battery state of charge: 71 %  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A0E Start/stop battery resistance: 4.2 mΩ  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A0F Start/stop battery charge: 34 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A10 Start/stop battery voltage, at rest: 12.4 V  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A15 Energy balance of last driving cycle: 0.3 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A17 Overall energy balance: 5251.05 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A18 Entire energy throughput: 8694.6 Ah  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2A1C Generator current: 25 A  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB6 Range remaining: 337.962 km  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 0: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 1: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 2: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 3: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 4: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 5: 23 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 2AB7 Average consumption, category 6: 0 kWh  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 4F00 Generator voltage, actual: 10.6 V  (risposto nelle catture OBDb A5 2022)
+  [Gateway] DID 5505 Steering wheel temperature: nessun valore  (risposto nelle catture OBDb A5 2022)
+  [Gateway 710/77A] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Servosterzo 712/77C] Sessione diagnostica attiva: predefinita
+  [Servosterzo 712/77C] Codice ricambio costruttore: 8W0909144J
+  [Servosterzo 712/77C] Versione software costruttore: 0411
+  [Servosterzo 712/77C] Numero hardware costruttore: 8W0909144B
+  [Servosterzo 712/77C] Nome di sistema: EPS_MLBEVO_ZF
+  [Servosterzo 712/77C] Data di calibrazione: 2022-05-31
+  [Servosterzo 712/77C] File ODX: EV_EPSZFAU49X
+  [Servosterzo 712/77C] Numero set dati VW: 8W2909852Q
+  [Servosterzo 712/77C] Versione file ODX: 003023
+  [Servosterzo 712/77C] Versione hardware VW: H08
+  [Servosterzo 712/77C] Nome di sistema officina VW: J500
+  [Servosterzo 712/77C] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Freni ABS/ESP 713/77D] Sessione diagnostica attiva: predefinita
+  [Freni ABS/ESP 713/77D] Codice ricambio costruttore: 8W0907379AR
+  [Freni ABS/ESP 713/77D] Versione software costruttore: 0872
+  [Freni ABS/ESP 713/77D] Numero hardware costruttore: 8W0907379AR
+  [Freni ABS/ESP 713/77D] Nome di sistema: ESP9 Plus
+  [Freni ABS/ESP 713/77D] Data di calibrazione: 2000-01-01
+  [Freni ABS/ESP 713/77D] File ODX: EV_ESP9BOSCHCMP
+  [Freni ABS/ESP 713/77D] Numero set dati VW: 8W2909504N
+  [Freni ABS/ESP 713/77D] Versione file ODX: 002013
+  [Freni ABS/ESP 713/77D] Versione hardware VW: H20
+  [Freni ABS/ESP 713/77D] Nome di sistema officina VW: J104
+  [Freni ABS/ESP] PID standard F401 Malfunction indicator lamp: spento
+  [Freni ABS/ESP] PID standard F401 Number of DTCs stored in this ECU: 0
+  [Freni ABS/ESP] PID standard F401 Comprehensive component monitoring ready: sì
+  [Freni ABS/ESP] PID standard F401 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Freni ABS/ESP] PID standard F404 Calculated engine load: 13.333 %
+  [Freni ABS/ESP] PID standard F405 Engine coolant temperature: 78 °C
+  [Freni ABS/ESP] PID standard F40C Engine RPM: 801 rpm
+  [Freni ABS/ESP] PID standard F40D Vehicle speed: 0 km/h
+  [Freni ABS/ESP] PID standard F441 Comprehensive component monitoring completed: sì
+  [Freni ABS/ESP] PID standard F441 Compression ignition monitoring supported: Spark ignition monitors supported
+  [Freni ABS/ESP] PID standard F442 Control module voltage: 13.648 V
+  [Freni ABS/ESP] PID standard F446 Ambient air temperature: 15 °C
+  [Freni ABS/ESP] PID standard F449 Accelerator pedal position D: 14.902 %
+  [Freni ABS/ESP 713/77D] dichiara InfoType OBD via UDS (F800)
+  [Freni ABS/ESP] DID 2B21 Brake pressure: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Freni ABS/ESP] DID 2B29 Steering wheel angle: -0.046 rad  (risposto nelle catture OBDb A5 2022)
+  [Freni ABS/ESP 713/77D] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Quadro strumenti 714/77E] Sessione diagnostica attiva: predefinita
+  [Quadro strumenti 714/77E] Codice ricambio costruttore: 8W5920790M
+  [Quadro strumenti 714/77E] Versione software costruttore: 0217
+  [Quadro strumenti 714/77E] Numero hardware costruttore: 8W5920790L
+  [Quadro strumenti 714/77E] Nome di sistema: FBenRDW------
+  [Quadro strumenti 714/77E] Data di calibrazione: 2026-10-09
+  [Quadro strumenti 714/77E] File ODX: EV_DashBoardAU65X
+  [Quadro strumenti 714/77E] Numero set dati VW: 8W1909525F
+  [Quadro strumenti 714/77E] Versione file ODX: 002027
+  [Quadro strumenti 714/77E] Versione hardware VW: H11
+  [Quadro strumenti 714/77E] Nome di sistema officina VW: J285
+  [Quadro strumenti] DID 1014 Ambient air temperature: 14.5 °C  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti] DID 2203 Odometer, dash: 127615 km  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti] DID 220C Outside temperature: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti] DID 2211 Charge air pressure: 50.98 %  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti] DID 224B Oil thermal wear: 34 km  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti] DID 22B8 Odometer, mileage, HR: 127615.789 km  (risposto nelle catture OBDb A5 2022)
+  [Quadro strumenti 714/77E] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Airbag 715/77F] Sessione diagnostica attiva: predefinita
+  [Airbag 715/77F] Codice ricambio costruttore: 8W0959655P
+  [Airbag 715/77F] Versione software costruttore: 0122
+  [Airbag 715/77F] Data di produzione: 2022-03-14
+  [Airbag 715/77F] Numero di serie: 0034Y00CNFBG
+  [Airbag 715/77F] Numero hardware costruttore: 8W0959655P
+  [Airbag 715/77F] Versione software fornitore: PSP_0032VDS_0107
+  [Airbag 715/77F] Nome di sistema: Airbag10.44
+  [Airbag 715/77F] Data di calibrazione: 2001-01-01
+  [Airbag 715/77F] File ODX: EV_AirbaAU10BPAAU736
+  [Airbag 715/77F] Numero set dati VW: 8W2909602BE
+  [Airbag 715/77F] Versione file ODX: 006016
+  [Airbag 715/77F] Versione hardware VW: H12
+  [Airbag 715/77F] Nome di sistema officina VW: J234
+  [Airbag 715/77F] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Portellone 723/78D] Sessione diagnostica attiva: predefinita
+  [Portellone 723/78D] Codice ricambio costruttore: 8W8959107E
+  [Portellone 723/78D] Versione software costruttore: 0172
+  [Portellone 723/78D] Data di produzione: 2001-01-01
+  [Portellone 723/78D] Numero di serie: A2-C744-8781-4
+  [Portellone 723/78D] Numero hardware costruttore: 8W8959107
+  [Portellone 723/78D] Numero hardware fornitore: A2C7376250000
+  [Portellone 723/78D] Numero software fornitore: A2C7376250000
+  [Portellone 723/78D] Omologazione emissioni: -------
+  [Portellone 723/78D] Nome di sistema: HDSG-Modul
+  [Portellone 723/78D] Data di calibrazione: 2022-06-01
+  [Portellone 723/78D] File ODX: EV_DeckLidCONTIAU736
+  [Portellone 723/78D] Numero set dati VW: 8W2909541D
+  [Portellone 723/78D] Versione file ODX: 001017
+  [Portellone 723/78D] Versione hardware VW: H13
+  [Portellone 723/78D] Nome di sistema officina VW: J605
+  [Portellone 723/78D] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Porta posteriore lato passeggero 73F/7A9] non risponde più: letture restanti saltate
+  [Climatizzatore 746/7B0] Sessione diagnostica attiva: predefinita
+  [Climatizzatore 746/7B0] Codice ricambio costruttore: 8W0820043BH
+  [Climatizzatore 746/7B0] Versione software costruttore: 0291
+  [Climatizzatore 746/7B0] Numero hardware costruttore: 8W0820043BH
+  [Climatizzatore 746/7B0] Nome di sistema: Klima Zone 3
+  [Climatizzatore 746/7B0] Data di calibrazione: 2022-06-01
+  [Climatizzatore 746/7B0] File ODX: EV_AirCondiBHTCAU491
+  [Climatizzatore 746/7B0] Numero set dati VW: 8W2909862B
+  [Climatizzatore 746/7B0] Versione file ODX: 001029
+  [Climatizzatore 746/7B0] Versione hardware VW: H60
+  [Climatizzatore 746/7B0] Nome di sistema officina VW: E87
+  [Climatizzatore] PID standard F405 Engine coolant temperature: -37 °C
+  [Climatizzatore] PID standard F40C Engine RPM: 200.75 rpm
+  [Climatizzatore] PID standard F40D Vehicle speed: 0 km/h
+  [Climatizzatore] DID 2605 Refrigerant pressure: 4.6 bar  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 2606 Radiator fan actual duty: 0 %  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 2607 Radiator fan commanded duty: 0 %  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 2609 Outside temperature: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 260A Outside temperature, system calculated: 12.9 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 260C Front left deflector temperature: 14.3 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 260D Front right deflector temperature: 14.6 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 2612 Temperature after evaporator: 7.8 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 2613 Cabin temperature: 15.2 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore] DID 263D Rear deflector temperature: 14.5 °C  (risposto nelle catture OBDb A5 2022)
+  [Climatizzatore 746/7B0] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Porta lato guida 74A/7B4] Sessione diagnostica attiva: predefinita
+  [Porta lato guida 74A/7B4] Codice ricambio costruttore: 8W0959593N
+  [Porta lato guida 74A/7B4] Versione software costruttore: 0390
+  [Porta lato guida 74A/7B4] Numero di serie: 0000467208387
+  [Porta lato guida 74A/7B4] Numero hardware costruttore: 8W0959593N
+  [Porta lato guida 74A/7B4] Nome di sistema: TSG FS
+  [Porta lato guida 74A/7B4] Data di calibrazione: 2000-01-01
+  [Porta lato guida 74A/7B4] File ODX: EV_DCU2DriveSideMAXHCONT
+  [Porta lato guida 74A/7B4] Numero set dati VW: 8W2909872E
+  [Porta lato guida 74A/7B4] Versione file ODX: 001005
+  [Porta lato guida 74A/7B4] Versione hardware VW: 011
+  [Porta lato guida 74A/7B4] Nome di sistema officina VW: J386
+  [Porta lato guida 74A/7B4] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Porta lato passeggero 74B/7B5] Sessione diagnostica attiva: predefinita
+  [Porta lato passeggero 74B/7B5] Codice ricambio costruttore: 8W0959592N
+  [Porta lato passeggero 74B/7B5] Versione software costruttore: 0390
+  [Porta lato passeggero 74B/7B5] Numero di serie: 0000467220465
+  [Porta lato passeggero 74B/7B5] Numero hardware costruttore: 8W0959592N
+  [Porta lato passeggero 74B/7B5] Nome di sistema: TSG BFS
+  [Porta lato passeggero 74B/7B5] Data di calibrazione: 2000-01-01
+  [Porta lato passeggero 74B/7B5] File ODX: EV_DCU2PasseSideMAXHCONT
+  [Porta lato passeggero 74B/7B5] Numero set dati VW: 8W2909873E
+  [Porta lato passeggero 74B/7B5] Versione file ODX: 001005
+  [Porta lato passeggero 74B/7B5] Versione hardware VW: 011
+  [Porta lato passeggero 74B/7B5] Nome di sistema officina VW: J387
+  [Porta lato passeggero 74B/7B5] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Sessione diagnostica attiva: predefinita
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Codice ricambio costruttore: 8W6907217E
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Versione software costruttore: 0070
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Numero hardware costruttore: 8W6907217D
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Nome di sistema: BVS
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Data di calibrazione: 2022-06-01
+  [Sensori anteriori di assistenza alla guida 74F/7B9] File ODX: EV_BVSMLBevKOSTAAU736
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Numero set dati VW: 8W2909466E
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Versione file ODX: 002028
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Versione hardware VW: H28
+  [Sensori anteriori di assistenza alla guida 74F/7B9] Nome di sistema officina VW: R242
+  [Sensori anteriori di assistenza alla guida 74F/7B9] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Leva del cambio 753/7BD] Sessione diagnostica attiva: predefinita
+  [Leva del cambio 753/7BD] Codice ricambio costruttore: 8W1713041Q
+  [Leva del cambio 753/7BD] Versione software costruttore: 0077
+  [Leva del cambio 753/7BD] Numero di serie: 22021080277432
+  [Leva del cambio 753/7BD] Numero hardware costruttore: 8W1713041K
+  [Leva del cambio 753/7BD] Nome di sistema: GSM-LL
+  [Leva del cambio 753/7BD] Data di calibrazione: 2000-01-01
+  [Leva del cambio 753/7BD] File ODX: EV_GSMWaehlZFAU736
+  [Leva del cambio 753/7BD] Numero set dati VW: -----------
+  [Leva del cambio 753/7BD] Versione file ODX: 001017
+  [Leva del cambio 753/7BD] Versione hardware VW: H10
+  [Leva del cambio 753/7BD] Nome di sistema officina VW: J587
+  [Leva del cambio 753/7BD] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Telematica 767/7D1] Sessione diagnostica attiva: predefinita
+  [Telematica 767/7D1] Codice ricambio costruttore: 4KE035282G
+  [Telematica 767/7D1] Versione software costruttore: 0371
+  [Telematica 767/7D1] Fornitore: Harman Becker Automotive Systems
+  [Telematica 767/7D1] Data di produzione: 2019-05-22
+  [Telematica 767/7D1] Numero di serie: A970E0NS433245
+  [Telematica 767/7D1] Numero hardware costruttore: 4KE035282B
+  [Telematica 767/7D1] Nome di sistema: CB_H_ECE
+  [Telematica 767/7D1] Data di calibrazione: 2022-06-28
+  [Telematica 767/7D1] File ODX: EV_ConBoxHighAU49X
+  [Telematica 767/7D1] Numero set dati VW: 8W0909612K
+  [Telematica 767/7D1] Versione file ODX: 001004
+  [Telematica 767/7D1] Versione hardware VW: 042
+  [Telematica 767/7D1] Nome di sistema officina VW: J949
+  [Telematica] DID 2431 Satellites, visible: 4  (risposto nelle catture OBDb A5 2022)
+  [Telematica] DID 2431 Satellites, tracked: 27  (risposto nelle catture OBDb A5 2022)
+  [Telematica 767/7D1] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Telecamera posteriore 769/7D3] Sessione diagnostica attiva: predefinita
+  [Telecamera posteriore 769/7D3] Codice ricambio costruttore: 4M0980556A
+  [Telecamera posteriore 769/7D3] Versione software costruttore: 0250
+  [Telecamera posteriore 769/7D3] Numero hardware costruttore: 4M0980556A
+  [Telecamera posteriore 769/7D3] Nome di sistema: RVC Compact
+  [Telecamera posteriore 769/7D3] Data di calibrazione: 2000-01-01
+  [Telecamera posteriore 769/7D3] File ODX: EV_CamSysRVRVCPANAMLBEv
+  [Telecamera posteriore 769/7D3] Numero set dati VW: 8W2909460H
+  [Telecamera posteriore 769/7D3] Versione file ODX: 005010
+  [Telecamera posteriore 769/7D3] Versione hardware VW: H18
+  [Telecamera posteriore 769/7D3] Nome di sistema officina VW: J772
+  [Telecamera posteriore 769/7D3] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Infotainment 773/7DD] Sessione diagnostica attiva: predefinita
+  [Infotainment 773/7DD] Codice ricambio costruttore: 8W2035043M
+  [Infotainment 773/7DD] Versione software costruttore: 3695
+  [Infotainment 773/7DD] Numero di serie: GRO-63323.05.2220010
+  [Infotainment 773/7DD] Numero hardware costruttore: 8W2035043A
+  [Infotainment 773/7DD] Nome di sistema: MU-TH-ND-EU
+  [Infotainment 773/7DD] File ODX: EV_MUTI
+  [Infotainment 773/7DD] Numero set dati VW: 8W1909545K
+  [Infotainment 773/7DD] Versione file ODX: 001010
+  [Infotainment 773/7DD] Versione hardware VW: 044
+  [Infotainment 773/7DD] Nome di sistema officina VW: J794
+  [Motore 7E0/7E8] Sessione diagnostica attiva: predefinita
+  [Motore 7E0/7E8] Codice ricambio costruttore: 8W0907115R
+  [Motore 7E0/7E8] Versione software costruttore: 0004
+  [Motore 7E0/7E8] Numero hardware costruttore: 06N907309A
+  [Motore 7E0/7E8] Nome di sistema: R4 2.0l TFSI
+  [Motore 7E0/7E8] File ODX: EV_ECM20TFS0118W0907115R
+  [Motore 7E0/7E8] Versione file ODX: 001007
+  [Motore 7E0/7E8] Versione hardware VW: H80
+  [Motore 7E0/7E8] Nome di sistema officina VW:  evo4
+  [Motore 7E0/7E8] dichiara monitor OBD via UDS (F600)
+  [Motore 7E0/7E8] dichiara InfoType OBD via UDS (F800)
+  [Motore] DID 028D Control module temperature: 150 °C  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1002 A/c compressor torque, requested: 0 Nm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1004 Ambient temperature: 0 °C  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 101A A/C compressor torque: 30 Nm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 102A Accelerator pedal, sensor 1 voltage: 749.4 mV  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1065 Cylinder head temperature: 80.267 °C  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 10D3 Injector 2 rail pressure calibration point 1: 0 ms  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 10D4 Injector 2, rail pressure calibration point 1: 0 ms  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 10D5 Lambda, actual value: 0  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 10D6 Injector 1 rail pressure calibration point 2: 0.01 ms  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 10E0 Odometer, alternative: 127615 km  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1116 Coolant fan 1 duty cycle: 100 %  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1125 Camshaft adaptation, intake bank 1, phase position: 0 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1128 Camshaft adaptation, exhaust bank 1, phase position: 0 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 113F Fuel consumption: 0.92 L  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1158 Maximum discharge current: 0 A  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1159 Maximum charge current: 0 A  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1160 Odometer, high resolution: 127077.731 km  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1189 Intake camshaft signal edge position adapted edge 2: 1268.25 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 118A Intake camshaft signal edge position adapted edge 3: 1247.938 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11B9 Oil pressure valve switch, control: 1  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11BA Oil level: 8.703 cm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11BD Oil level warning threshold: 1.256 cm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11BE Engine oil temperature: nessun valore  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11C8 Low fuel pressure, actual: 0 kPa  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11CE Low fuel pressure, commanded: 500 kPa  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11DF Powertrain overall gear ratio: 20  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11F1 Transmission input shaft speed: 1597 rpm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 11F3 Post-injection 2 start position: 0 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1221 Accelerator pedal sensor 1: 5.8 mV  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1224 Torque loss adaptation, gear engaged: 4.3 Nm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1225 Torque loss adaptation at idle: 2.9 Nm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1340 Torque increase request from ESP: -65536 Nm  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1341 Camshaft end position: -19.4 °  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 14CB Gear: 0  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 14CE Post-injection 3 activation duration: 1.994 ms  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 14D1 Pre-injection 2 duration: 0 ms  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 14F8 Ambient air temperature, v1: 14.767 °C  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 14F9 Main cat oxygen storage capacity age correction factor: 0.711  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 15AA Selected gear: 1  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 15D4 Lambda output value: 0.993  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1632 Engine oil temperature measured value: nessun valore  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1644 Lateral acceleration: 0.01 m/s²  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 167E Coolant circulation pump, control: 10 %  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 167F Heater circulation pump, nominal value: 10 %  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 16F4 Piston cooling nozzles, control: 0  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1722 Early ignition counter, cylinder 1: 13  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1723 Early ignition counter, cylinder 3: 5  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1724 Early ignition counter, cylinder 4: 15  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 1725 Early ignition counter, cylinder 2: 4  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 179C Engine oil temperature 2: nessun valore  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 2998 Manual engine starts counter: 11406  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 2999 Automatic engine starts counter: 0  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 2CD8 Oil pressure valve for piston cooling nozzles, control switch button ratio: 100 %  (risposto nelle catture OBDb A5 2022)
+  [Motore] DID 58D1 Engine oil level current value: 1.95 %  (risposto nelle catture OBDb A5 2022)
+  [Motore 7E0/7E8] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Cambio 7E1/7E9] Sessione diagnostica attiva: predefinita
+  [Cambio 7E1/7E9] Codice ricambio costruttore: 8W2927155DE
+  [Cambio 7E1/7E9] Versione software costruttore: 0001
+  [Cambio 7E1/7E9] Numero di serie: 0000001948
+  [Cambio 7E1/7E9] Numero hardware costruttore: 0HK927156B
+  [Cambio 7E1/7E9] Nome di sistema: 2.0T 150kW EU
+  [Cambio 7E1/7E9] File ODX: EV_TCMDL382021
+  [Cambio 7E1/7E9] Versione file ODX: 002036
+  [Cambio 7E1/7E9] Versione hardware VW: H01
+  [Cambio 7E1/7E9] Nome di sistema officina VW: J217
+  [Cambio 7E1/7E9] dichiara InfoType OBD via UDS (F800)
+  [Cambio] DID 0301 Control module temperature: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0302 Total drive time: 1658.5 h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0303 Driving time, eco: 91.2 %  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0304 Driving time, sport: 21 %  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0305 Driving time, manual: 0 %  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0805 Brake light reading valid?: no  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0805 Brake pressure reading valid?: no  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0805 Brake: acceso  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 0805 Brake light: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1001 Front right wheel speed: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1002 Front left wheel speed: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1003 Rear right wheel speed: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1004 Rear left wheel speed: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1005 Vehicle speed ESP: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1010 Converter loss torque: 4.35 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1022 Transmission torque losses: 132 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1024 Current N215 pressure control valve 1: 13.3 mA  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102B Clutch 1 temperature: 0 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102C Clutch 2 temperature: 0 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102E M009, desired solenoid out 10: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102E M009, desired solenoid out 11: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102E M009, desired solenoid out 12: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102E M009, desired solenoid out 13: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 102E M009, desired solenoid out 14: spento  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1033 Time since shift: 7650 ms  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 103B Time since reset: 0 ms  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1057 Clutch 1 adaptation basic characteristic point 0 position: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 105A Clutch 1 adaptation basic characteristic point 1 moment: 0 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 105B Clutch 1 adaptation basic characteristic point 2 position: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 105C Clutch 1 adaptation basic characteristic point 2 moment: 0 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1062 Clutch 1 friction value correction factor: 0 %  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1063 Clutch 1 characteristic curve shift: 4.052 mm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1065 Clutch 1 temperature time in range 0: 0 s  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1066 Analysis, clutch 1 temperature time in range 1: 0 s  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1067 Analysis, clutch 1 temperature time in range 2: 0 s  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 106A Reserve torque: 0 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 106C Clutch 2 adaptation basic characteristic point 0 position: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1078 Clutch 2 characteristic curve shift: -0.252 mm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1094 Gear actuator adaptation engaged position G4: 0 mm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 10CA Clutch 1 adaptation kiss point part 1 odometer reading: 0 km  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 10EA Clutch 2 successful adaptations counter: 32770  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 10EB Clutch 2 adaptation kiss point part 1 odometer reading: 327700 km  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 10ED Clutch 2 failed adaptations counter: 640  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1120 Clutch 1 lower adaptation point: 2.961 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1121 Clutch 2 lower adaptation point: 2.962 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1124 Clutch 1 upper adaptation point: 12.712 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1125 Clutch 2 upper adaptation point: 13.472 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 120F Clutch 0 temperature calculated: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 132A Pressure sensor 1 temperature: 16 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 132B Pressure sensor 2 temperature: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 13CC Clutch 1 absolute pressure: 1.1 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 13CD Clutch 2 absolute pressure: 1 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1419 Stiffness point pressure clutch 1: 3.557 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 141A Stiffness point pressure clutch 2: 3.832 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 1426 Clutch 0 commanded pressure offset: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 18E3 Clutch temperature calculated: 15 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2002 Engine torque: 0 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2102 Transmission input speed: 805 rpm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2103 Transmission output speed: 0 rpm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2104 Automatic transmission fluid temperature: 30 °C  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2105 Torque transmitting function, ratio: 0  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2106 Vehicle speed, HR: 0 km/h  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 210F Current gear: First gear  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2142 Specified torque clutch 1 - data: -500 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 2143 Specified torque clutch 2 - data: -500 Nm  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 214C Clutch 1 pressure: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 214D Clutch 2 pressure: 0 bar  (risposto nelle catture OBDb A5 2022)
+  [Cambio] DID 70D6 Aux. hydraulic pump RPM: 64 rpm  (risposto nelle catture OBDb A5 2022)
+  [Cambio 7E1/7E9] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 20 7E4/7EC] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 20 7E4/7EC] Codice ricambio costruttore: 8W0907379AR
+  [Centralina senza nome 20 7E4/7EC] Versione software costruttore: 0872
+  [Centralina senza nome 20 7E4/7EC] Numero hardware costruttore: 8W0907379AR
+  [ESP9 Plus 7E4/7EC] Nome di sistema: ESP9 Plus
+  [ESP9 Plus 7E4/7EC] Data di calibrazione: 2000-01-01
+  [ESP9 Plus 7E4/7EC] File ODX: EV_ESP9BOSCHCMP
+  [ESP9 Plus 7E4/7EC] Numero set dati VW: 8W2909504N
+  [ESP9 Plus 7E4/7EC] Versione file ODX: 002013
+  [ESP9 Plus 7E4/7EC] Versione hardware VW: H20
+  [ESP9 Plus 7E4/7EC] Nome di sistema officina VW: J104
+  [ESP9 Plus 7E4/7EC] dichiara InfoType OBD via UDS (F800)
+  [ESP9 Plus 7E4/7EC] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 21 17FC008B/17FE008B] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 21 17FC008B/17FE008B] Codice ricambio costruttore: 8W1907064CC
+  [Centralina senza nome 21 17FC008B/17FE008B] Versione software costruttore: 0585
+  [Centralina senza nome 21 17FC008B/17FE008B] Numero hardware costruttore: 8W1907064C
+  [BCM2 MLBevo 17FC008B/17FE008B] Nome di sistema: BCM2 MLBevo
+  [BCM2 MLBevo 17FC008B/17FE008B] Data di calibrazione: 2022-05-31
+  [BCM2 MLBevo 17FC008B/17FE008B] File ODX: EV_BCM2HellaAU736
+  [BCM2 MLBevo 17FC008B/17FE008B] Numero set dati VW: 8W2909501N
+  [BCM2 MLBevo 17FC008B/17FE008B] Versione file ODX: 019017
+  [BCM2 MLBevo 17FC008B/17FE008B] Versione hardware VW: 044
+  [BCM2 MLBevo 17FC008B/17FE008B] Nome di sistema officina VW: J393
+  [BCM2 MLBevo 17FC008B/17FE008B] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 22 17FC0096/17FE0096] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 22 17FC0096/17FE0096] Codice ricambio costruttore: 4K0941592AD
+  [Centralina senza nome 22 17FC0096/17FE0096] Versione software costruttore: 0040
+  [Centralina senza nome 22 17FC0096/17FE0096] Numero hardware costruttore: 4K0941592A
+  [LMS_MLBevo 17FC0096/17FE0096] Nome di sistema: LMS_MLBevo
+  [LMS_MLBevo 17FC0096/17FE0096] Officina di calibrazione: 000000
+  [LMS_MLBevo 17FC0096/17FE0096] File ODX: EV_LMSLeftHELLAAU58X
+  [LMS_MLBevo 17FC0096/17FE0096] Numero set dati VW: 8W2909471E
+  [LMS_MLBevo 17FC0096/17FE0096] Versione file ODX: 001015
+  [LMS_MLBevo 17FC0096/17FE0096] Versione hardware VW: H11
+  [LMS_MLBevo 17FC0096/17FE0096] Nome di sistema officina VW: A31
+  [LMS_MLBevo 17FC0096/17FE0096] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 23 17FC0097/17FE0097] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 23 17FC0097/17FE0097] Codice ricambio costruttore: 4K0941592AD
+  [Centralina senza nome 23 17FC0097/17FE0097] Versione software costruttore: 0040
+  [Centralina senza nome 23 17FC0097/17FE0097] Numero hardware costruttore: 4K0941592A
+  [LMS_MLBevo 17FC0097/17FE0097] Nome di sistema: LMS_MLBevo
+  [LMS_MLBevo 17FC0097/17FE0097] Officina di calibrazione: 000000
+  [LMS_MLBevo 17FC0097/17FE0097] File ODX: EV_LMSRightHELLAAU58X
+  [LMS_MLBevo 17FC0097/17FE0097] Numero set dati VW: 8W2909472E
+  [LMS_MLBevo 17FC0097/17FE0097] Versione file ODX: 001015
+  [LMS_MLBevo 17FC0097/17FE0097] Versione hardware VW: H11
+  [LMS_MLBevo 17FC0097/17FE0097] Nome di sistema officina VW: A27
+  [LMS_MLBevo 17FC0097/17FE0097] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 24 17FC00A5/17FE00A5] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 24 17FC00A5/17FE00A5] Codice ricambio costruttore: 4K0035502B
+  [Centralina senza nome 24 17FC00A5/17FE00A5] Versione software costruttore: 0061
+  [Centralina senza nome 24 17FC00A5/17FE00A5] Numero hardware costruttore: 4K0035502B
+  [WLC Front 17FC00A5/17FE00A5] Nome di sistema: WLC Front
+  [WLC Front 17FC00A5/17FE00A5] File ODX: EV_Charg1MobilDevicAU651
+  [WLC Front 17FC00A5/17FE00A5] Numero set dati VW: 4N0909485A
+  [WLC Front 17FC00A5/17FE00A5] Versione file ODX: 004001
+  [WLC Front 17FC00A5/17FE00A5] Versione hardware VW: H14
+  [WLC Front 17FC00A5/17FE00A5] Nome di sistema officina VW: J1146
+  [WLC Front 17FC00A5/17FE00A5] servizio 19 non supportato (NRC 12), richieste restanti saltate
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Sessione diagnostica attiva: predefinita
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Codice ricambio costruttore: 8W0915101A
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Versione software costruttore: 0127
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Data di produzione: 2022-02-19
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Numero di serie: 22000206788003
+  [Centralina senza nome 25 17FC00AE/17FE00AE] Numero hardware costruttore: 8W0915101A
+  [MQ-BMS 17FC00AE/17FE00AE] Nome di sistema: MQ-BMS
+  [MQ-BMS 17FC00AE/17FE00AE] Data di calibrazione: 2000-01-01
+  [MQ-BMS 17FC00AE/17FE00AE] File ODX: EV_BMS12VLiIonSDIAU49X
+  [MQ-BMS 17FC00AE/17FE00AE] Numero set dati VW: -----------
+  [MQ-BMS 17FC00AE/17FE00AE] Versione file ODX: 001001
+  [MQ-BMS 17FC00AE/17FE00AE] Versione hardware VW: H20
+  [MQ-BMS 17FC00AE/17FE00AE] Nome di sistema officina VW: A1
+  [MQ-BMS 17FC00AE/17FE00AE] servizio 19 non supportato (NRC 12), richieste restanti saltate
+
+=== RIEPILOGO SCANSIONE COMPLETA (337 s) ===
+  [Cambio 7E9] PID dichiarati 8, letti 8; DTC confermati 0, in attesa 0, permanenti non letti
+      PID letti: 01 Stato monitor dal clear DTC, 04 Carico motore calcolato, 05 Temperatura liquido raffreddamento, 0C Regime motore, 0D Velocita' veicolo, 41 Stato monitor del drive cycle corrente, 42 Tensione modulo di controllo (batteria), 49 Posizione pedale acceleratore D
+      UDS 7E1/7E9: DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 61
+  [Motore 7E8] PID dichiarati 48, letti 48; DTC confermati 0, in attesa 0, permanenti non letti
+      PID letti: 01 Stato monitor dal clear DTC, 03 Stato sistema carburante, 04 Carico motore calcolato, 05 Temperatura liquido raffreddamento, 06 Trim carburante a breve termine - Banco 1, 07 Trim carburante a lungo termine - Banco 1, 0B Pressione assoluta collettore aspirazione, 0C Regime motore, 0D Velocita' veicolo, 0E Anticipo accensione, 0F Temperatura aria aspirata, 11 Posizione farfalla, 13 Sonde lambda presenti (2 banchi), 15 Sonda lambda 2 (B1S2), 1C Standard OBD del veicolo, 1F Tempo motore dall'avviamento, 21 Distanza percorsa con MIL accesa, 23 Pressione rail (iniezione diretta), 2E Spurgo evaporativo comandato, 2F Livello serbatoio carburante, 30 Riscaldamenti dal clear DTC, 31 Distanza percorsa dal clear DTC, 33 Pressione barometrica assoluta, 34 Sonda lambda 1 - rapporto aria/carburante + corrente, 3C Temperatura catalizzatore B1S1, 41 Stato monitor del drive cycle corrente, 42 Tensione modulo di controllo (batteria), 43 Carico assoluto, 44 Lambda comandata (rapporto di equivalenza), 45 Posizione relativa farfalla, 46 Temperatura aria ambiente, 47 Posizione assoluta farfalla B, 49 Posizione pedale acceleratore D, 4A Posizione pedale acceleratore E, 4C Attuatore farfalla comandato, 51 Tipo carburante, 56 Trim sonda lambda secondaria a lungo termine - B1/B3, 5E Consumo carburante motore, 62 Coppia effettiva motore (%), 63 Coppia di riferimento motore, 67 Temperatura liquido (esteso), 70 Controllo pressione boost, 8B Diagnostica post-trattamento diesel, 8E Coppia di attrito motore (%), 9D Portata carburante motore, 9E Portata gas di scarico, A4 Marcia attuale cambio, A6 Contachilometri
+      UDS 7E0/7E8: DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 55
+  [Centralina 5 7EC] PID dichiarati 9, letti 9; DTC confermati 0, in attesa 0, permanenti non letti
+      PID letti: 01 Stato monitor dal clear DTC, 04 Carico motore calcolato, 05 Temperatura liquido raffreddamento, 0C Regime motore, 0D Velocita' veicolo, 41 Stato monitor del drive cycle corrente, 42 Tensione modulo di controllo (batteria), 46 Temperatura aria ambiente, 49 Posizione pedale acceleratore D
+      UDS 7E4/7EC: DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Elettronica piantone sterzo 70C/776] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Elettronica centrale 70E/778] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Gateway 710/77A] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 19
+  [Servosterzo 712/77C] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Freni ABS/ESP 713/77D] DTC confermati non letti, in attesa non letti; PID standard 9, DID VAG 2
+  [Quadro strumenti 714/77E] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 6
+  [Airbag 715/77F] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Portellone 723/78D] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Porta posteriore lato passeggero 73F/7A9] muta dopo la discovery; DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Climatizzatore 746/7B0] DTC confermati non letti, in attesa non letti; PID standard 3, DID VAG 10
+  [Porta lato guida 74A/7B4] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Porta lato passeggero 74B/7B5] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Sensori anteriori di assistenza alla guida 74F/7B9] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Leva del cambio 753/7BD] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Telematica 767/7D1] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 1
+  [Telecamera posteriore 769/7D3] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [Infotainment 773/7DD] DTC confermati 2, in attesa 0, falliti ora 1; PID standard 0, DID VAG 0
+  [BCM2 MLBevo 17FC008B/17FE008B] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [LMS_MLBevo 17FC0096/17FE0096] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [LMS_MLBevo 17FC0097/17FE0097] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [WLC Front 17FC00A5/17FE00A5] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+  [MQ-BMS 17FC00AE/17FE00AE] DTC confermati non letti, in attesa non letti; PID standard 0, DID VAG 0
+Adattatore: richieste fisiche sì, flow control verso l'ID di richiesta sì, gestione autonoma dei 7F xx 78 sì, CAN a 29 bit sì; adattatore STN, coppie di flow control registrate
+
+// Profilo suggerito dalla scansione completa: sostituire il blocco "Profilo vettura" di obd_live.h
+static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x70, 0x0B, 0x04, 0x0C, 0x62, 0x0F, 0x33, 0x23, 0x42, 0x05, 0x8E, 0x0D, 0x34, 0x44, 0x46, 0x49, 0x4A, 0x4C, 0x01, 0x1F, 0x21, 0x30, 0x5E};
+static constexpr bool OBD_ENGINE_MULTI_PID = true;
+// Coppia di riferimento letta (PID 63): 370 Nm, confrontarla con TORQUE_MAX_NM di EngineConstants.h
+=== FINE SCANSIONE COMPLETA ===
+
+==================== Traccia TX/RX ====================
+TX ATI
+RX ATI
+RX ELM327 v2.3
+TX ATZ
+RX ATZ
+RX ELM327 v2.3
+TX ATE0
+RX ATE0
+RX OK
+TX ATL0
+RX OK
+TX ATS1
+RX OK
+TX ATH1
+RX OK
+TX ATD0
+RX OK
+TX ATAT0
+RX OK
+TX ATSP0
+RX OK
+TX ATI
+RX ELM327 v2.3
+TX AT@1
+RX OBDII to RS232 Interpreter
+TX STI
+RX STN1170 v4.3.2
+TX 0100
+RX SEARCHING...
+RX 7E9 06 41 00 98 18 00 01
+RX 7E8 06 41 00 BE 3E A8 13
+TX ATDPN
+RX A6
+TX ATDP
+RX AUTO, ISO 15765-4 (CAN 11/500)
+TX ATRV
+RX 13.8V
+TX ATSP6
+RX OK
+TX ATSH7E0
+RX OK
+TX ATSH7DF
+RX OK
+TX 0100
+RX 7E9 06 41 00 98 18 00 01
+RX 7E8 06 41 00 BE 3E A8 13
+TX 0100
+RX 7E9 06 41 00 98 18 00 01
+RX 7E8 06 41 00 BE 3E A8 13
+TX ATSH7E0
+RX OK
+TX ATAT1
+RX OK
+TX 0100
+RX 7E8 06 41 00 BE 3E A8 13
+TX ATSH7E1
+RX OK
+TX 0100
+RX 7E9 06 41 00 98 18 00 01
+TX ATSH7E2
+RX OK
+TX 0100
+RX NO DATA
+TX ATSH7E3
+RX OK
+TX 0100
+RX NO DATA
+TX ATSH7E4
+RX OK
+TX 0100
+RX 7EC 06 41 00 98 18 00 01
+TX ATSH7E5
+RX OK
+TX 0100
+RX NO DATA
+TX ATSH7E6
+RX OK
+TX 0100
+RX NO DATA
+TX ATSH7E7
+RX OK
+TX 0100
+RX NO DATA
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0100
+RX 7E9 06 41 00 98 18 00 01
+RX 7E8 06 41 00 BE 3E A8 13
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0100
+RX 7EC 06 41 00 98 18 00 01
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0120
+RX 7E9 06 41 20 00 00 00 01
+RX 7E8 06 41 20 A0 07 B0 11
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0120
+RX 7EC 06 41 20 00 00 00 01
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0140
+RX 7E9 06 41 40 C0 80 00 00
+RX 7E8 06 41 40 FE D0 84 05
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0140
+RX 7EC 06 41 40 C4 80 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0160
+RX 7E8 06 41 60 62 01 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0160
+RX 7EC 03 7F 01 12
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0180
+RX 7E8 06 41 80 00 24 00 0D
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0180
+RX 7EC 03 7F 01 12
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 01A0
+RX 7E8 06 41 A0 14 00 00 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 01A0
+RX 7EC 03 7F 01 12
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 020000
+RX 7E9 07 42 00 00 58 18 00 03
+RX 7E8 07 42 00 00 7E 3E 80 03
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 020000
+RX 7EC 07 42 00 00 58 18 00 03
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 022000
+RX 7E9 07 42 20 00 00 00 00 01
+RX 7E8 07 42 20 00 20 06 20 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 022000
+RX 7EC 07 42 20 00 00 00 00 01
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 024000
+RX 7E9 07 42 40 00 40 80 00 00
+RX 7E8 07 42 40 00 7E D0 84 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 024000
+RX 7EC 07 42 40 00 44 80 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 026000
+RX 7E8 07 42 60 00 02 01 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 026000
+RX 7EC 03 7F 02 12
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 028000
+RX 7E8 07 42 80 00 00 20 00 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 028000
+RX 7EC 03 7F 02 12
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0600
+RX 7E8 06 46 00 C0 00 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0600
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0620
+RX 7E8 06 46 20 80 00 08 09
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0620
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0640
+RX 7E8 06 46 40 C0 00 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0640
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0660
+RX 7E8 06 46 60 00 00 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0660
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0680
+RX 7E8 06 46 80 00 00 00 01
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0680
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 06A0
+RX 7E8 06 46 A0 78 00 40 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 06A0
+RX 7EC 03 7F 06 11
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0900
+RX 7E9 06 49 00 14 40 00 00
+RX 7E8 06 49 00 55 40 06 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0900
+RX 7EC 06 49 00 14 40 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0101
+RX 7E9 06 41 01 00 04 00 00
+RX 7E8 06 41 01 00 07 E1 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0101
+RX 7EC 06 41 01 00 04 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0102
+RX NO DATA
+TX 0103
+RX 7E8 04 41 03 02 00
+TX 0104
+RX 7E9 03 41 04 25
+RX 7E8 03 41 04 21
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0104
+RX 7EC 03 41 04 23
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0105
+RX 7E9 03 41 05 69
+RX 7E8 03 41 05 69
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0105
+RX 7EC 03 41 05 69
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0106
+RX 7E8 03 41 06 81
+TX 0107
+RX 7E8 03 41 07 81
+TX 0108
+RX NO DATA
+TX 0109
+RX NO DATA
+TX 010A
+RX NO DATA
+TX 010B
+RX 7E8 03 41 0B 17
+TX 010C
+RX 7E9 04 41 0C 0C 82
+RX 7E8 04 41 0C 0C A8
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 010C
+RX 7EC 04 41 0C 0C 7C
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 010D
+RX 7E9 03 41 0D 00
+RX 7E8 03 41 0D 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 010D
+RX 7EC 03 41 0D 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 010E
+RX 7E8 03 41 0E 72
+TX 010F
+RX 7E8 03 41 0F 37
+TX 0110
+RX NO DATA
+TX 0111
+RX 7E8 03 41 11 1F
+TX 0112
+RX NO DATA
+TX 0113
+RX 7E8 03 41 13 03
+TX 0114
+RX NO DATA
+TX 0115
+RX 7E8 04 41 15 81 FF
+TX 0116
+RX NO DATA
+TX 0117
+RX NO DATA
+TX 0118
+RX NO DATA
+TX 0119
+RX NO DATA
+TX 011A
+RX NO DATA
+TX 011B
+RX NO DATA
+TX 011C
+RX 7E8 03 41 1C 06
+TX 011D
+RX NO DATA
+TX 011E
+RX NO DATA
+TX 011F
+RX 7E8 04 41 1F 01 1C
+TX 0121
+RX 7E8 04 41 21 00 00
+TX 0122
+RX NO DATA
+TX 0123
+RX 7E8 04 41 23 03 F0
+TX 0124
+RX NO DATA
+TX 0125
+RX NO DATA
+TX 0126
+RX NO DATA
+TX 0127
+RX NO DATA
+TX 0128
+RX NO DATA
+TX 0129
+RX NO DATA
+TX 012A
+RX NO DATA
+TX 012B
+RX NO DATA
+TX 012C
+RX NO DATA
+TX 012D
+RX NO DATA
+TX 012E
+RX 7E8 03 41 2E 0E
+TX 012F
+RX 7E8 03 41 2F 44
+TX 0130
+RX 7E8 03 41 30 7C
+TX 0131
+RX 7E8 04 41 31 09 04
+TX 0132
+RX NO DATA
+TX 0133
+RX 7E8 03 41 33 63
+TX 0134
+RX 7E8 06 41 34 7F EF 7F FD
+TX 0135
+RX NO DATA
+TX 0136
+RX NO DATA
+TX 0137
+RX NO DATA
+TX 0138
+RX NO DATA
+TX 0139
+RX NO DATA
+TX 013A
+RX NO DATA
+TX 013B
+RX NO DATA
+TX 013C
+RX 7E8 04 41 3C 0E B2
+TX 013D
+RX NO DATA
+TX 013E
+RX NO DATA
+TX 013F
+RX NO DATA
+TX 0141
+RX 7E9 06 41 41 00 04 00 00
+RX 7E8 06 41 41 00 07 E1 E1
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0141
+RX 7EC 06 41 41 00 04 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0142
+RX 7E9 04 41 42 34 BC
+RX 7E8 04 41 42 34 6C
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0142
+RX 7EC 04 41 42 36 98
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0143
+RX 7E8 04 41 43 00 2A
+TX 0144
+RX 7E8 04 41 44 80 00
+TX 0145
+RX 7E8 03 41 45 05
+TX 0146
+RX 7E8 03 41 46 37
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0146
+RX 7EC 03 41 46 37
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0147
+RX 7E8 03 41 47 1E
+TX 0148
+RX NO DATA
+TX 0149
+RX 7E9 03 41 49 26
+RX 7E8 03 41 49 26
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0149
+RX 7EC 03 41 49 26
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 014A
+RX 7E8 03 41 4A 26
+TX 014B
+RX NO DATA
+TX 014C
+RX 7E8 03 41 4C 06
+TX 014D
+RX NO DATA
+TX 014E
+RX NO DATA
+TX 014F
+RX NO DATA
+TX 0150
+RX NO DATA
+TX 0151
+RX 7E8 03 41 51 01
+TX 0152
+RX NO DATA
+TX 0153
+RX NO DATA
+TX 0154
+RX NO DATA
+TX 0155
+RX NO DATA
+TX 0156
+RX 7E8 03 41 56 80
+TX 0157
+RX NO DATA
+TX 0158
+RX NO DATA
+TX 0159
+RX NO DATA
+TX 015A
+RX NO DATA
+TX 015B
+RX NO DATA
+TX 015C
+RX NO DATA
+TX 015D
+RX NO DATA
+TX 015E
+RX 7E8 04 41 5E 00 12
+TX 015F
+RX NO DATA
+TX 0161
+RX NO DATA
+TX 0162
+RX 7E8 03 41 62 83
+TX 0163
+RX 7E8 04 41 63 01 72
+TX 0164
+RX NO DATA
+TX 0165
+RX NO DATA
+TX 0166
+RX NO DATA
+TX 0167
+RX 7E8 05 41 67 03 6B 35
+TX 0168
+RX NO DATA
+TX 0169
+RX NO DATA
+TX 016A
+RX NO DATA
+TX 016B
+RX NO DATA
+TX 016C
+RX NO DATA
+TX 016D
+RX NO DATA
+TX 016E
+RX NO DATA
+TX 0170
+RX 7E8 10 0C 41 70 02 00 00 0C
+RX 7E8 21 77 00 00 00 00 00 00
+TX 0171
+RX NO DATA
+TX 0172
+RX NO DATA
+TX 0173
+RX NO DATA
+TX 0174
+RX NO DATA
+TX 0175
+RX NO DATA
+TX 0176
+RX NO DATA
+TX 0177
+RX NO DATA
+TX 0178
+RX NO DATA
+TX 0179
+RX NO DATA
+TX 017A
+RX NO DATA
+TX 017B
+RX NO DATA
+TX 017C
+RX NO DATA
+TX 017E
+RX NO DATA
+TX 017F
+RX NO DATA
+TX 0181
+RX NO DATA
+TX 0182
+RX NO DATA
+TX 0183
+RX NO DATA
+TX 0184
+RX NO DATA
+TX 0185
+RX NO DATA
+TX 0186
+RX NO DATA
+TX 0188
+RX NO DATA
+TX 0189
+RX NO DATA
+TX 018A
+RX NO DATA
+TX 018B
+RX 7E8 10 09 41 8B 51 00 03 00
+RX 7E8 21 00 00 00 00 00 00 00
+TX 018C
+RX NO DATA
+TX 018D
+RX NO DATA
+TX 018E
+RX 7E8 03 41 8E 83
+TX 018F
+RX NO DATA
+TX 0190
+RX NO DATA
+TX 0191
+RX NO DATA
+TX 0192
+RX NO DATA
+TX 0193
+RX NO DATA
+TX 0194
+RX NO DATA
+TX 0195
+RX NO DATA
+TX 0196
+RX NO DATA
+TX 0197
+RX NO DATA
+TX 019A
+RX NO DATA
+TX 019B
+RX NO DATA
+TX 019C
+RX NO DATA
+TX 019D
+RX 7E8 06 41 9D 00 09 00 09
+TX 019E
+RX 7E8 04 41 9E 00 32
+TX 019F
+RX NO DATA
+TX 01A1
+RX NO DATA
+TX 01A2
+RX NO DATA
+TX 01A3
+RX NO DATA
+TX 01A4
+RX 7E8 06 41 A4 01 00 00 00
+TX 01A5
+RX NO DATA
+TX 01A6
+RX 7E8 06 41 A6 00 13 78 FD
+TX 01A7
+RX NO DATA
+TX 01A8
+RX NO DATA
+TX 01AA
+RX NO DATA
+TX 01AB
+RX NO DATA
+TX 01AC
+RX NO DATA
+TX 01AE
+RX NO DATA
+TX 01AF
+RX NO DATA
+TX 01B0
+RX NO DATA
+TX 01B1
+RX NO DATA
+TX 01B2
+RX NO DATA
+TX 01B3
+RX NO DATA
+TX 01B4
+RX NO DATA
+TX 01B5
+RX NO DATA
+TX 01B6
+RX NO DATA
+TX 01B7
+RX NO DATA
+TX 01B8
+RX NO DATA
+TX 01B9
+RX NO DATA
+TX 01BA
+RX NO DATA
+TX 01BB
+RX NO DATA
+TX 01BC
+RX NO DATA
+TX 01BD
+RX NO DATA
+TX 01BE
+RX NO DATA
+TX 01BF
+RX NO DATA
+TX 01C1
+RX NO DATA
+TX 01C2
+RX NO DATA
+TX 01C3
+RX NO DATA
+TX 01C4
+RX NO DATA
+TX 01C5
+RX NO DATA
+TX 01C6
+RX NO DATA
+TX 01C7
+RX NO DATA
+TX 01C8
+RX NO DATA
+TX 01C9
+RX NO DATA
+TX 01CB
+RX NO DATA
+TX 01CC
+RX NO DATA
+TX 01CD
+RX NO DATA
+TX 01CE
+RX NO DATA
+TX 01CF
+RX NO DATA
+TX 01D0
+RX NO DATA
+TX 01D1
+RX NO DATA
+TX 01D2
+RX NO DATA
+TX 01D3
+RX NO DATA
+TX 01D4
+RX NO DATA
+TX 01D5
+RX NO DATA
+TX 01D6
+RX NO DATA
+TX 01D7
+RX NO DATA
+TX 01D8
+RX NO DATA
+TX 01D9
+RX NO DATA
+TX 01DA
+RX NO DATA
+TX 01DC
+RX NO DATA
+TX ATSH7E0
+RX OK
+TX ATAT1
+RX OK
+TX 01700B
+RX 7E8 10 0E 41 70 02 00 00 0C
+RX 7E8 21 77 00 00 00 00 00 0B
+RX 7E8 22 17 00 00 00 00 00 00
+TX 01700B040C620F
+RX 7E8 10 17 41 70 02 00 00 0C
+RX 7E8 21 77 00 00 00 00 00 0B
+RX 7E8 22 17 04 1D 0C 0C A8 62
+RX 7E8 23 83 0F 37 00 00 00 00
+TX ATSH7E1
+RX OK
+TX 020200
+RX 7E9 05 42 02 00 00 00
+TX ATSH7E0
+RX OK
+TX 020200
+RX 7E8 05 42 02 00 00 00
+TX ATSH7E4
+RX OK
+TX 020200
+RX 7EC 05 42 02 00 00 00
+TX ATSH7E0
+RX OK
+TX 0601
+RX 7E8 10 25 46 01 8B 85 00 C3
+RX 7E8 21 F4 76 7F FF 01 8A 85
+RX 7E8 22 00 C3 80 00 0B 88 01
+RX 7E8 23 85 33 10 27 00 00 80
+RX 7E8 24 00 01 81 10 00 00 00
+RX 7E8 25 00 02 BC 00 00 00 00
+TX 0602
+RX 7E8 10 1C 46 02 05 10 00 00
+RX 7E8 21 00 00 03 E8 02 96 0A
+RX 7E8 22 06 68 00 00 06 68 02
+RX 7E8 23 95 0A 17 FC 17 FC 28
+RX 7E8 24 00 00 00 00 00 00 00
+TX 0621
+RX 7E8 10 0A 46 21 84 2F FF FF
+RX 7E8 21 27 10 FF FF 00 00 00
+TX 0635
+RX 7E8 10 25 46 35 81 9C F7 A5
+RX 7E8 21 F6 A0 FA EC 35 80 9C
+RX 7E8 22 F7 A5 F6 A0 FA EC 35
+RX 7E8 23 83 9C F8 F6 F6 9D FB
+RX 7E8 24 4D 35 82 9C F8 F6 F6
+RX 7E8 25 9D FB 4D 00 00 00 00
+TX 063D
+RX 7E8 10 0A 46 3D 8B 03 00 83
+RX 7E8 21 00 14 FF FF 00 00 00
+TX 0641
+RX 7E8 10 13 46 41 85 16 1D AA
+RX 7E8 21 1C 21 FF FF 41 86 16
+RX 7E8 22 1C 38 1C 21 FF FF 00
+TX 0642
+RX 7E8 10 0A 46 42 90 14 01 CC
+RX 7E8 21 00 00 07 D0 00 00 00
+TX 06A2
+RX 7E8 10 13 46 A2 0B 24 00 02
+RX 7E8 21 00 00 FF FF A2 0C 24
+RX 7E8 22 00 00 00 00 FF FF 00
+TX 06A3
+RX 7E8 10 13 46 A3 0B 24 00 02
+RX 7E8 21 00 00 FF FF A3 0C 24
+RX 7E8 22 00 00 00 00 FF FF 00
+TX 06A4
+RX 7E8 10 13 46 A4 0B 24 00 03
+RX 7E8 21 00 00 FF FF A4 0C 24
+RX 7E8 22 00 01 00 00 FF FF 00
+TX 06A5
+RX 7E8 10 13 46 A5 0B 24 00 02
+RX 7E8 21 00 00 FF FF A5 0C 24
+RX 7E8 22 00 00 00 00 FF FF 00
+TX ATSH7E1
+RX OK
+TX 0904
+RX 7E9 10 13 49 04 01 38 57 32
+RX 7E9 21 31 35 35 44 45 30 30
+RX 7E9 22 30 31 31 30 30 30 00
+TX 090A
+RX 7E9 10 17 49 0A 01 54 43 4D
+RX 7E9 21 00 2D 54 72 61 6E 73
+RX 7E9 22 6D 69 73 43 74 72 6C
+RX 7E9 23 00 00 00 00 00 00 00
+TX ATSH7E0
+RX OK
+TX 0904
+RX 7E8 10 13 49 04 01 38 57 30
+RX 7E8 21 31 31 35 52 20 30 30
+RX 7E8 22 30 34 42 45 42 4A 00
+TX 0908
+RX 7E8 10 3B 49 08 1C 06 E6 2C
+RX 7E8 21 1C 11 D7 06 E6 00 00
+RX 7E8 22 00 00 0D E3 06 E6 00
+RX 7E8 23 00 00 00 20 C6 06 E6
+RX 7E8 24 00 00 00 00 00 00 00
+RX 7E8 25 00 10 8D 06 E6 00 00
+RX 7E8 26 00 00 00 00 00 00 00
+RX 7E8 27 00 00 00 15 29 06 E6
+RX 7E8 28 00 00 00 00 00 00 00
+TX 090A
+RX 7E8 10 17 49 0A 01 45 43 4D
+RX 7E8 21 00 2D 45 6E 67 69 6E
+RX 7E8 22 65 43 6F 6E 74 72 6F
+RX 7E8 23 6C 00 00 00 00 00 00
+TX 0917
+RX 7E8 10 13 49 17 01 00 00 00
+RX 7E8 21 FF 00 13 78 EC 00 00
+RX 7E8 22 00 EE 00 10 16 88 00
+TX ATSH7E4
+RX OK
+TX 0904
+RX 7EC 10 13 49 04 01 38 57 30
+RX 7EC 21 33 37 39 41 52 30 38
+RX 7EC 22 37 32 20 20 30 30 00
+TX 090A
+RX 7EC 10 17 49 0A 01 42 53 43
+RX 7EC 21 4D 2D 42 72 61 6B 65
+RX 7EC 22 53 79 73 74 65 6D 00
+RX 7EC 23 00 00 00 00 00 00 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 03
+RX 7E9 02 43 00
+RX 7E8 02 43 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 03
+RX 7EC 02 43 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 07
+RX 7E9 02 47 00
+RX 7E8 02 47 00
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 07
+RX 7EC 02 47 00
+TX ATSH7DF
+RX OK
+TX ATAT0
+RX OK
+TX 0A
+RX NO DATA
+TX ATSH7E4
+RX OK
+TX ATAT1
+RX OK
+TX 0A
+RX 7EC 03 7F 0A 11
+TX ATSP7
+RX OK
+TX ATAR
+RX OK
+TX ATCP18
+RX OK
+TX ATSHDB33F1
+RX OK
+TX ATAT0
+RX OK
+TX 0100
+RX NO DATA
+TX ATSP6
+RX OK
+TX ATCF700
+RX OK
+TX ATCM700
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATSH700
+RX OK
+TX ATAT1
+RX OK
+TX ATFCSH700
+RX OK
+TX ATFCSM1
+RX OK
+TX 3E00
+RX 77A 02 7E 00
+RX 7B5 02 7E 00
+RX 7B4 02 7E 00
+RX 77E 02 7E 00
+RX 7B0 02 7E 00
+RX 7D3 02 7E 00
+RX 7BD 02 7E 00
+RX 78D 02 7E 00
+RX 7DD 02 7E 00
+RX 7D1 02 7E 00
+RX 776 02 7E 00
+RX 778 02 7E 00
+RX 7B9 02 7E 00
+RX 77C 02 7E 00
+RX 77D 02 7E 00
+RX 7E8 02 7E 00
+RX 7E9 02 7E 00
+RX 77F 02 7E 00
+TX ATSH701
+RX OK
+TX ATFCSH701
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH702
+RX OK
+TX ATFCSH702
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH703
+RX OK
+TX ATFCSH703
+RX OK
+TX 3E00
+RX 7EC 02 7E 00
+RX 7E8 02 7E 00
+RX 7E9 02 7E 00
+TX ATSH704
+RX OK
+TX ATFCSH704
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH705
+RX OK
+TX ATFCSH705
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH706
+RX OK
+TX ATFCSH706
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH707
+RX OK
+TX ATFCSH707
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH708
+RX OK
+TX ATFCSH708
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH709
+RX OK
+TX ATFCSH709
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH70A
+RX OK
+TX ATFCSH70A
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH70B
+RX OK
+TX ATFCSH70B
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH70C
+RX OK
+TX ATFCSH70C
+RX OK
+TX 3E00
+RX 776 02 7E 00
+TX ATSH70D
+RX OK
+TX ATFCSH70D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH70E
+RX OK
+TX ATFCSH70E
+RX OK
+TX 3E00
+RX 778 02 7E 00
+TX ATSH70F
+RX OK
+TX ATFCSH70F
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH710
+RX OK
+TX ATFCSH710
+RX OK
+TX 3E00
+RX 77A 02 7E 00
+TX ATSH711
+RX OK
+TX ATFCSH711
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH712
+RX OK
+TX ATFCSH712
+RX OK
+TX 3E00
+RX 77C 02 7E 00
+TX ATSH713
+RX OK
+TX ATFCSH713
+RX OK
+TX 3E00
+RX 77D 02 7E 00
+TX ATSH714
+RX OK
+TX ATFCSH714
+RX OK
+TX 3E00
+RX 77E 02 7E 00
+TX ATSH715
+RX OK
+TX ATFCSH715
+RX OK
+TX 3E00
+RX 77F 02 7E 00
+TX ATSH716
+RX OK
+TX ATFCSH716
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH717
+RX OK
+TX ATFCSH717
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH718
+RX OK
+TX ATFCSH718
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH719
+RX OK
+TX ATFCSH719
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71A
+RX OK
+TX ATFCSH71A
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71B
+RX OK
+TX ATFCSH71B
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71C
+RX OK
+TX ATFCSH71C
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71D
+RX OK
+TX ATFCSH71D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71E
+RX OK
+TX ATFCSH71E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH71F
+RX OK
+TX ATFCSH71F
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH720
+RX OK
+TX ATFCSH720
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH721
+RX OK
+TX ATFCSH721
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH722
+RX OK
+TX ATFCSH722
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH723
+RX OK
+TX ATFCSH723
+RX OK
+TX 3E00
+RX 78D 02 7E 00
+TX ATSH724
+RX OK
+TX ATFCSH724
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH725
+RX OK
+TX ATFCSH725
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH726
+RX OK
+TX ATFCSH726
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH727
+RX OK
+TX ATFCSH727
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH728
+RX OK
+TX ATFCSH728
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH729
+RX OK
+TX ATFCSH729
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH72A
+RX OK
+TX ATFCSH72A
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH72B
+RX OK
+TX ATFCSH72B
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH72C
+RX OK
+TX ATFCSH72C
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH72D
+RX OK
+TX ATFCSH72D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH72E
+RX OK
+TX ATFCSH72E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH72F
+RX OK
+TX ATFCSH72F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH730
+RX OK
+TX ATFCSH730
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH731
+RX OK
+TX ATFCSH731
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH732
+RX OK
+TX ATFCSH732
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH733
+RX OK
+TX ATFCSH733
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH734
+RX OK
+TX ATFCSH734
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH735
+RX OK
+TX ATFCSH735
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH736
+RX OK
+TX ATFCSH736
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH737
+RX OK
+TX ATFCSH737
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH738
+RX OK
+TX ATFCSH738
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH739
+RX OK
+TX ATFCSH739
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH73A
+RX OK
+TX ATFCSH73A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH73B
+RX OK
+TX ATFCSH73B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH73C
+RX OK
+TX ATFCSH73C
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH73D
+RX OK
+TX ATFCSH73D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH73E
+RX OK
+TX ATFCSH73E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH73F
+RX OK
+TX ATFCSH73F
+RX OK
+TX 3E00
+RX 7A8 10 10 62 F1 97 54 53 47
+RX 7A9 02 7E 00
+TX ATSH740
+RX OK
+TX ATFCSH740
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH741
+RX OK
+TX ATFCSH741
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH742
+RX OK
+TX ATFCSH742
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH743
+RX OK
+TX ATFCSH743
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH744
+RX OK
+TX ATFCSH744
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH745
+RX OK
+TX ATFCSH745
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH746
+RX OK
+TX ATFCSH746
+RX OK
+TX 3E00
+RX 7B0 02 7E 00
+TX ATSH747
+RX OK
+TX ATFCSH747
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH748
+RX OK
+TX ATFCSH748
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH749
+RX OK
+TX ATFCSH749
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH74A
+RX OK
+TX ATFCSH74A
+RX OK
+TX 3E00
+RX 7B4 02 7E 00
+TX ATSH74B
+RX OK
+TX ATFCSH74B
+RX OK
+TX 3E00
+RX 7B5 02 7E 00
+TX ATSH74C
+RX OK
+TX ATFCSH74C
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH74D
+RX OK
+TX ATFCSH74D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH74E
+RX OK
+TX ATFCSH74E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH74F
+RX OK
+TX ATFCSH74F
+RX OK
+TX 3E00
+RX 7B9 02 7E 00
+TX ATSH750
+RX OK
+TX ATFCSH750
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH751
+RX OK
+TX ATFCSH751
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH752
+RX OK
+TX ATFCSH752
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH753
+RX OK
+TX ATFCSH753
+RX OK
+TX 3E00
+RX 7BD 02 7E 00
+TX ATSH754
+RX OK
+TX ATFCSH754
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH755
+RX OK
+TX ATFCSH755
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH756
+RX OK
+TX ATFCSH756
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH757
+RX OK
+TX ATFCSH757
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH758
+RX OK
+TX ATFCSH758
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH759
+RX OK
+TX ATFCSH759
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH75A
+RX OK
+TX ATFCSH75A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH75B
+RX OK
+TX ATFCSH75B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH75C
+RX OK
+TX ATFCSH75C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH75D
+RX OK
+TX ATFCSH75D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH75E
+RX OK
+TX ATFCSH75E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH75F
+RX OK
+TX ATFCSH75F
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH760
+RX OK
+TX ATFCSH760
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH761
+RX OK
+TX ATFCSH761
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH762
+RX OK
+TX ATFCSH762
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH763
+RX OK
+TX ATFCSH763
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH764
+RX OK
+TX ATFCSH764
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH765
+RX OK
+TX ATFCSH765
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH766
+RX OK
+TX ATFCSH766
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH767
+RX OK
+TX ATFCSH767
+RX OK
+TX 3E00
+RX 7D1 02 7E 00
+TX ATSH768
+RX OK
+TX ATFCSH768
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH769
+RX OK
+TX ATFCSH769
+RX OK
+TX 3E00
+RX 7D3 02 7E 00
+TX ATSH76A
+RX OK
+TX ATFCSH76A
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH76B
+RX OK
+TX ATFCSH76B
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH76C
+RX OK
+TX ATFCSH76C
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH76D
+RX OK
+TX ATFCSH76D
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH76E
+RX OK
+TX ATFCSH76E
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH76F
+RX OK
+TX ATFCSH76F
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH770
+RX OK
+TX ATFCSH770
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH771
+RX OK
+TX ATFCSH771
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH772
+RX OK
+TX ATFCSH772
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH773
+RX OK
+TX ATFCSH773
+RX OK
+TX 3E00
+RX 7DD 02 7E 00
+TX ATSH7E0
+RX OK
+TX ATFCSH7E0
+RX OK
+TX 3E00
+RX 7E8 02 7E 00
+TX ATSH7E1
+RX OK
+TX ATFCSH7E1
+RX OK
+TX 3E00
+RX 7E9 02 7E 00
+TX ATSH7E2
+RX OK
+TX ATFCSH7E2
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH7E3
+RX OK
+TX ATFCSH7E3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSH7E4
+RX OK
+TX ATFCSH7E4
+RX OK
+TX 3E00
+RX 7EC 02 7E 00
+TX ATSH7E5
+RX OK
+TX ATFCSH7E5
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH7E6
+RX OK
+TX ATFCSH7E6
+RX OK
+TX 3E00
+RX NO DATA
+TX 22F197
+RX NO DATA
+TX ATSH7E7
+RX OK
+TX ATFCSH7E7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSP7
+RX OK
+TX ATCF17FE0000
+RX OK
+TX ATCM1FFFFF00
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATCP17
+RX OK
+TX ATSHFC0000
+RX OK
+TX ATFCSH17FC0000
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0001
+RX OK
+TX ATFCSH17FC0001
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0002
+RX OK
+TX ATFCSH17FC0002
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0003
+RX OK
+TX ATFCSH17FC0003
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0004
+RX OK
+TX ATFCSH17FC0004
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0005
+RX OK
+TX ATFCSH17FC0005
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0006
+RX OK
+TX ATFCSH17FC0006
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0007
+RX OK
+TX ATFCSH17FC0007
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0008
+RX OK
+TX ATFCSH17FC0008
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0009
+RX OK
+TX ATFCSH17FC0009
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000A
+RX OK
+TX ATFCSH17FC000A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000B
+RX OK
+TX ATFCSH17FC000B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000C
+RX OK
+TX ATFCSH17FC000C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000D
+RX OK
+TX ATFCSH17FC000D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000E
+RX OK
+TX ATFCSH17FC000E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC000F
+RX OK
+TX ATFCSH17FC000F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0010
+RX OK
+TX ATFCSH17FC0010
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0011
+RX OK
+TX ATFCSH17FC0011
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0012
+RX OK
+TX ATFCSH17FC0012
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0013
+RX OK
+TX ATFCSH17FC0013
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0014
+RX OK
+TX ATFCSH17FC0014
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0015
+RX OK
+TX ATFCSH17FC0015
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0016
+RX OK
+TX ATFCSH17FC0016
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0017
+RX OK
+TX ATFCSH17FC0017
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0018
+RX OK
+TX ATFCSH17FC0018
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0019
+RX OK
+TX ATFCSH17FC0019
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001A
+RX OK
+TX ATFCSH17FC001A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001B
+RX OK
+TX ATFCSH17FC001B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001C
+RX OK
+TX ATFCSH17FC001C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001D
+RX OK
+TX ATFCSH17FC001D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001E
+RX OK
+TX ATFCSH17FC001E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC001F
+RX OK
+TX ATFCSH17FC001F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0020
+RX OK
+TX ATFCSH17FC0020
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0021
+RX OK
+TX ATFCSH17FC0021
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0022
+RX OK
+TX ATFCSH17FC0022
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0023
+RX OK
+TX ATFCSH17FC0023
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0024
+RX OK
+TX ATFCSH17FC0024
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0025
+RX OK
+TX ATFCSH17FC0025
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0026
+RX OK
+TX ATFCSH17FC0026
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0027
+RX OK
+TX ATFCSH17FC0027
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0028
+RX OK
+TX ATFCSH17FC0028
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0029
+RX OK
+TX ATFCSH17FC0029
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002A
+RX OK
+TX ATFCSH17FC002A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002B
+RX OK
+TX ATFCSH17FC002B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002C
+RX OK
+TX ATFCSH17FC002C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002D
+RX OK
+TX ATFCSH17FC002D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002E
+RX OK
+TX ATFCSH17FC002E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC002F
+RX OK
+TX ATFCSH17FC002F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0030
+RX OK
+TX ATFCSH17FC0030
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0031
+RX OK
+TX ATFCSH17FC0031
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0032
+RX OK
+TX ATFCSH17FC0032
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0033
+RX OK
+TX ATFCSH17FC0033
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0034
+RX OK
+TX ATFCSH17FC0034
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0035
+RX OK
+TX ATFCSH17FC0035
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0036
+RX OK
+TX ATFCSH17FC0036
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0037
+RX OK
+TX ATFCSH17FC0037
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0038
+RX OK
+TX ATFCSH17FC0038
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0039
+RX OK
+TX ATFCSH17FC0039
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003A
+RX OK
+TX ATFCSH17FC003A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003B
+RX OK
+TX ATFCSH17FC003B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003C
+RX OK
+TX ATFCSH17FC003C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003D
+RX OK
+TX ATFCSH17FC003D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003E
+RX OK
+TX ATFCSH17FC003E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC003F
+RX OK
+TX ATFCSH17FC003F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0040
+RX OK
+TX ATFCSH17FC0040
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0041
+RX OK
+TX ATFCSH17FC0041
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0042
+RX OK
+TX ATFCSH17FC0042
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0043
+RX OK
+TX ATFCSH17FC0043
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0044
+RX OK
+TX ATFCSH17FC0044
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0045
+RX OK
+TX ATFCSH17FC0045
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0046
+RX OK
+TX ATFCSH17FC0046
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0047
+RX OK
+TX ATFCSH17FC0047
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0048
+RX OK
+TX ATFCSH17FC0048
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0049
+RX OK
+TX ATFCSH17FC0049
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004A
+RX OK
+TX ATFCSH17FC004A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004B
+RX OK
+TX ATFCSH17FC004B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004C
+RX OK
+TX ATFCSH17FC004C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004D
+RX OK
+TX ATFCSH17FC004D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004E
+RX OK
+TX ATFCSH17FC004E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC004F
+RX OK
+TX ATFCSH17FC004F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0050
+RX OK
+TX ATFCSH17FC0050
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0051
+RX OK
+TX ATFCSH17FC0051
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0052
+RX OK
+TX ATFCSH17FC0052
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0053
+RX OK
+TX ATFCSH17FC0053
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0054
+RX OK
+TX ATFCSH17FC0054
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0055
+RX OK
+TX ATFCSH17FC0055
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0056
+RX OK
+TX ATFCSH17FC0056
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0057
+RX OK
+TX ATFCSH17FC0057
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0058
+RX OK
+TX ATFCSH17FC0058
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0059
+RX OK
+TX ATFCSH17FC0059
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005A
+RX OK
+TX ATFCSH17FC005A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005B
+RX OK
+TX ATFCSH17FC005B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005C
+RX OK
+TX ATFCSH17FC005C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005D
+RX OK
+TX ATFCSH17FC005D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005E
+RX OK
+TX ATFCSH17FC005E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC005F
+RX OK
+TX ATFCSH17FC005F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0060
+RX OK
+TX ATFCSH17FC0060
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0061
+RX OK
+TX ATFCSH17FC0061
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0062
+RX OK
+TX ATFCSH17FC0062
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0063
+RX OK
+TX ATFCSH17FC0063
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0064
+RX OK
+TX ATFCSH17FC0064
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0065
+RX OK
+TX ATFCSH17FC0065
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0066
+RX OK
+TX ATFCSH17FC0066
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0067
+RX OK
+TX ATFCSH17FC0067
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0068
+RX OK
+TX ATFCSH17FC0068
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0069
+RX OK
+TX ATFCSH17FC0069
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006A
+RX OK
+TX ATFCSH17FC006A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006B
+RX OK
+TX ATFCSH17FC006B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006C
+RX OK
+TX ATFCSH17FC006C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006D
+RX OK
+TX ATFCSH17FC006D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006E
+RX OK
+TX ATFCSH17FC006E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC006F
+RX OK
+TX ATFCSH17FC006F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0070
+RX OK
+TX ATFCSH17FC0070
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0071
+RX OK
+TX ATFCSH17FC0071
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0072
+RX OK
+TX ATFCSH17FC0072
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0073
+RX OK
+TX ATFCSH17FC0073
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0074
+RX OK
+TX ATFCSH17FC0074
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0075
+RX OK
+TX ATFCSH17FC0075
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0076
+RX OK
+TX ATFCSH17FC0076
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0077
+RX OK
+TX ATFCSH17FC0077
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0078
+RX OK
+TX ATFCSH17FC0078
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0079
+RX OK
+TX ATFCSH17FC0079
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007A
+RX OK
+TX ATFCSH17FC007A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007B
+RX OK
+TX ATFCSH17FC007B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007C
+RX OK
+TX ATFCSH17FC007C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007D
+RX OK
+TX ATFCSH17FC007D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007E
+RX OK
+TX ATFCSH17FC007E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC007F
+RX OK
+TX ATFCSH17FC007F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0080
+RX OK
+TX ATFCSH17FC0080
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0081
+RX OK
+TX ATFCSH17FC0081
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0082
+RX OK
+TX ATFCSH17FC0082
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0083
+RX OK
+TX ATFCSH17FC0083
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0084
+RX OK
+TX ATFCSH17FC0084
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0085
+RX OK
+TX ATFCSH17FC0085
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0086
+RX OK
+TX ATFCSH17FC0086
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0087
+RX OK
+TX ATFCSH17FC0087
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0088
+RX OK
+TX ATFCSH17FC0088
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0089
+RX OK
+TX ATFCSH17FC0089
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC008A
+RX OK
+TX ATFCSH17FC008A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC008B
+RX OK
+TX ATFCSH17FC008B
+RX OK
+TX 3E00
+RX 17 FE 00 8B 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC008C
+RX OK
+TX ATFCSH17FC008C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC008D
+RX OK
+TX ATFCSH17FC008D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC008E
+RX OK
+TX ATFCSH17FC008E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC008F
+RX OK
+TX ATFCSH17FC008F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0090
+RX OK
+TX ATFCSH17FC0090
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0091
+RX OK
+TX ATFCSH17FC0091
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0092
+RX OK
+TX ATFCSH17FC0092
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0093
+RX OK
+TX ATFCSH17FC0093
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0094
+RX OK
+TX ATFCSH17FC0094
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0095
+RX OK
+TX ATFCSH17FC0095
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0096
+RX OK
+TX ATFCSH17FC0096
+RX OK
+TX 3E00
+RX 17 FE 00 96 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC0097
+RX OK
+TX ATFCSH17FC0097
+RX OK
+TX 3E00
+RX 17 FE 00 97 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC0098
+RX OK
+TX ATFCSH17FC0098
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC0099
+RX OK
+TX ATFCSH17FC0099
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009A
+RX OK
+TX ATFCSH17FC009A
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009B
+RX OK
+TX ATFCSH17FC009B
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009C
+RX OK
+TX ATFCSH17FC009C
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009D
+RX OK
+TX ATFCSH17FC009D
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009E
+RX OK
+TX ATFCSH17FC009E
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC009F
+RX OK
+TX ATFCSH17FC009F
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A0
+RX OK
+TX ATFCSH17FC00A0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A1
+RX OK
+TX ATFCSH17FC00A1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A2
+RX OK
+TX ATFCSH17FC00A2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A3
+RX OK
+TX ATFCSH17FC00A3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A4
+RX OK
+TX ATFCSH17FC00A4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A5
+RX OK
+TX ATFCSH17FC00A5
+RX OK
+TX 3E00
+RX 17 FE 00 A5 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC00A6
+RX OK
+TX ATFCSH17FC00A6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A7
+RX OK
+TX ATFCSH17FC00A7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A8
+RX OK
+TX ATFCSH17FC00A8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00A9
+RX OK
+TX ATFCSH17FC00A9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00AA
+RX OK
+TX ATFCSH17FC00AA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00AB
+RX OK
+TX ATFCSH17FC00AB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00AC
+RX OK
+TX ATFCSH17FC00AC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00AD
+RX OK
+TX ATFCSH17FC00AD
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00AE
+RX OK
+TX ATFCSH17FC00AE
+RX OK
+TX 3E00
+RX 17 FE 00 AE 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC00AF
+RX OK
+TX ATFCSH17FC00AF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B0
+RX OK
+TX ATFCSH17FC00B0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B1
+RX OK
+TX ATFCSH17FC00B1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B2
+RX OK
+TX ATFCSH17FC00B2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B3
+RX OK
+TX ATFCSH17FC00B3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B4
+RX OK
+TX ATFCSH17FC00B4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B5
+RX OK
+TX ATFCSH17FC00B5
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B6
+RX OK
+TX ATFCSH17FC00B6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B7
+RX OK
+TX ATFCSH17FC00B7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B8
+RX OK
+TX ATFCSH17FC00B8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00B9
+RX OK
+TX ATFCSH17FC00B9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BA
+RX OK
+TX ATFCSH17FC00BA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BB
+RX OK
+TX ATFCSH17FC00BB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BC
+RX OK
+TX ATFCSH17FC00BC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BD
+RX OK
+TX ATFCSH17FC00BD
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BE
+RX OK
+TX ATFCSH17FC00BE
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00BF
+RX OK
+TX ATFCSH17FC00BF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C0
+RX OK
+TX ATFCSH17FC00C0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C1
+RX OK
+TX ATFCSH17FC00C1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C2
+RX OK
+TX ATFCSH17FC00C2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C3
+RX OK
+TX ATFCSH17FC00C3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C4
+RX OK
+TX ATFCSH17FC00C4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C5
+RX OK
+TX ATFCSH17FC00C5
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C6
+RX OK
+TX ATFCSH17FC00C6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C7
+RX OK
+TX ATFCSH17FC00C7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C8
+RX OK
+TX ATFCSH17FC00C8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00C9
+RX OK
+TX ATFCSH17FC00C9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CA
+RX OK
+TX ATFCSH17FC00CA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CB
+RX OK
+TX ATFCSH17FC00CB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CC
+RX OK
+TX ATFCSH17FC00CC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CD
+RX OK
+TX ATFCSH17FC00CD
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CE
+RX OK
+TX ATFCSH17FC00CE
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00CF
+RX OK
+TX ATFCSH17FC00CF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D0
+RX OK
+TX ATFCSH17FC00D0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D1
+RX OK
+TX ATFCSH17FC00D1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D2
+RX OK
+TX ATFCSH17FC00D2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D3
+RX OK
+TX ATFCSH17FC00D3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D4
+RX OK
+TX ATFCSH17FC00D4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D5
+RX OK
+TX ATFCSH17FC00D5
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D6
+RX OK
+TX ATFCSH17FC00D6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D7
+RX OK
+TX ATFCSH17FC00D7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D8
+RX OK
+TX ATFCSH17FC00D8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00D9
+RX OK
+TX ATFCSH17FC00D9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DA
+RX OK
+TX ATFCSH17FC00DA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DB
+RX OK
+TX ATFCSH17FC00DB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DC
+RX OK
+TX ATFCSH17FC00DC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DD
+RX OK
+TX ATFCSH17FC00DD
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DE
+RX OK
+TX ATFCSH17FC00DE
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00DF
+RX OK
+TX ATFCSH17FC00DF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E0
+RX OK
+TX ATFCSH17FC00E0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E1
+RX OK
+TX ATFCSH17FC00E1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E2
+RX OK
+TX ATFCSH17FC00E2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E3
+RX OK
+TX ATFCSH17FC00E3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E4
+RX OK
+TX ATFCSH17FC00E4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E5
+RX OK
+TX ATFCSH17FC00E5
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E6
+RX OK
+TX ATFCSH17FC00E6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E7
+RX OK
+TX ATFCSH17FC00E7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E8
+RX OK
+TX ATFCSH17FC00E8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00E9
+RX OK
+TX ATFCSH17FC00E9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00EA
+RX OK
+TX ATFCSH17FC00EA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00EB
+RX OK
+TX ATFCSH17FC00EB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00EC
+RX OK
+TX ATFCSH17FC00EC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00ED
+RX OK
+TX ATFCSH17FC00ED
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00EE
+RX OK
+TX ATFCSH17FC00EE
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00EF
+RX OK
+TX ATFCSH17FC00EF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F0
+RX OK
+TX ATFCSH17FC00F0
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F1
+RX OK
+TX ATFCSH17FC00F1
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F2
+RX OK
+TX ATFCSH17FC00F2
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F3
+RX OK
+TX ATFCSH17FC00F3
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F4
+RX OK
+TX ATFCSH17FC00F4
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F5
+RX OK
+TX ATFCSH17FC00F5
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F6
+RX OK
+TX ATFCSH17FC00F6
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F7
+RX OK
+TX ATFCSH17FC00F7
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F8
+RX OK
+TX ATFCSH17FC00F8
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00F9
+RX OK
+TX ATFCSH17FC00F9
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FA
+RX OK
+TX ATFCSH17FC00FA
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FB
+RX OK
+TX ATFCSH17FC00FB
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FC
+RX OK
+TX ATFCSH17FC00FC
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FD
+RX OK
+TX ATFCSH17FC00FD
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FE
+RX OK
+TX ATFCSH17FC00FE
+RX OK
+TX 3E00
+RX NO DATA
+TX ATCP17
+RX OK
+TX ATSHFC00FF
+RX OK
+TX ATFCSH17FC00FF
+RX OK
+TX 3E00
+RX NO DATA
+TX ATSP6
+RX OK
+TX ATCF700
+RX OK
+TX ATCM700
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATSH710
+RX OK
+TX ATFCSH710
+RX OK
+TX 3E00
+RX 77A 02 7E 00
+TX ATSH7E4
+RX OK
+TX ATFCSH7E4
+RX OK
+TX 3E00
+RX 7EC 02 7E 00
+TX 3E00
+RX 7EC 02 7E 00
+TX ATSP7
+RX OK
+TX ATCF17FE0000
+RX OK
+TX ATCM1FFFFF00
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATCP17
+RX OK
+TX ATSHFC008B
+RX OK
+TX ATFCSH17FC008B
+RX OK
+TX 3E00
+RX 17 FE 00 8B 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC0096
+RX OK
+TX ATFCSH17FC0096
+RX OK
+TX 3E00
+RX 17 FE 00 96 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC0097
+RX OK
+TX ATFCSH17FC0097
+RX OK
+TX 3E00
+RX 17 FE 00 97 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC00A5
+RX OK
+TX ATFCSH17FC00A5
+RX OK
+TX 3E00
+RX 17 FE 00 A5 02 7E 00
+TX ATCP17
+RX OK
+TX ATSHFC00AE
+RX OK
+TX ATFCSH17FC00AE
+RX OK
+TX 3E00
+RX 17 FE 00 AE 02 7E 00
+TX ATSP6
+RX OK
+TX ATCF700
+RX OK
+TX ATCM700
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATSH710
+RX OK
+TX ATFCSH710
+RX OK
+TX STCFCPA 710, 77A
+RX OK
+TX 22F187
+RX 77A 10 0E 62 F1 87 38 57 30
+RX 77A 21 39 30 37 34 36 38 46
+RX 77A 22 20 AA AA AA AA AA AA
+TX ATSH70C
+RX OK
+TX ATFCSH70C
+RX OK
+TX STCFCPA 70C, 776
+RX OK
+TX 22F180
+RX 776 03 7F 22 31
+TX 22F181
+RX 776 03 7F 22 31
+TX 22F182
+RX 776 03 7F 22 31
+TX 22F186
+RX 776 04 62 F1 86 01
+TX 22F187
+RX 776 10 0E 62 F1 87 34 4E 30
+RX 776 21 39 30 37 31 32 39 4D
+RX 776 22 4E 00 00 00 00 00 00
+TX 22F188
+RX 776 03 7F 22 31
+TX 22F189
+RX 776 07 62 F1 89 30 30 30 39
+TX 22F18A
+RX 776 03 7F 22 31
+TX 22F18B
+RX 776 03 7F 22 31
+TX 22F18C
+RX 776 03 7F 22 31
+TX 22F18E
+RX 776 03 7F 22 31
+TX 22F191
+RX 776 10 0E 62 F1 91 34 4E 30
+RX 776 21 39 30 37 31 32 39 4D
+RX 776 22 4E 00 00 00 00 00 00
+TX 22F192
+RX 776 03 7F 22 31
+TX 22F193
+RX 776 03 7F 22 31
+TX 22F194
+RX 776 03 7F 22 31
+TX 22F195
+RX 776 03 7F 22 31
+TX 22F196
+RX 776 03 7F 22 31
+TX 22F197
+RX 776 10 10 62 F1 97 4C 65 6E
+RX 776 21 6B 73 2E 4D 6F 64 75
+RX 776 22 6C 20 20 00 00 00 00
+TX 22F198
+RX 776 03 7F 22 31
+TX 22F199
+RX 776 03 7F 22 31
+TX 22F19A
+RX 776 10 09 62 F1 9A 00 00 00
+RX 776 21 00 00 00 00 00 00 00
+TX 22F19B
+RX 776 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 776 03 7F 22 31
+TX 22F19D
+RX 776 03 7F 22 31
+TX 22F19E
+RX 776 10 13 62 F1 9E 45 56 5F
+RX 776 21 53 4D 4C 53 4B 4C 4F
+RX 776 22 41 55 37 33 36 00 00
+TX 22F19F
+RX 776 03 7F 22 31
+TX 22F1A0
+RX 776 03 7F 22 31
+TX 22F1A2
+RX 776 10 09 62 F1 A2 30 30 37
+RX 776 21 30 31 32 00 00 00 00
+TX 22F1A3
+RX 776 06 62 F1 A3 48 30 33
+TX 22F1AA
+RX 776 10 08 62 F1 AA 4A 35 32
+RX 776 21 37 20 00 00 00 00 00
+TX 22F400
+RX 776 03 7F 22 31
+TX 22F405
+RX 776 03 7F 22 31
+TX 22F40C
+RX 776 03 7F 22 31
+TX 22F40D
+RX 776 03 7F 22 31
+TX 22F41B
+RX 776 03 7F 22 31
+TX 22F442
+RX 776 03 7F 22 31
+TX 22F446
+RX 776 03 7F 22 31
+TX 22F600
+RX 776 03 7F 22 31
+TX 22F800
+RX 776 03 7F 22 31
+TX 190108
+RX 776 03 7F 19 12
+TX ATSH70E
+RX OK
+TX ATFCSH70E
+RX OK
+TX STCFCPA 70E, 778
+RX OK
+TX 22F180
+RX 778 03 7F 22 31
+TX 22F181
+RX 778 03 7F 22 31
+TX 22F182
+RX 778 03 7F 22 31
+TX 22F186
+RX 778 04 62 F1 86 01
+TX 22F187
+RX 778 10 0E 62 F1 87 38 57 31
+RX 778 21 39 30 37 30 36 33 42
+RX 778 22 4E AA AA AA AA AA AA
+TX 22F188
+RX 778 03 7F 22 31
+TX 22F189
+RX 778 07 62 F1 89 30 37 32 38
+TX 22F18A
+RX 778 03 7F 22 31
+TX 22F18B
+RX 778 03 7F 22 31
+TX 22F18C
+RX 778 03 7F 22 31
+TX 22F18E
+RX 778 03 7F 22 31
+TX 22F191
+RX 778 10 0E 62 F1 91 38 57 31
+RX 778 21 39 30 37 30 36 33 4E
+RX 778 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 778 03 7F 22 31
+TX 22F193
+RX 778 03 7F 22 31
+TX 22F194
+RX 778 03 7F 22 31
+TX 22F195
+RX 778 03 7F 22 31
+TX 22F196
+RX 778 03 7F 22 31
+TX 22F197
+RX 778 10 10 62 F1 97 42 43 4D
+RX 778 21 31 20 4D 4C 42 65 76
+RX 778 22 6F 20 20 AA AA AA AA
+TX 22F198
+RX 778 03 7F 22 31
+TX 22F199
+RX 778 03 7F 22 31
+TX 22F19A
+RX 778 10 09 62 F1 9A 00 00 0E
+RX 778 21 2C 18 BF AA AA AA AA
+TX 22F19B
+RX 778 06 62 F1 9B 22 06 01
+TX 22F19C
+RX 778 03 7F 22 31
+TX 22F19D
+RX 778 03 7F 22 31
+TX 22F19E
+RX 778 10 15 62 F1 9E 45 56 5F
+RX 778 21 42 43 4D 31 42 4F 53
+RX 778 22 43 48 41 55 36 35 31
+RX 778 23 00 AA AA AA AA AA AA
+TX 22F19F
+RX 778 03 7F 22 31
+TX 22F1A0
+RX 778 10 0E 62 F1 A0 38 57 36
+RX 778 21 39 30 39 35 31 34 44
+RX 778 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 778 10 09 62 F1 A2 30 31 38
+RX 778 21 30 30 35 AA AA AA AA
+TX 22F1A3
+RX 778 06 62 F1 A3 48 31 30
+TX 22F1AA
+RX 778 10 08 62 F1 AA 4A 35 31
+RX 778 21 39 20 AA AA AA AA AA
+TX 22F400
+RX 778 03 7F 22 31
+TX 22F405
+RX 778 03 7F 22 31
+TX 22F40C
+RX 778 03 7F 22 31
+TX 22F40D
+RX 778 03 7F 22 31
+TX 22F41B
+RX 778 03 7F 22 31
+TX 22F442
+RX 778 03 7F 22 31
+TX 22F446
+RX 778 03 7F 22 31
+TX 22F600
+RX 778 03 7F 22 31
+TX 22F800
+RX 778 03 7F 22 31
+TX 190108
+RX 778 03 7F 19 12
+TX ATSH710
+RX OK
+TX ATFCSH710
+RX OK
+TX 22F180
+RX 77A 03 7F 22 31
+TX 22F181
+RX 77A 03 7F 22 31
+TX 22F182
+RX 77A 03 7F 22 31
+TX 22F186
+RX 77A 04 62 F1 86 01
+TX 22F187
+RX 77A 10 0E 62 F1 87 38 57 30
+RX 77A 21 39 30 37 34 36 38 46
+RX 77A 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 77A 03 7F 22 31
+TX 22F189
+RX 77A 07 62 F1 89 30 36 31 33
+TX 22F18A
+RX 77A 10 23 62 F1 8A 2D 2D 2D
+RX 77A 21 2D 2D 2D 2D 2D 2D 2D
+RX 77A 22 2D 2D 2D 2D 2D 2D 2D
+RX 77A 23 2D 2D 2D 2D 2D 2D 2D
+RX 77A 24 2D 2D 2D 2D 2D 2D 2D
+RX 77A 25 2D AA AA AA AA AA AA
+TX 22F18B
+RX 77A 06 62 F1 8B 22 05 01
+TX 22F18C
+RX 77A 10 11 62 F1 8C 46 30 36
+RX 77A 21 34 30 34 31 32 36 37
+RX 77A 22 36 31 39 31 AA AA AA
+TX 22F18E
+RX 77A 03 7F 22 31
+TX 22F191
+RX 77A 10 0E 62 F1 91 38 30 42
+RX 77A 21 39 30 37 34 36 38 41
+RX 77A 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 77A 03 7F 22 31
+TX 22F193
+RX 77A 03 7F 22 31
+TX 22F194
+RX 77A 03 7F 22 31
+TX 22F195
+RX 77A 03 7F 22 31
+TX 22F196
+RX 77A 10 0A 62 F1 96 2D 2D 2D
+RX 77A 21 2D 2D 2D 2D AA AA AA
+TX 22F197
+RX 77A 10 10 62 F1 97 47 61 74
+RX 77A 21 65 77 61 79 20 20 20
+RX 77A 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 77A 03 7F 22 31
+TX 22F199
+RX 77A 03 7F 22 31
+TX 22F19A
+RX 77A 10 09 62 F1 9A 80 00 00
+RX 77A 21 0A 7E 65 AA AA AA AA
+TX 22F19B
+RX 77A 06 62 F1 9B 22 06 28
+TX 22F19C
+RX 77A 03 7F 22 31
+TX 22F19D
+RX 77A 03 7F 22 31
+TX 22F19E
+RX 77A 10 14 62 F1 9E 45 56 5F
+RX 77A 21 47 61 74 65 77 33 31
+RX 77A 22 78 41 55 36 35 78 00
+TX 22F19F
+RX 77A 03 7F 22 31
+TX 22F1A0
+RX 77A 10 0E 62 F1 A0 38 57 30
+RX 77A 21 39 30 39 35 31 35 54
+RX 77A 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 77A 10 09 62 F1 A2 30 30 33
+RX 77A 21 32 35 30 AA AA AA AA
+TX 22F1A3
+RX 77A 06 62 F1 A3 48 30 38
+TX 22F1AA
+RX 77A 10 08 62 F1 AA 4A 35 33
+RX 77A 21 33 20 AA AA AA AA AA
+TX 22F400
+RX 77A 03 7F 22 31
+TX 22F405
+RX 77A 03 7F 22 31
+TX 22F40C
+RX 77A 03 7F 22 31
+TX 22F40D
+RX 77A 03 7F 22 31
+TX 22F41B
+RX 77A 03 7F 22 31
+TX 22F442
+RX 77A 03 7F 22 31
+TX 22F446
+RX 77A 03 7F 22 31
+TX 22F600
+RX 77A 03 7F 22 31
+TX 22F800
+RX 77A 03 7F 22 31
+TX 22123A
+RX 77A 10 0B 62 12 3A 00 01 58
+RX 77A 21 C6 00 01 53 A2 AA AA
+TX 222A00
+RX 77A 04 62 2A 00 1D
+TX 222A06
+RX 77A 07 62 2A 06 02 00 44 01
+TX 222A07
+RX 77A 05 62 2A 07 24 A8
+TX 222A09
+RX 77A 07 62 2A 09 00 00 06 1C
+TX 222A0A
+RX 77A 04 62 2A 0A 36
+TX 222A0B
+RX 77A 04 62 2A 0B 35
+TX 222A0C
+RX 77A 04 62 2A 0C 47
+TX 222A0E
+RX 77A 04 62 2A 0E 15
+TX 222A0F
+RX 77A 04 62 2A 0F 22
+TX 222A10
+RX 77A 04 62 2A 10 22
+TX 222A15
+RX 77A 05 62 2A 15 00 1E
+TX 222A17
+RX 77A 06 62 2A 17 00 13 89
+TX 222A18
+RX 77A 06 62 2A 18 01 53 A2
+TX 222A1C
+RX 77A 05 62 2A 1C 00 A0
+TX 222AB6
+RX 77A 10 0A 62 2A B6 00 D2 00
+RX 77A 21 D2 07 FD 00 AA AA AA
+TX 222AB7
+RX 77A 10 1F 62 2A B7 00 E6 00
+RX 77A 21 E6 00 E6 00 E6 00 E6
+RX 77A 22 00 E6 00 00 00 5A 00
+RX 77A 23 3C 00 3C 00 3C 00 3C
+RX 77A 24 00 3C 00 00 AA AA AA
+TX 224F00
+RX 77A 04 62 4F 00 00
+TX 225505
+RX 77A 05 62 55 05 FE 00
+TX 190108
+RX 77A 03 7F 19 12
+TX ATSH712
+RX OK
+TX ATFCSH712
+RX OK
+TX STCFCPA 712, 77C
+RX OK
+TX 22F180
+RX 77C 03 7F 22 31
+TX 22F181
+RX 77C 03 7F 22 31
+TX 22F182
+RX 77C 03 7F 22 31
+TX 22F186
+RX 77C 04 62 F1 86 01
+TX 22F187
+RX 77C 10 0E 62 F1 87 38 57 30
+RX 77C 21 39 30 39 31 34 34 4A
+RX 77C 22 20 00 00 00 00 00 00
+TX 22F188
+RX 77C 03 7F 22 31
+TX 22F189
+RX 77C 07 62 F1 89 30 34 31 31
+TX 22F18A
+RX 77C 03 7F 22 31
+TX 22F18B
+RX 77C 03 7F 22 31
+TX 22F18C
+RX 77C 03 7F 22 31
+TX 22F18E
+RX 77C 03 7F 22 31
+TX 22F191
+RX 77C 10 0E 62 F1 91 38 57 30
+RX 77C 21 39 30 39 31 34 34 42
+RX 77C 22 20 00 00 00 00 00 00
+TX 22F192
+RX 77C 03 7F 22 31
+TX 22F193
+RX 77C 03 7F 22 31
+TX 22F194
+RX 77C 03 7F 22 31
+TX 22F195
+RX 77C 03 7F 22 31
+TX 22F196
+RX 77C 03 7F 22 31
+TX 22F197
+RX 77C 10 10 62 F1 97 45 50 53
+RX 77C 21 5F 4D 4C 42 45 56 4F
+RX 77C 22 5F 5A 46 00 00 00 00
+TX 22F198
+RX 77C 03 7F 22 31
+TX 22F199
+RX 77C 03 7F 22 31
+TX 22F19A
+RX 77C 10 09 62 F1 9A 00 00 0E
+RX 77C 21 2C 18 BF 00 00 00 00
+TX 22F19B
+RX 77C 06 62 F1 9B 22 05 31
+TX 22F19C
+RX 77C 03 7F 22 31
+TX 22F19D
+RX 77C 03 7F 22 31
+TX 22F19E
+RX 77C 10 11 62 F1 9E 45 56 5F
+RX 77C 21 45 50 53 5A 46 41 55
+RX 77C 22 34 39 58 00 00 00 00
+TX 22F19F
+RX 77C 03 7F 22 31
+TX 22F1A0
+RX 77C 10 0E 62 F1 A0 38 57 32
+RX 77C 21 39 30 39 38 35 32 51
+RX 77C 22 20 00 00 00 00 00 00
+TX 22F1A2
+RX 77C 10 09 62 F1 A2 30 30 33
+RX 77C 21 30 32 33 00 00 00 00
+TX 22F1A3
+RX 77C 06 62 F1 A3 48 30 38
+TX 22F1AA
+RX 77C 10 08 62 F1 AA 4A 35 30
+RX 77C 21 30 20 00 00 00 00 00
+TX 22F400
+RX 77C 03 7F 22 31
+TX 22F405
+RX 77C 03 7F 22 31
+TX 22F40C
+RX 77C 03 7F 22 31
+TX 22F40D
+RX 77C 03 7F 22 31
+TX 22F41B
+RX 77C 03 7F 22 31
+TX 22F442
+RX 77C 03 7F 22 31
+TX 22F446
+RX 77C 03 7F 22 31
+TX 22F600
+RX 77C 03 7F 22 31
+TX 22F800
+RX 77C 03 7F 22 31
+TX 190108
+RX 77C 03 7F 19 12
+TX ATSH713
+RX OK
+TX ATFCSH713
+RX OK
+TX STCFCPA 713, 77D
+RX OK
+TX 22F180
+RX 77D 03 7F 22 31
+TX 22F181
+RX 77D 03 7F 22 31
+TX 22F182
+RX 77D 10 0C 62 F1 82 04 2D 2D
+RX 77D 21 2D 2D 2D 2D 2D 2D 00
+TX 22F186
+RX 77D 04 62 F1 86 01
+TX 22F187
+RX 77D 10 0E 62 F1 87 38 57 30
+RX 77D 21 39 30 37 33 37 39 41
+RX 77D 22 52 00 00 00 00 00 00
+TX 22F188
+RX 77D 03 7F 22 31
+TX 22F189
+RX 77D 07 62 F1 89 30 38 37 32
+TX 22F18A
+RX 77D 03 7F 22 31
+TX 22F18B
+RX 77D 03 7F 22 31
+TX 22F18C
+RX 77D 03 7F 22 31
+TX 22F18E
+RX 77D 03 7F 22 31
+TX 22F191
+RX 77D 03 7F 22 78
+RX 77D 10 0E 62 F1 91 38 57 30
+RX 77D 21 39 30 37 33 37 39 41
+RX 77D 22 52 00 00 00 00 00 00
+TX 22F192
+RX 77D 03 7F 22 31
+TX 22F193
+RX 77D 03 7F 22 31
+TX 22F194
+RX 77D 03 7F 22 31
+TX 22F195
+RX 77D 03 7F 22 31
+TX 22F196
+RX 77D 03 7F 22 31
+TX 22F197
+RX 77D 10 10 62 F1 97 45 53 50
+RX 77D 21 39 20 50 6C 75 73 20
+RX 77D 22 20 20 20 00 00 00 00
+TX 22F198
+RX 77D 03 7F 22 31
+TX 22F199
+RX 77D 03 7F 22 31
+TX 22F19A
+RX 77D 10 09 62 F1 9A 00 00 00
+RX 77D 21 00 00 00 00 00 00 00
+TX 22F19B
+RX 77D 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 77D 03 7F 22 31
+TX 22F19D
+RX 77D 03 7F 22 31
+TX 22F19E
+RX 77D 10 13 62 F1 9E 45 56 5F
+RX 77D 21 45 53 50 39 42 4F 53
+RX 77D 22 43 48 43 4D 50 00 00
+TX 22F19F
+RX 77D 03 7F 22 31
+TX 22F1A0
+RX 77D 10 0E 62 F1 A0 38 57 32
+RX 77D 21 39 30 39 35 30 34 4E
+RX 77D 22 20 00 00 00 00 00 00
+TX 22F1A2
+RX 77D 10 09 62 F1 A2 30 30 32
+RX 77D 21 30 31 33 00 00 00 00
+TX 22F1A3
+RX 77D 06 62 F1 A3 48 32 30
+TX 22F1AA
+RX 77D 10 08 62 F1 AA 4A 31 30
+RX 77D 21 34 20 00 00 00 00 00
+TX 22F400
+RX 77D 07 62 F4 00 98 18 00 01
+TX 22F420
+RX 77D 07 62 F4 20 00 00 00 01
+TX 22F440
+RX 77D 07 62 F4 40 C4 80 00 00
+TX 22F401
+RX 77D 07 62 F4 01 00 04 00 00
+TX 22F404
+RX 77D 04 62 F4 04 22
+TX 22F405
+RX 77D 04 62 F4 05 76
+TX 22F40C
+RX 77D 05 62 F4 0C 0C 84
+TX 22F40D
+RX 77D 04 62 F4 0D 00
+TX 22F441
+RX 77D 07 62 F4 41 00 04 00 00
+TX 22F442
+RX 77D 05 62 F4 42 35 50
+TX 22F446
+RX 77D 04 62 F4 46 37
+TX 22F449
+RX 77D 04 62 F4 49 26
+TX 22F600
+RX 77D 03 7F 22 31
+TX 22F800
+RX 77D 07 62 F8 00 14 40 00 00
+TX 222B21
+RX 77D 10 09 62 2B 21 0A DA FF
+RX 77D 21 FE FF FE 00 00 00 00
+TX 222B29
+RX 77D 05 62 2B 29 FF D2
+TX 190108
+RX 77D 03 7F 19 12
+TX ATSH714
+RX OK
+TX ATFCSH714
+RX OK
+TX STCFCPA 714, 77E
+RX OK
+TX 22F180
+RX 77E 03 7F 22 31
+TX 22F181
+RX 77E 03 7F 22 31
+TX 22F182
+RX 77E 03 7F 22 31
+TX 22F186
+RX 77E 04 62 F1 86 01
+TX 22F187
+RX 77E 10 0E 62 F1 87 38 57 35
+RX 77E 21 39 32 30 37 39 30 4D
+RX 77E 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 77E 03 7F 22 31
+TX 22F189
+RX 77E 07 62 F1 89 30 32 31 37
+TX 22F18A
+RX 77E 03 7F 22 31
+TX 22F18B
+RX 77E 03 7F 22 31
+TX 22F18C
+RX 77E 03 7F 22 31
+TX 22F18E
+RX 77E 03 7F 22 31
+TX 22F191
+RX 77E 03 7F 22 78
+RX 77E 10 0E 62 F1 91 38 57 35
+RX 77E 21 39 32 30 37 39 30 4C
+RX 77E 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 77E 03 7F 22 31
+TX 22F193
+RX 77E 03 7F 22 31
+TX 22F194
+RX 77E 03 7F 22 31
+TX 22F195
+RX 77E 03 7F 22 31
+TX 22F196
+RX 77E 03 7F 22 31
+TX 22F197
+RX 77E 10 10 62 F1 97 46 42 65
+RX 77E 21 6E 52 44 57 2D 2D 2D
+RX 77E 22 2D 2D 2D AA AA AA AA
+TX 22F198
+RX 77E 03 7F 22 31
+TX 22F199
+RX 77E 03 7F 22 31
+TX 22F19A
+RX 77E 10 09 62 F1 9A FF FF FF
+RX 77E 21 CF 86 9F AA AA AA AA
+TX 22F19B
+RX 77E 06 62 F1 9B 26 10 09
+TX 22F19C
+RX 77E 03 7F 22 31
+TX 22F19D
+RX 77E 03 7F 22 31
+TX 22F19E
+RX 77E 10 15 62 F1 9E 45 56 5F
+RX 77E 21 44 61 73 68 42 6F 61
+RX 77E 22 72 64 41 55 36 35 58
+RX 77E 23 00 AA AA AA AA AA AA
+TX 22F19F
+RX 77E 03 7F 22 31
+TX 22F1A0
+RX 77E 10 0E 62 F1 A0 38 57 31
+RX 77E 21 39 30 39 35 32 35 46
+RX 77E 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 77E 10 09 62 F1 A2 30 30 32
+RX 77E 21 30 32 37 AA AA AA AA
+TX 22F1A3
+RX 77E 06 62 F1 A3 48 31 31
+TX 22F1AA
+RX 77E 10 08 62 F1 AA 4A 32 38
+RX 77E 21 35 20 AA AA AA AA AA
+TX 22F400
+RX 77E 03 7F 22 31
+TX 22F405
+RX 77E 03 7F 22 31
+TX 22F40C
+RX 77E 03 7F 22 31
+TX 22F40D
+RX 77E 03 7F 22 31
+TX 22F41B
+RX 77E 03 7F 22 31
+TX 22F442
+RX 77E 03 7F 22 31
+TX 22F446
+RX 77E 03 7F 22 31
+TX 22F600
+RX 77E 03 7F 22 31
+TX 22F800
+RX 77E 03 7F 22 31
+TX 221014
+RX 77E 04 62 10 14 81
+TX 222203
+RX 77E 06 62 22 03 01 F2 7F
+TX 22220C
+RX 77E 04 62 22 0C 82
+TX 222211
+RX 77E 04 62 22 11 82
+TX 22224B
+RX 77E 05 62 22 4B 00 22
+TX 2222B8
+RX 77E 07 62 22 B8 07 9B 43 2D
+TX 190108
+RX 77E 03 7F 19 12
+TX ATSH715
+RX OK
+TX ATFCSH715
+RX OK
+TX STCFCPA 715, 77F
+RX OK
+TX 22F180
+RX 77F 03 7F 22 31
+TX 22F181
+RX 77F 03 7F 22 31
+TX 22F182
+RX 77F 10 0C 62 F1 82 04 30 33
+RX 77F 21 44 42 33 34 31 34 00
+TX 22F186
+RX 77F 04 62 F1 86 01
+TX 22F187
+RX 77F 10 0E 62 F1 87 38 57 30
+RX 77F 21 39 35 39 36 35 35 50
+RX 77F 22 20 00 00 00 00 00 00
+TX 22F188
+RX 77F 03 7F 22 31
+TX 22F189
+RX 77F 07 62 F1 89 30 31 32 32
+TX 22F18A
+RX 77F 03 7F 22 31
+TX 22F18B
+RX 77F 06 62 F1 8B 22 03 14
+TX 22F18C
+RX 77F 10 0F 62 F1 8C 30 30 33
+RX 77F 21 34 59 30 30 43 4E 46
+RX 77F 22 42 47 00 00 00 00 00
+TX 22F18E
+RX 77F 03 7F 22 31
+TX 22F191
+RX 77F 10 0E 62 F1 91 38 57 30
+RX 77F 21 39 35 39 36 35 35 50
+RX 77F 22 20 00 00 00 00 00 00
+TX 22F192
+RX 77F 03 7F 22 31
+TX 22F193
+RX 77F 03 7F 22 31
+TX 22F194
+RX 77F 03 7F 22 31
+TX 22F195
+RX 77F 10 13 62 F1 95 50 53 50
+RX 77F 21 5F 30 30 33 32 56 44
+RX 77F 22 53 5F 30 31 30 37 00
+TX 22F196
+RX 77F 03 7F 22 31
+TX 22F197
+RX 77F 10 10 62 F1 97 41 69 72
+RX 77F 21 62 61 67 31 30 2E 34
+RX 77F 22 34 20 20 00 00 00 00
+TX 22F198
+RX 77F 10 09 62 F1 98 00 00 00
+RX 77F 21 00 00 00 00 00 00 00
+TX 22F199
+RX 77F 06 62 F1 99 00 00 00
+TX 22F19A
+RX 77F 10 09 62 F1 9A 00 00 00
+RX 77F 21 00 00 00 00 00 00 00
+TX 22F19B
+RX 77F 06 62 F1 9B 01 01 01
+TX 22F19C
+RX 77F 03 7F 22 31
+TX 22F19D
+RX 77F 03 7F 22 31
+TX 22F19E
+RX 77F 03 7F 22 78
+RX 77F 10 18 62 F1 9E 45 56 5F
+RX 77F 21 41 69 72 62 61 41 55
+RX 77F 22 31 30 42 50 41 41 55
+RX 77F 23 37 33 36 00 00 00 00
+TX 22F19F
+RX 77F 03 7F 22 31
+TX 22F1A0
+RX 77F 10 0E 62 F1 A0 38 57 32
+RX 77F 21 39 30 39 36 30 32 42
+RX 77F 22 45 00 00 00 00 00 00
+TX 22F1A2
+RX 77F 10 09 62 F1 A2 30 30 36
+RX 77F 21 30 31 36 00 00 00 00
+TX 22F1A3
+RX 77F 06 62 F1 A3 48 31 32
+TX 22F1AA
+RX 77F 10 08 62 F1 AA 4A 32 33
+RX 77F 21 34 20 00 00 00 00 00
+TX 22F400
+RX 77F 03 7F 22 31
+TX 22F405
+RX 77F 03 7F 22 31
+TX 22F40C
+RX 77F 03 7F 22 31
+TX 22F40D
+RX 77F 03 7F 22 31
+TX 22F41B
+RX 77F 03 7F 22 31
+TX 22F442
+RX 77F 03 7F 22 31
+TX 22F446
+RX 77F 03 7F 22 31
+TX 22F600
+RX 77F 03 7F 22 31
+TX 22F800
+RX 77F 03 7F 22 31
+TX 190108
+RX 77F 03 7F 19 12
+TX ATSH723
+RX OK
+TX ATFCSH723
+RX OK
+TX STCFCPA 723, 78D
+RX OK
+TX 22F180
+RX 78D 03 7F 22 31
+TX 22F181
+RX 78D 03 7F 22 31
+TX 22F182
+RX 78D 03 7F 22 31
+TX 22F186
+RX 78D 04 62 F1 86 01
+TX 22F187
+RX 78D 10 0E 62 F1 87 38 57 38
+RX 78D 21 39 35 39 31 30 37 45
+RX 78D 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 78D 03 7F 22 31
+TX 22F189
+RX 78D 07 62 F1 89 30 31 37 32
+TX 22F18A
+RX 78D 10 0A 62 F1 8A 00 00 00
+RX 78D 21 00 00 00 00 AA AA AA
+TX 22F18B
+RX 78D 06 62 F1 8B 01 01 01
+TX 22F18C
+RX 78D 10 11 62 F1 8C 41 32 2D
+RX 78D 21 43 37 34 34 2D 38 37
+RX 78D 22 38 31 2D 34 AA AA AA
+TX 22F18E
+RX 78D 03 7F 22 31
+TX 22F191
+RX 78D 10 0E 62 F1 91 38 57 38
+RX 78D 21 39 35 39 31 30 37 20
+RX 78D 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 78D 10 12 62 F1 92 41 32 43
+RX 78D 21 37 33 37 36 32 35 30
+RX 78D 22 30 30 30 00 00 AA AA
+TX 22F193
+RX 78D 05 62 F1 93 00 00
+TX 22F194
+RX 78D 10 12 62 F1 94 41 32 43
+RX 78D 21 37 33 37 36 32 35 30
+RX 78D 22 30 30 30 00 00 AA AA
+TX 22F195
+RX 78D 05 62 F1 95 00 00
+TX 22F196
+RX 78D 10 0A 62 F1 96 2D 2D 2D
+RX 78D 21 2D 2D 2D 2D AA AA AA
+TX 22F197
+RX 78D 10 10 62 F1 97 48 44 53
+RX 78D 21 47 2D 4D 6F 64 75 6C
+RX 78D 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 78D 03 7F 22 31
+TX 22F199
+RX 78D 03 7F 22 31
+TX 22F19A
+RX 78D 10 09 62 F1 9A 00 00 0E
+RX 78D 21 2C 18 BF AA AA AA AA
+TX 22F19B
+RX 78D 06 62 F1 9B 22 06 01
+TX 22F19C
+RX 78D 03 7F 22 31
+TX 22F19D
+RX 78D 03 7F 22 31
+TX 22F19E
+RX 78D 10 18 62 F1 9E 45 56 5F
+RX 78D 21 44 65 63 6B 4C 69 64
+RX 78D 22 43 4F 4E 54 49 41 55
+RX 78D 23 37 33 36 00 AA AA AA
+TX 22F19F
+RX 78D 03 7F 22 31
+TX 22F1A0
+RX 78D 10 0E 62 F1 A0 38 57 32
+RX 78D 21 39 30 39 35 34 31 44
+RX 78D 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 78D 10 09 62 F1 A2 30 30 31
+RX 78D 21 30 31 37 AA AA AA AA
+TX 22F1A3
+RX 78D 06 62 F1 A3 48 31 33
+TX 22F1AA
+RX 78D 10 08 62 F1 AA 4A 36 30
+RX 78D 21 35 20 AA AA AA AA AA
+TX 22F400
+RX 78D 03 7F 22 31
+TX 22F405
+RX 78D 03 7F 22 31
+TX 22F40C
+RX 78D 03 7F 22 31
+TX 22F40D
+RX 78D 03 7F 22 31
+TX 22F41B
+RX 78D 03 7F 22 31
+TX 22F442
+RX 78D 03 7F 22 31
+TX 22F446
+RX 78D 03 7F 22 31
+TX 22F600
+RX 78D 03 7F 22 31
+TX 22F800
+RX 78D 03 7F 22 31
+TX 190108
+RX 78D 03 7F 19 12
+TX ATSH73F
+RX OK
+TX ATFCSH73F
+RX OK
+TX STCFCPA 73F, 7A9
+RX OK
+TX 22F180
+RX NO DATA
+TX 22F181
+RX NO DATA
+TX 22F182
+RX NO DATA
+TX ATSH746
+RX OK
+TX ATFCSH746
+RX OK
+TX STCFCPA 746, 7B0
+RX OK
+TX 22F180
+RX 7B0 03 7F 22 31
+TX 22F181
+RX 7B0 03 7F 22 31
+TX 22F182
+RX 7B0 03 7F 22 31
+TX 22F186
+RX 7B0 04 62 F1 86 01
+TX 22F187
+RX 7B0 10 0E 62 F1 87 38 57 30
+RX 7B0 21 38 32 30 30 34 33 42
+RX 7B0 22 48 AA AA AA AA AA AA
+TX 22F188
+RX 7B0 03 7F 22 31
+TX 22F189
+RX 7B0 07 62 F1 89 30 32 39 31
+TX 22F18A
+RX 7B0 03 7F 22 31
+TX 22F18B
+RX 7B0 03 7F 22 31
+TX 22F18C
+RX 7B0 03 7F 22 31
+TX 22F18E
+RX 7B0 03 7F 22 31
+TX 22F191
+RX 7B0 10 0E 62 F1 91 38 57 30
+RX 7B0 21 38 32 30 30 34 33 42
+RX 7B0 22 48 AA AA AA AA AA AA
+TX 22F192
+RX 7B0 03 7F 22 31
+TX 22F193
+RX 7B0 03 7F 22 31
+TX 22F194
+RX 7B0 03 7F 22 31
+TX 22F195
+RX 7B0 03 7F 22 31
+TX 22F196
+RX 7B0 03 7F 22 31
+TX 22F197
+RX 7B0 10 10 62 F1 97 4B 6C 69
+RX 7B0 21 6D 61 20 5A 6F 6E 65
+RX 7B0 22 20 33 20 AA AA AA AA
+TX 22F198
+RX 7B0 03 7F 22 31
+TX 22F199
+RX 7B0 03 7F 22 31
+TX 22F19A
+RX 7B0 10 09 62 F1 9A 00 00 0E
+RX 7B0 21 2C 18 BF AA AA AA AA
+TX 22F19B
+RX 7B0 06 62 F1 9B 22 06 01
+TX 22F19C
+RX 7B0 03 7F 22 31
+TX 22F19D
+RX 7B0 03 7F 22 31
+TX 22F19E
+RX 7B0 10 18 62 F1 9E 45 56 5F
+RX 7B0 21 41 69 72 43 6F 6E 64
+RX 7B0 22 69 42 48 54 43 41 55
+RX 7B0 23 34 39 31 00 AA AA AA
+TX 22F19F
+RX 7B0 03 7F 22 31
+TX 22F1A0
+RX 7B0 10 0E 62 F1 A0 38 57 32
+RX 7B0 21 39 30 39 38 36 32 42
+RX 7B0 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7B0 10 09 62 F1 A2 30 30 31
+RX 7B0 21 30 32 39 AA AA AA AA
+TX 22F1A3
+RX 7B0 06 62 F1 A3 48 36 30
+TX 22F1AA
+RX 7B0 10 08 62 F1 AA 45 38 37
+RX 7B0 21 20 20 AA AA AA AA AA
+TX 22F400
+RX 7B0 03 7F 22 31
+TX 22F405
+RX 7B0 05 62 F4 05 03 2A
+TX 22F40C
+RX 7B0 05 62 F4 0C 03 23
+TX 22F40D
+RX 7B0 05 62 F4 0D 00 00
+TX 22F41B
+RX 7B0 03 7F 22 31
+TX 22F442
+RX 7B0 03 7F 22 31
+TX 22F446
+RX 7B0 03 7F 22 31
+TX 22F600
+RX 7B0 03 7F 22 31
+TX 22F800
+RX 7B0 03 7F 22 31
+TX 222605
+RX 7B0 04 62 26 05 17
+TX 222606
+RX 7B0 05 62 26 06 00 64
+TX 222607
+RX 7B0 05 62 26 07 00 00
+TX 222609
+RX 7B0 05 62 26 09 00 96
+TX 22260A
+RX 7B0 05 62 26 0A 00 81
+TX 22260C
+RX 7B0 05 62 26 0C 00 8F
+TX 22260D
+RX 7B0 05 62 26 0D 00 92
+TX 222612
+RX 7B0 05 62 26 12 00 4E
+TX 222613
+RX 7B0 05 62 26 13 00 98
+TX 22263D
+RX 7B0 05 62 26 3D 00 91
+TX 190108
+RX 7B0 03 7F 19 12
+TX ATSH74A
+RX OK
+TX ATFCSH74A
+RX OK
+TX STCFCPA 74A, 7B4
+RX OK
+TX 22F180
+RX 7B4 03 7F 22 31
+TX 22F181
+RX 7B4 03 7F 22 31
+TX 22F182
+RX 7B4 10 14 62 F1 82 08 34 58
+RX 7B4 21 30 33 38 34 41 55 34
+RX 7B4 22 39 33 53 30 30 30 31
+TX 22F186
+RX 7B4 04 62 F1 86 01
+TX 22F187
+RX 7B4 10 0E 62 F1 87 38 57 30
+RX 7B4 21 39 35 39 35 39 33 4E
+RX 7B4 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7B4 03 7F 22 31
+TX 22F189
+RX 7B4 07 62 F1 89 30 33 39 30
+TX 22F18A
+RX 7B4 03 7F 22 31
+TX 22F18B
+RX 7B4 03 7F 22 31
+TX 22F18C
+RX 7B4 10 11 62 F1 8C 30 30 30
+RX 7B4 21 30 34 36 37 32 30 38
+RX 7B4 22 33 38 37 20 AA AA AA
+TX 22F18E
+RX 7B4 03 7F 22 31
+TX 22F191
+RX 7B4 10 0E 62 F1 91 38 57 30
+RX 7B4 21 39 35 39 35 39 33 4E
+RX 7B4 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7B4 03 7F 22 31
+TX 22F193
+RX 7B4 03 7F 22 31
+TX 22F194
+RX 7B4 03 7F 22 31
+TX 22F195
+RX 7B4 03 7F 22 31
+TX 22F196
+RX 7B4 03 7F 22 31
+TX 22F197
+RX 7B4 10 10 62 F1 97 54 53 47
+RX 7B4 21 20 46 53 20 20 20 20
+RX 7B4 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 7B4 03 7F 22 31
+TX 22F199
+RX 7B4 03 7F 22 31
+TX 22F19A
+RX 7B4 10 09 62 F1 9A 00 00 00
+RX 7B4 21 00 00 00 AA AA AA AA
+TX 22F19B
+RX 7B4 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 7B4 03 7F 22 31
+TX 22F19D
+RX 7B4 03 7F 22 31
+TX 22F19E
+RX 7B4 10 1C 62 F1 9E 45 56 5F
+RX 7B4 21 44 43 55 32 44 72 69
+RX 7B4 22 76 65 53 69 64 65 4D
+RX 7B4 23 41 58 48 43 4F 4E 54
+RX 7B4 24 00 AA AA AA AA AA AA
+TX 22F19F
+RX 7B4 03 7F 22 31
+TX 22F1A0
+RX 7B4 10 0E 62 F1 A0 38 57 32
+RX 7B4 21 39 30 39 38 37 32 45
+RX 7B4 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7B4 10 09 62 F1 A2 30 30 31
+RX 7B4 21 30 30 35 AA AA AA AA
+TX 22F1A3
+RX 7B4 06 62 F1 A3 30 31 31
+TX 22F1AA
+RX 7B4 10 08 62 F1 AA 4A 33 38
+RX 7B4 21 36 20 AA AA AA AA AA
+TX 22F400
+RX 7B4 03 7F 22 31
+TX 22F405
+RX 7B4 03 7F 22 31
+TX 22F40C
+RX 7B4 03 7F 22 31
+TX 22F40D
+RX 7B4 03 7F 22 31
+TX 22F41B
+RX 7B4 03 7F 22 31
+TX 22F442
+RX 7B4 03 7F 22 31
+TX 22F446
+RX 7B4 03 7F 22 31
+TX 22F600
+RX 7B4 03 7F 22 31
+TX 22F800
+RX 7B4 03 7F 22 31
+TX 190108
+RX 7B4 03 7F 19 12
+TX ATSH74B
+RX OK
+TX ATFCSH74B
+RX OK
+TX STCFCPA 74B, 7B5
+RX OK
+TX 22F180
+RX 7B5 03 7F 22 31
+TX 22F181
+RX 7B5 03 7F 22 31
+TX 22F182
+RX 7B5 10 14 62 F1 82 08 34 58
+RX 7B5 21 30 33 38 34 41 55 34
+RX 7B5 22 39 33 53 30 30 30 31
+TX 22F186
+RX 7B5 04 62 F1 86 01
+TX 22F187
+RX 7B5 10 0E 62 F1 87 38 57 30
+RX 7B5 21 39 35 39 35 39 32 4E
+RX 7B5 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7B5 03 7F 22 31
+TX 22F189
+RX 7B5 07 62 F1 89 30 33 39 30
+TX 22F18A
+RX 7B5 03 7F 22 31
+TX 22F18B
+RX 7B5 03 7F 22 31
+TX 22F18C
+RX 7B5 10 11 62 F1 8C 30 30 30
+RX 7B5 21 30 34 36 37 32 32 30
+RX 7B5 22 34 36 35 20 AA AA AA
+TX 22F18E
+RX 7B5 03 7F 22 31
+TX 22F191
+RX 7B5 10 0E 62 F1 91 38 57 30
+RX 7B5 21 39 35 39 35 39 32 4E
+RX 7B5 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7B5 03 7F 22 31
+TX 22F193
+RX 7B5 03 7F 22 31
+TX 22F194
+RX 7B5 03 7F 22 31
+TX 22F195
+RX 7B5 03 7F 22 31
+TX 22F196
+RX 7B5 03 7F 22 31
+TX 22F197
+RX 7B5 10 10 62 F1 97 54 53 47
+RX 7B5 21 20 42 46 53 20 20 20
+RX 7B5 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 7B5 03 7F 22 31
+TX 22F199
+RX 7B5 03 7F 22 31
+TX 22F19A
+RX 7B5 10 09 62 F1 9A 00 00 00
+RX 7B5 21 00 00 00 AA AA AA AA
+TX 22F19B
+RX 7B5 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 7B5 03 7F 22 31
+TX 22F19D
+RX 7B5 03 7F 22 31
+TX 22F19E
+RX 7B5 10 1C 62 F1 9E 45 56 5F
+RX 7B5 21 44 43 55 32 50 61 73
+RX 7B5 22 73 65 53 69 64 65 4D
+RX 7B5 23 41 58 48 43 4F 4E 54
+RX 7B5 24 00 AA AA AA AA AA AA
+TX 22F19F
+RX 7B5 03 7F 22 31
+TX 22F1A0
+RX 7B5 10 0E 62 F1 A0 38 57 32
+RX 7B5 21 39 30 39 38 37 33 45
+RX 7B5 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7B5 10 09 62 F1 A2 30 30 31
+RX 7B5 21 30 30 35 AA AA AA AA
+TX 22F1A3
+RX 7B5 06 62 F1 A3 30 31 31
+TX 22F1AA
+RX 7B5 10 08 62 F1 AA 4A 33 38
+RX 7B5 21 37 20 AA AA AA AA AA
+TX 22F400
+RX 7B5 03 7F 22 31
+TX 22F405
+RX 7B5 03 7F 22 31
+TX 22F40C
+RX 7B5 03 7F 22 31
+TX 22F40D
+RX 7B5 03 7F 22 31
+TX 22F41B
+RX 7B5 03 7F 22 31
+TX 22F442
+RX 7B5 03 7F 22 31
+TX 22F446
+RX 7B5 03 7F 22 31
+TX 22F600
+RX 7B5 03 7F 22 31
+TX 22F800
+RX 7B5 03 7F 22 31
+TX 190108
+RX 7B5 03 7F 19 12
+TX ATSH74F
+RX OK
+TX ATFCSH74F
+RX OK
+TX STCFCPA 74F, 7B9
+RX OK
+TX 22F180
+RX 7B9 03 7F 22 31
+TX 22F181
+RX 7B9 03 7F 22 31
+TX 22F182
+RX 7B9 03 7F 22 31
+TX 22F186
+RX 7B9 04 62 F1 86 01
+TX 22F187
+RX 7B9 10 0E 62 F1 87 38 57 36
+RX 7B9 21 39 30 37 32 31 37 45
+RX 7B9 22 20 00 00 00 00 00 00
+TX 22F188
+RX 7B9 03 7F 22 31
+TX 22F189
+RX 7B9 07 62 F1 89 30 30 37 30
+TX 22F18A
+RX 7B9 03 7F 22 31
+TX 22F18B
+RX 7B9 03 7F 22 31
+TX 22F18C
+RX 7B9 03 7F 22 31
+TX 22F18E
+RX 7B9 03 7F 22 31
+TX 22F191
+RX 7B9 10 0E 62 F1 91 38 57 36
+RX 7B9 21 39 30 37 32 31 37 44
+RX 7B9 22 20 00 00 00 00 00 00
+TX 22F192
+RX 7B9 03 7F 22 31
+TX 22F193
+RX 7B9 03 7F 22 31
+TX 22F194
+RX 7B9 03 7F 22 31
+TX 22F195
+RX 7B9 03 7F 22 31
+TX 22F196
+RX 7B9 03 7F 22 31
+TX 22F197
+RX 7B9 10 10 62 F1 97 42 56 53
+RX 7B9 21 20 20 20 20 20 20 20
+RX 7B9 22 20 20 20 00 00 00 00
+TX 22F198
+RX 7B9 03 7F 22 31
+TX 22F199
+RX 7B9 03 7F 22 31
+TX 22F19A
+RX 7B9 10 09 62 F1 9A 00 00 0E
+RX 7B9 21 2C 18 BF 00 00 00 00
+TX 22F19B
+RX 7B9 06 62 F1 9B 22 06 01
+TX 22F19C
+RX 7B9 03 7F 22 31
+TX 22F19D
+RX 7B9 03 7F 22 31
+TX 22F19E
+RX 7B9 10 19 62 F1 9E 45 56 5F
+RX 7B9 21 42 56 53 4D 4C 42 65
+RX 7B9 22 76 4B 4F 53 54 41 41
+RX 7B9 23 55 37 33 36 00 00 00
+TX 22F19F
+RX 7B9 03 7F 22 31
+TX 22F1A0
+RX 7B9 10 0E 62 F1 A0 38 57 32
+RX 7B9 21 39 30 39 34 36 36 45
+RX 7B9 22 20 00 00 00 00 00 00
+TX 22F1A2
+RX 7B9 10 09 62 F1 A2 30 30 32
+RX 7B9 21 30 32 38 00 00 00 00
+TX 22F1A3
+RX 7B9 06 62 F1 A3 48 32 38
+TX 22F1AA
+RX 7B9 10 08 62 F1 AA 52 32 34
+RX 7B9 21 32 20 00 00 00 00 00
+TX 22F400
+RX 7B9 03 7F 22 31
+TX 22F405
+RX 7B9 03 7F 22 31
+TX 22F40C
+RX 7B9 03 7F 22 31
+TX 22F40D
+RX 7B9 03 7F 22 31
+TX 22F41B
+RX 7B9 03 7F 22 31
+TX 22F442
+RX 7B9 03 7F 22 31
+TX 22F446
+RX 7B9 03 7F 22 31
+TX 22F600
+RX 7B9 03 7F 22 31
+TX 22F800
+RX 7B9 03 7F 22 31
+TX 190108
+RX 7B9 03 7F 19 12
+TX ATSH753
+RX OK
+TX ATFCSH753
+RX OK
+TX STCFCPA 753, 7BD
+RX OK
+TX 22F180
+RX 7BD 03 7F 22 31
+TX 22F181
+RX 7BD 03 7F 22 31
+TX 22F182
+RX 7BD 03 7F 22 31
+TX 22F186
+RX 7BD 04 62 F1 86 01
+TX 22F187
+RX 7BD 10 0E 62 F1 87 38 57 31
+RX 7BD 21 37 31 33 30 34 31 51
+RX 7BD 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7BD 03 7F 22 31
+TX 22F189
+RX 7BD 07 62 F1 89 30 30 37 37
+TX 22F18A
+RX 7BD 03 7F 22 31
+TX 22F18B
+RX 7BD 03 7F 22 31
+TX 22F18C
+RX 7BD 10 11 62 F1 8C 32 32 30
+RX 7BD 21 32 31 30 38 30 32 37
+RX 7BD 22 37 34 33 32 AA AA AA
+TX 22F18E
+RX 7BD 03 7F 22 31
+TX 22F191
+RX 7BD 10 0E 62 F1 91 38 57 31
+RX 7BD 21 37 31 33 30 34 31 4B
+RX 7BD 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7BD 03 7F 22 31
+TX 22F193
+RX 7BD 03 7F 22 31
+TX 22F194
+RX 7BD 03 7F 22 31
+TX 22F195
+RX 7BD 03 7F 22 31
+TX 22F196
+RX 7BD 03 7F 22 31
+TX 22F197
+RX 7BD 10 10 62 F1 97 47 53 4D
+RX 7BD 21 2D 4C 4C 20 20 20 20
+RX 7BD 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 7BD 10 09 62 F1 98 00 00 00
+RX 7BD 21 00 00 00 AA AA AA AA
+TX 22F199
+RX 7BD 06 62 F1 99 00 00 00
+TX 22F19A
+RX 7BD 10 09 62 F1 9A 00 00 00
+RX 7BD 21 00 00 00 AA AA AA AA
+TX 22F19B
+RX 7BD 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 7BD 03 7F 22 31
+TX 22F19D
+RX 7BD 03 7F 22 31
+TX 22F19E
+RX 7BD 10 16 62 F1 9E 45 56 5F
+RX 7BD 21 47 53 4D 57 61 65 68
+RX 7BD 22 6C 5A 46 41 55 37 33
+RX 7BD 23 36 00 AA AA AA AA AA
+TX 22F19F
+RX 7BD 03 7F 22 31
+TX 22F1A0
+RX 7BD 10 0E 62 F1 A0 2D 2D 2D
+RX 7BD 21 2D 2D 2D 2D 2D 2D 2D
+RX 7BD 22 2D AA AA AA AA AA AA
+TX 22F1A2
+RX 7BD 10 09 62 F1 A2 30 30 31
+RX 7BD 21 30 31 37 AA AA AA AA
+TX 22F1A3
+RX 7BD 06 62 F1 A3 48 31 30
+TX 22F1AA
+RX 7BD 10 08 62 F1 AA 4A 35 38
+RX 7BD 21 37 20 AA AA AA AA AA
+TX 22F400
+RX 7BD 03 7F 22 31
+TX 22F405
+RX 7BD 03 7F 22 31
+TX 22F40C
+RX 7BD 03 7F 22 31
+TX 22F40D
+RX 7BD 03 7F 22 31
+TX 22F41B
+RX 7BD 03 7F 22 31
+TX 22F442
+RX 7BD 03 7F 22 31
+TX 22F446
+RX 7BD 03 7F 22 31
+TX 22F600
+RX 7BD 03 7F 22 31
+TX 22F800
+RX 7BD 03 7F 22 31
+TX 190108
+RX 7BD 03 7F 19 12
+TX ATSH767
+RX OK
+TX ATFCSH767
+RX OK
+TX STCFCPA 767, 7D1
+RX OK
+TX 22F180
+RX 7D1 03 7F 22 31
+TX 22F181
+RX 7D1 03 7F 22 31
+TX 22F182
+RX 7D1 03 7F 22 31
+TX 22F186
+RX 7D1 04 62 F1 86 01
+TX 22F187
+RX 7D1 10 0E 62 F1 87 34 4B 45
+RX 7D1 21 30 33 35 32 38 32 47
+RX 7D1 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7D1 03 7F 22 31
+TX 22F189
+RX 7D1 07 62 F1 89 30 33 37 31
+TX 22F18A
+RX 7D1 10 23 62 F1 8A 48 61 72
+RX 7D1 21 6D 61 6E 20 42 65 63
+RX 7D1 22 6B 65 72 20 41 75 74
+RX 7D1 23 6F 6D 6F 74 69 76 65
+RX 7D1 24 20 53 79 73 74 65 6D
+RX 7D1 25 73 AA AA AA AA AA AA
+TX 22F18B
+RX 7D1 06 62 F1 8B 19 05 22
+TX 22F18C
+RX 7D1 10 11 62 F1 8C 41 39 37
+RX 7D1 21 30 45 30 4E 53 34 33
+RX 7D1 22 33 32 34 35 AA AA AA
+TX 22F18E
+RX 7D1 03 7F 22 31
+TX 22F191
+RX 7D1 10 0E 62 F1 91 34 4B 45
+RX 7D1 21 30 33 35 32 38 32 42
+RX 7D1 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7D1 03 7F 22 31
+TX 22F193
+RX 7D1 03 7F 22 31
+TX 22F194
+RX 7D1 03 7F 22 31
+TX 22F195
+RX 7D1 03 7F 22 31
+TX 22F196
+RX 7D1 03 7F 22 31
+TX 22F197
+RX 7D1 10 10 62 F1 97 43 42 5F
+RX 7D1 21 48 5F 45 43 45 20 20
+RX 7D1 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 7D1 03 7F 22 31
+TX 22F199
+RX 7D1 03 7F 22 31
+TX 22F19A
+RX 7D1 10 09 62 F1 9A 80 00 00
+RX 7D1 21 0A 7E 65 AA AA AA AA
+TX 22F19B
+RX 7D1 06 62 F1 9B 22 06 28
+TX 22F19C
+RX 7D1 03 7F 22 31
+TX 22F19D
+RX 7D1 03 7F 22 31
+TX 22F19E
+RX 7D1 10 16 62 F1 9E 45 56 5F
+RX 7D1 21 43 6F 6E 42 6F 78 48
+RX 7D1 22 69 67 68 41 55 34 39
+RX 7D1 23 58 00 AA AA AA AA AA
+TX 22F19F
+RX 7D1 03 7F 22 31
+TX 22F1A0
+RX 7D1 10 0E 62 F1 A0 38 57 30
+RX 7D1 21 39 30 39 36 31 32 4B
+RX 7D1 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7D1 10 09 62 F1 A2 30 30 31
+RX 7D1 21 30 30 34 AA AA AA AA
+TX 22F1A3
+RX 7D1 06 62 F1 A3 30 34 32
+TX 22F1AA
+RX 7D1 10 08 62 F1 AA 4A 39 34
+RX 7D1 21 39 20 AA AA AA AA AA
+TX 22F400
+RX 7D1 03 7F 22 31
+TX 22F405
+RX 7D1 03 7F 22 31
+TX 22F40C
+RX 7D1 03 7F 22 31
+TX 22F40D
+RX 7D1 03 7F 22 31
+TX 22F41B
+RX 7D1 03 7F 22 31
+TX 22F442
+RX 7D1 03 7F 22 31
+TX 22F446
+RX 7D1 03 7F 22 31
+TX 22F600
+RX 7D1 03 7F 22 31
+TX 22F800
+RX 7D1 03 7F 22 31
+TX 222431
+RX 7D1 06 62 24 31 04 1B 18
+TX 190108
+RX 7D1 03 7F 19 12
+TX ATSH769
+RX OK
+TX ATFCSH769
+RX OK
+TX STCFCPA 769, 7D3
+RX OK
+TX 22F180
+RX 7D3 03 7F 22 31
+TX 22F181
+RX 7D3 03 7F 22 31
+TX 22F182
+RX 7D3 06 62 F1 82 01 47 4B
+TX 22F186
+RX 7D3 04 62 F1 86 01
+TX 22F187
+RX 7D3 10 0E 62 F1 87 34 4D 30
+RX 7D3 21 39 38 30 35 35 36 41
+RX 7D3 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7D3 03 7F 22 31
+TX 22F189
+RX 7D3 07 62 F1 89 30 32 35 30
+TX 22F18A
+RX 7D3 03 7F 22 31
+TX 22F18B
+RX 7D3 03 7F 22 31
+TX 22F18C
+RX 7D3 03 7F 22 31
+TX 22F18E
+RX 7D3 03 7F 22 31
+TX 22F191
+RX 7D3 10 0E 62 F1 91 34 4D 30
+RX 7D3 21 39 38 30 35 35 36 41
+RX 7D3 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7D3 03 7F 22 31
+TX 22F193
+RX 7D3 03 7F 22 31
+TX 22F194
+RX 7D3 03 7F 22 31
+TX 22F195
+RX 7D3 03 7F 22 31
+TX 22F196
+RX 7D3 03 7F 22 31
+TX 22F197
+RX 7D3 10 10 62 F1 97 52 56 43
+RX 7D3 21 20 43 6F 6D 70 61 63
+RX 7D3 22 74 20 20 AA AA AA AA
+TX 22F198
+RX 7D3 03 7F 22 31
+TX 22F199
+RX 7D3 03 7F 22 31
+TX 22F19A
+RX 7D3 10 09 62 F1 9A 00 00 00
+RX 7D3 21 00 00 00 AA AA AA AA
+TX 22F19B
+RX 7D3 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 7D3 03 7F 22 31
+TX 22F19D
+RX 7D3 03 7F 22 31
+TX 22F19E
+RX 7D3 10 1B 62 F1 9E 45 56 5F
+RX 7D3 21 43 61 6D 53 79 73 52
+RX 7D3 22 56 52 56 43 50 41 4E
+RX 7D3 23 41 4D 4C 42 45 76 00
+TX 22F19F
+RX 7D3 03 7F 22 31
+TX 22F1A0
+RX 7D3 10 0E 62 F1 A0 38 57 32
+RX 7D3 21 39 30 39 34 36 30 48
+RX 7D3 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7D3 10 09 62 F1 A2 30 30 35
+RX 7D3 21 30 31 30 AA AA AA AA
+TX 22F1A3
+RX 7D3 06 62 F1 A3 48 31 38
+TX 22F1AA
+RX 7D3 10 08 62 F1 AA 4A 37 37
+RX 7D3 21 32 20 AA AA AA AA AA
+TX 22F400
+RX 7D3 03 7F 22 31
+TX 22F405
+RX 7D3 03 7F 22 31
+TX 22F40C
+RX 7D3 03 7F 22 31
+TX 22F40D
+RX 7D3 03 7F 22 31
+TX 22F41B
+RX 7D3 03 7F 22 31
+TX 22F442
+RX 7D3 03 7F 22 31
+TX 22F446
+RX 7D3 03 7F 22 31
+TX 22F600
+RX 7D3 03 7F 22 31
+TX 22F800
+RX 7D3 03 7F 22 31
+TX 190108
+RX 7D3 03 7F 19 12
+TX ATSH773
+RX OK
+TX ATFCSH773
+RX OK
+TX STCFCPA 773, 7DD
+RX OK
+TX 22F180
+RX 7DD 03 7F 22 31
+TX 22F181
+RX 7DD 03 7F 22 31
+TX 22F182
+RX 7DD 03 7F 22 31
+TX 22F186
+RX 7DD 04 62 F1 86 01
+TX 22F187
+RX 7DD 10 0E 62 F1 87 38 57 32
+RX 7DD 21 30 33 35 30 34 33 4D
+RX 7DD 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 7DD 03 7F 22 31
+TX 22F189
+RX 7DD 07 62 F1 89 33 36 39 35
+TX 22F18A
+RX 7DD 03 7F 22 31
+TX 22F18B
+RX 7DD 03 7F 22 31
+TX 22F18C
+RX 7DD 03 7F 22 78
+RX 7DD 10 17 62 F1 8C 47 52 4F
+RX 7DD 21 2D 36 33 33 32 33 2E
+RX 7DD 22 30 35 2E 32 32 32 30
+RX 7DD 23 30 31 30 AA AA AA AA
+TX 22F18E
+RX 7DD 03 7F 22 31
+TX 22F191
+RX 7DD 10 0E 62 F1 91 38 57 32
+RX 7DD 21 30 33 35 30 34 33 41
+RX 7DD 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 7DD 03 7F 22 31
+TX 22F193
+RX 7DD 03 7F 22 31
+TX 22F194
+RX 7DD 03 7F 22 31
+TX 22F195
+RX 7DD 03 7F 22 31
+TX 22F196
+RX 7DD 03 7F 22 31
+TX 22F197
+RX 7DD 10 10 62 F1 97 4D 55 2D
+RX 7DD 21 54 48 2D 4E 44 2D 45
+RX 7DD 22 55 20 20 AA AA AA AA
+TX 22F198
+RX 7DD 03 7F 22 31
+TX 22F199
+RX 7DD 03 7F 22 31
+TX 22F19A
+RX 7DD 03 7F 22 31
+TX 22F19B
+RX 7DD 03 7F 22 31
+TX 22F19C
+RX 7DD 03 7F 22 31
+TX 22F19D
+RX 7DD 03 7F 22 31
+TX 22F19E
+RX 7DD 10 0B 62 F1 9E 45 56 5F
+RX 7DD 21 4D 55 54 49 00 AA AA
+TX 22F19F
+RX 7DD 03 7F 22 31
+TX 22F1A0
+RX 7DD 10 0E 62 F1 A0 38 57 31
+RX 7DD 21 39 30 39 35 34 35 4B
+RX 7DD 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 7DD 10 09 62 F1 A2 30 30 31
+RX 7DD 21 30 31 30 AA AA AA AA
+TX 22F1A3
+RX 7DD 06 62 F1 A3 30 34 34
+TX 22F1AA
+RX 7DD 10 08 62 F1 AA 4A 37 39
+RX 7DD 21 34 20 AA AA AA AA AA
+TX 22F400
+RX 7DD 03 7F 22 31
+TX 22F405
+RX 7DD 03 7F 22 31
+TX 22F40C
+RX 7DD 03 7F 22 31
+TX 22F40D
+RX 7DD 03 7F 22 31
+TX 22F41B
+RX 7DD 03 7F 22 31
+TX 22F442
+RX 7DD 03 7F 22 31
+TX 22F446
+RX 7DD 03 7F 22 31
+TX 22F600
+RX 7DD 03 7F 22 31
+TX 22F800
+RX 7DD 03 7F 22 31
+TX 190108
+RX 7DD 06 59 01 08 01 00 02
+TX 190104
+RX 7DD 06 59 01 00 01 00 00
+TX 190101
+RX 7DD 06 59 01 01 01 00 01
+TX ATSH7E0
+RX OK
+TX ATFCSH7E0
+RX OK
+TX STCFCPA 7E0, 7E8
+RX OK
+TX 22F180
+RX 7E8 03 7F 22 31
+TX 22F181
+RX 7E8 03 7F 22 31
+TX 22F182
+RX 7E8 03 7F 22 31
+TX 22F186
+RX 7E8 04 62 F1 86 01
+TX 22F187
+RX 7E8 10 0E 62 F1 87 38 57 30
+RX 7E8 21 39 30 37 31 31 35 52
+RX 7E8 22 20 00 00 00 00 00 00
+TX 22F188
+RX 7E8 03 7F 22 31
+TX 22F189
+RX 7E8 07 62 F1 89 30 30 30 34
+TX 22F18A
+RX 7E8 03 7F 22 31
+TX 22F18B
+RX 7E8 03 7F 22 31
+TX 22F18C
+RX 7E8 03 7F 22 31
+TX 22F18E
+RX 7E8 03 7F 22 31
+TX 22F191
+RX 7E8 03 7F 22 78
+RX 7E8 10 0E 62 F1 91 30 36 4E
+RX 7E8 21 39 30 37 33 30 39 41
+RX 7E8 22 20 00 00 00 00 00 00
+TX 22F192
+RX 7E8 03 7F 22 31
+TX 22F193
+RX 7E8 03 7F 22 31
+TX 22F194
+RX 7E8 03 7F 22 31
+TX 22F195
+RX 7E8 03 7F 22 31
+TX 22F196
+RX 7E8 03 7F 22 31
+TX 22F197
+RX 7E8 10 10 62 F1 97 52 34 20
+RX 7E8 21 32 2E 30 6C 20 54 46
+RX 7E8 22 53 49 20 00 00 00 00
+TX 22F198
+RX 7E8 03 7F 22 31
+TX 22F199
+RX 7E8 03 7F 22 31
+TX 22F19A
+RX 7E8 03 7F 22 31
+TX 22F19B
+RX 7E8 03 7F 22 31
+TX 22F19C
+RX 7E8 03 7F 22 31
+TX 22F19D
+RX 7E8 03 7F 22 31
+TX 22F19E
+RX 7E8 03 7F 22 78
+RX 7E8 10 1C 62 F1 9E 45 56 5F
+RX 7E8 21 45 43 4D 32 30 54 46
+RX 7E8 22 53 30 31 31 38 57 30
+RX 7E8 23 39 30 37 31 31 35 52
+RX 7E8 24 00 00 00 00 00 00 00
+TX 22F19F
+RX 7E8 03 7F 22 31
+TX 22F1A0
+RX 7E8 03 7F 22 31
+TX 22F1A2
+RX 7E8 03 7F 22 78
+RX 7E8 10 09 62 F1 A2 30 30 31
+RX 7E8 21 30 30 37 00 00 00 00
+TX 22F1A3
+RX 7E8 03 7F 22 78
+RX 7E8 06 62 F1 A3 48 38 30
+TX 22F1AA
+RX 7E8 10 08 62 F1 AA 20 65 76
+RX 7E8 21 6F 34 00 00 00 00 00
+TX 22F600
+RX 7E8 07 62 F6 00 C0 00 00 01
+TX 22F800
+RX 7E8 07 62 F8 00 55 40 06 00
+TX 22028D
+RX 7E8 05 62 02 8D 0B A3
+TX 221002
+RX 7E8 05 62 10 02 00 00
+TX 221004
+RX 7E8 05 62 10 04 00 00
+TX 22101A
+RX 7E8 05 62 10 1A 01 2C
+TX 22102A
+RX 7E8 05 62 10 2A 0E A3
+TX 221065
+RX 7E8 05 62 10 65 0D D0
+TX 2210D3
+RX 7E8 05 62 10 D3 00 03
+TX 2210D4
+RX 7E8 05 62 10 D4 00 00
+TX 2210D5
+RX 7E8 05 62 10 D5 00 00
+TX 2210D6
+RX 7E8 05 62 10 D6 00 C4
+TX 2210E0
+RX 7E8 07 62 10 E0 00 01 F2 7F
+TX 221116
+RX 7E8 05 62 11 16 7F FF
+TX 221125
+RX 7E8 05 62 11 25 00 00
+TX 221128
+RX 7E8 05 62 11 28 00 00
+TX 22113F
+RX 7E8 05 62 11 3F 00 5C
+TX 221158
+RX 7E8 05 62 11 58 00 00
+TX 221159
+RX 7E8 05 62 11 59 00 00
+TX 221160
+RX 7E8 07 62 11 60 07 93 0D 63
+TX 221189
+RX 7E8 05 62 11 89 51 44
+TX 22118A
+RX 7E8 05 62 11 8A 4F FF
+TX 2211B9
+RX 7E8 04 62 11 B9 01
+TX 2211BA
+RX 7E8 05 62 11 BA 54 FD
+TX 2211BD
+RX 7E8 05 62 11 BD 0C 43
+TX 2211BE
+RX 7E8 05 62 11 BE 00 09
+TX 2211C8
+RX 7E8 05 62 11 C8 00 00
+TX 2211CD
+RX 7E8 03 7F 22 31
+TX 2211CE
+RX 7E8 05 62 11 CE 13 88
+TX 2211DF
+RX 7E8 05 62 11 DF 07 D0
+TX 2211F1
+RX 7E8 05 62 11 F1 0C 7A
+TX 2211F3
+RX 7E8 05 62 11 F3 00 00
+TX 221221
+RX 7E8 05 62 12 21 00 1D
+TX 221224
+RX 7E8 05 62 12 24 00 2B
+TX 221225
+RX 7E8 05 62 12 25 00 1D
+TX 221340
+RX 7E8 07 62 13 40 FF F6 00 00
+TX 221341
+RX 7E8 05 62 13 41 FF 9F
+TX 2214CB
+RX 7E8 04 62 14 CB 00
+TX 2214CE
+RX 7E8 05 62 14 CE 13 78
+TX 2214D1
+RX 7E8 05 62 14 D1 00 00
+TX 2214F8
+RX 7E8 05 62 14 F8 0B 41
+TX 2214F9
+RX 7E8 05 62 14 F9 5B 00
+TX 2215AA
+RX 7E8 05 62 15 AA 01 F0
+TX 2215D4
+RX 7E8 05 62 15 D4 7F 24
+TX 221632
+RX 7E8 05 62 16 32 00 00
+TX 221644
+RX 7E8 05 62 16 44 00 01
+TX 22167E
+RX 7E8 05 62 16 7E 03 E8
+TX 22167F
+RX 7E8 05 62 16 7F 03 E8
+TX 2216F4
+RX 7E8 04 62 16 F4 00
+TX 221722
+RX 7E8 05 62 17 22 00 0D
+TX 221723
+RX 7E8 05 62 17 23 00 05
+TX 221724
+RX 7E8 05 62 17 24 00 0F
+TX 221725
+RX 7E8 05 62 17 25 00 04
+TX 22179C
+RX 7E8 05 62 17 9C 00 00
+TX 222998
+RX 7E8 05 62 29 98 2C 8E
+TX 222999
+RX 7E8 05 62 29 99 00 00
+TX 222CD8
+RX 7E8 05 62 2C D8 27 10
+TX 2258D1
+RX 7E8 10 11 62 58 D1 00 01 F2
+RX 7E8 21 0E 00 01 F2 0C 00 C3
+RX 7E8 22 00 03 00 07 00 00 00
+TX 190108
+RX 7E8 03 7F 19 12
+TX ATSH7E1
+RX OK
+TX ATFCSH7E1
+RX OK
+TX STCFCPA 7E1, 7E9
+RX OK
+TX 22F180
+RX 7E9 03 7F 22 31
+TX 22F181
+RX 7E9 10 13 62 F1 81 02 02 00
+RX 7E9 21 03 07 02 00 01 04 03
+RX 7E9 22 03 05 0B 02 03 00 00
+TX 22F182
+RX 7E9 03 7F 22 31
+TX 22F186
+RX 7E9 04 62 F1 86 01
+TX 22F187
+RX 7E9 10 0E 62 F1 87 38 57 32
+RX 7E9 21 39 32 37 31 35 35 44
+RX 7E9 22 45 00 00 00 00 00 00
+TX 22F188
+RX 7E9 03 7F 22 31
+TX 22F189
+RX 7E9 07 62 F1 89 30 30 30 31
+TX 22F18A
+RX 7E9 03 7F 22 31
+TX 22F18B
+RX 7E9 03 7F 22 31
+TX 22F18C
+RX 7E9 10 0D 62 F1 8C 30 30 30
+RX 7E9 21 30 30 30 31 39 34 38
+TX 22F18E
+RX 7E9 03 7F 22 31
+TX 22F191
+RX 7E9 10 0E 62 F1 91 30 48 4B
+RX 7E9 21 39 32 37 31 35 36 42
+RX 7E9 22 20 00 00 00 00 00 00
+TX 22F192
+RX 7E9 03 7F 22 31
+TX 22F193
+RX 7E9 03 7F 22 31
+TX 22F194
+RX 7E9 03 7F 22 31
+TX 22F195
+RX 7E9 03 7F 22 31
+TX 22F196
+RX 7E9 03 7F 22 31
+TX 22F197
+RX 7E9 10 10 62 F1 97 32 2E 30
+RX 7E9 21 54 20 31 35 30 6B 57
+RX 7E9 22 20 45 55 00 00 00 00
+TX 22F198
+RX 7E9 03 7F 22 31
+TX 22F199
+RX 7E9 03 7F 22 31
+TX 22F19A
+RX 7E9 10 09 62 F1 9A 00 00 00
+RX 7E9 21 00 00 00 00 00 00 00
+TX 22F19B
+RX 7E9 03 7F 22 31
+TX 22F19C
+RX 7E9 03 7F 22 31
+TX 22F19D
+RX 7E9 03 7F 22 31
+TX 22F19E
+RX 7E9 10 12 62 F1 9E 45 56 5F
+RX 7E9 21 54 43 4D 44 4C 33 38
+RX 7E9 22 32 30 32 31 00 00 00
+TX 22F19F
+RX 7E9 03 7F 22 31
+TX 22F1A0
+RX 7E9 03 7F 22 31
+TX 22F1A2
+RX 7E9 10 09 62 F1 A2 30 30 32
+RX 7E9 21 30 33 36 00 00 00 00
+TX 22F1A3
+RX 7E9 06 62 F1 A3 48 30 31
+TX 22F1AA
+RX 7E9 10 08 62 F1 AA 4A 32 31
+RX 7E9 21 37 20 00 00 00 00 00
+TX 22F600
+RX 7E9 03 7F 22 31
+TX 22F800
+RX 7E9 07 62 F8 00 14 40 00 00
+TX 220301
+RX 7E9 04 62 03 01 37
+TX 220302
+RX 7E9 05 62 03 02 19 EA
+TX 220303
+RX 7E9 04 62 03 03 E4
+TX 220304
+RX 7E9 04 62 03 04 15
+TX 220305
+RX 7E9 04 62 03 05 00
+TX 220805
+RX 7E9 04 62 08 05 02
+TX 221001
+RX 7E9 05 62 10 01 00 00
+TX 221002
+RX 7E9 05 62 10 02 00 00
+TX 221003
+RX 7E9 05 62 10 03 00 00
+TX 221004
+RX 7E9 05 62 10 04 00 00
+TX 221005
+RX 7E9 05 62 10 05 00 00
+TX 221010
+RX 7E9 10 C9 62 10 10 00 57 23
+RX 7E9 21 00 BD 00 00 6A 92 BE
+RX 7E9 22 15 01 E9 71 00 00 00
+RX 7E9 23 15 00 00 00 13 00 00
+RX 7E9 24 00 0E 00 00 00 12 00
+RX 7E9 25 00 00 12 1D F8 1E 0B
+RX 7E9 26 00 00 00 00 00 00 00
+RX 7E9 27 19 00 00 00 15 00 00
+RX 7E9 28 00 1C 01 00 00 00 00
+RX 7E9 29 00 00 72 00 00 00 00
+RX 7E9 2A 00 00 00 00 00 00 0A
+RX 7E9 2B 1D 7E 00 0A 1E 86 00
+RX 7E9 2C 00 01 00 00 00 00 00
+RX 7E9 2D 30 00 30 67 6C 68 58
+RX 7E9 2E 8C 32 32 32 00 5B 11
+RX 7E9 2F 11 11 11 5C FF FF A4
+RX 7E9 20 E5 19 EB 15 EA 15 E8
+RX 7E9 21 18 A6 A7 00 02 00 00
+RX 7E9 22 D8 F0 D8 F0 7D 00 01
+RX 7E9 23 00 00 01 08 00 00 01
+RX 7E9 24 00 00 10 0E 00 00 00
+RX 7E9 25 00 00 00 06 00 00 0E
+RX 7E9 26 00 00 00 00 00 B8 00
+RX 7E9 27 00 00 00 00 00 00 00
+RX 7E9 28 00 00 27 D8 00 00 B0
+RX 7E9 29 14 02 CE 00 00 00 00
+RX 7E9 2A 27 41 A0 00 30 00 00
+RX 7E9 2B 00 00 00 00 00 00 00
+RX 7E9 2C 00 00 00 00 00 00 00
+TX 221022
+RX 7E9 05 62 10 22 00 84
+TX 221024
+RX 7E9 05 62 10 24 00 85
+TX 22102B
+RX 7E9 04 62 10 2B 00
+TX 22102C
+RX 7E9 04 62 10 2C 00
+TX 22102E
+RX 7E9 04 62 10 2E 00
+TX 221033
+RX 7E9 05 62 10 33 FF 9C
+TX 22103B
+RX 7E9 04 62 10 3B 00
+TX 221057
+RX 7E9 05 62 10 57 00 00
+TX 22105A
+RX 7E9 05 62 10 5A 00 00
+TX 22105B
+RX 7E9 05 62 10 5B 00 00
+TX 22105C
+RX 7E9 05 62 10 5C 00 00
+TX 221062
+RX 7E9 05 62 10 62 00 00
+TX 221063
+RX 7E9 05 62 10 63 27 10
+TX 221065
+RX 7E9 05 62 10 65 00 00
+TX 221066
+RX 7E9 05 62 10 66 00 00
+TX 221067
+RX 7E9 05 62 10 67 00 00
+TX 22106A
+RX 7E9 05 62 10 6A 00 00
+TX 22106C
+RX 7E9 05 62 10 6C 00 00
+TX 221078
+RX 7E9 05 62 10 78 FF FE
+TX 221094
+RX 7E9 10 0B 62 10 94 00 00 00
+RX 7E9 21 00 00 00 00 00 00 00
+TX 2210CA
+RX 7E9 05 62 10 CA 00 00
+TX 2210EA
+RX 7E9 05 62 10 EA 02 80
+TX 2210EB
+RX 7E9 05 62 10 EB 02 80
+TX 2210ED
+RX 7E9 05 62 10 ED 02 80
+TX 221120
+RX 7E9 05 62 11 20 0B 91
+TX 221121
+RX 7E9 05 62 11 21 0B 92
+TX 221124
+RX 7E9 05 62 11 24 31 A8
+TX 221125
+RX 7E9 05 62 11 25 34 A0
+TX 22120F
+RX 7E9 05 62 12 0F 00 0F
+TX 22132A
+RX 7E9 05 62 13 2A 00 10
+TX 22132B
+RX 7E9 05 62 13 2B 00 0F
+TX 2213CC
+RX 7E9 04 62 13 CC 15
+TX 2213CD
+RX 7E9 04 62 13 CD 14
+TX 221419
+RX 7E9 05 62 14 19 0D E5
+TX 22141A
+RX 7E9 05 62 14 1A 0E F8
+TX 221426
+RX 7E9 05 62 14 26 00 00
+TX 2218E3
+RX 7E9 05 62 18 E3 00 0F
+TX 222002
+RX 7E9 05 62 20 02 00 00
+TX 222102
+RX 7E9 05 62 21 02 0C 94
+TX 222103
+RX 7E9 05 62 21 03 00 00
+TX 222104
+RX 7E9 04 62 21 04 46
+TX 222105
+RX 7E9 05 62 21 05 00 00
+TX 222106
+RX 7E9 05 62 21 06 00 00
+TX 22210F
+RX 7E9 04 62 21 0F 01
+TX 222142
+RX 7E9 05 62 21 42 D8 F0
+TX 222143
+RX 7E9 05 62 21 43 D8 F0
+TX 22214C
+RX 7E9 04 62 21 4C 0A
+TX 22214D
+RX 7E9 04 62 21 4D 0A
+TX 2270D6
+RX 7E9 05 62 70 D6 02 62
+TX 190108
+RX 7E9 03 7F 19 12
+TX ATSH7E4
+RX OK
+TX ATFCSH7E4
+RX OK
+TX STCFCPA 7E4, 7EC
+RX OK
+TX 22F180
+RX 7EC 03 7F 22 31
+TX 22F181
+RX 7EC 03 7F 22 31
+TX 22F182
+RX 7EC 10 0C 62 F1 82 04 2D 2D
+RX 7EC 21 2D 2D 2D 2D 2D 2D 00
+TX 22F186
+RX 7EC 04 62 F1 86 01
+TX 22F187
+RX 7EC 10 0E 62 F1 87 38 57 30
+RX 7EC 21 39 30 37 33 37 39 41
+RX 7EC 22 52 00 00 00 00 00 00
+TX 22F188
+RX 7EC 03 7F 22 31
+TX 22F189
+RX 7EC 07 62 F1 89 30 38 37 32
+TX 22F18A
+RX 7EC 03 7F 22 31
+TX 22F18B
+RX 7EC 03 7F 22 31
+TX 22F18C
+RX 7EC 03 7F 22 31
+TX 22F18E
+RX 7EC 03 7F 22 31
+TX 22F191
+RX 7EC 10 0E 62 F1 91 38 57 30
+RX 7EC 21 39 30 37 33 37 39 41
+RX 7EC 22 52 00 00 00 00 00 00
+TX 22F192
+RX 7EC 03 7F 22 31
+TX 22F193
+RX 7EC 03 7F 22 31
+TX 22F194
+RX 7EC 03 7F 22 31
+TX 22F195
+RX 7EC 03 7F 22 31
+TX 22F196
+RX 7EC 03 7F 22 31
+TX 22F197
+RX 7EC 10 10 62 F1 97 45 53 50
+RX 7EC 21 39 20 50 6C 75 73 20
+RX 7EC 22 20 20 20 00 00 00 00
+TX 22F198
+RX 7EC 03 7F 22 31
+TX 22F199
+RX 7EC 03 7F 22 31
+TX 22F19A
+RX 7EC 10 09 62 F1 9A 00 00 00
+RX 7EC 21 00 00 00 00 00 00 00
+TX 22F19B
+RX 7EC 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 7EC 03 7F 22 31
+TX 22F19D
+RX 7EC 03 7F 22 31
+TX 22F19E
+RX 7EC 10 13 62 F1 9E 45 56 5F
+RX 7EC 21 45 53 50 39 42 4F 53
+RX 7EC 22 43 48 43 4D 50 00 00
+TX 22F19F
+RX 7EC 03 7F 22 31
+TX 22F1A0
+RX 7EC 10 0E 62 F1 A0 38 57 32
+RX 7EC 21 39 30 39 35 30 34 4E
+RX 7EC 22 20 00 00 00 00 00 00
+TX 22F1A2
+RX 7EC 10 09 62 F1 A2 30 30 32
+RX 7EC 21 30 31 33 00 00 00 00
+TX 22F1A3
+RX 7EC 06 62 F1 A3 48 32 30
+TX 22F1AA
+RX 7EC 10 08 62 F1 AA 4A 31 30
+RX 7EC 21 34 20 00 00 00 00 00
+TX 22F600
+RX 7EC 03 7F 22 31
+TX 22F800
+RX 7EC 07 62 F8 00 14 40 00 00
+TX 190108
+RX 7EC 03 7F 19 12
+TX ATSP7
+RX OK
+TX ATCF17FE0000
+RX OK
+TX ATCM1FFFFF00
+RX OK
+TX ATFCSD300005
+RX OK
+TX ATCP17
+RX OK
+TX ATSHFC008B
+RX OK
+TX ATFCSH17FC008B
+RX OK
+TX STCFCPA 17FC008B, 17FE008B
+RX OK
+TX 22F180
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F181
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F182
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F186
+RX 17 FE 00 8B 04 62 F1 86 01
+TX 22F187
+RX 17 FE 00 8B 10 0E 62 F1 87 38 57 31
+RX 17 FE 00 8B 21 39 30 37 30 36 34 43
+RX 17 FE 00 8B 22 43 AA AA AA AA AA AA
+TX 22F188
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F189
+RX 17 FE 00 8B 07 62 F1 89 30 35 38 35
+TX 22F18A
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F18B
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F18C
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F18E
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F191
+RX 17 FE 00 8B 10 0E 62 F1 91 38 57 31
+RX 17 FE 00 8B 21 39 30 37 30 36 34 43
+RX 17 FE 00 8B 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F193
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F194
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F195
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F196
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F197
+RX 17 FE 00 8B 10 10 62 F1 97 42 43 4D
+RX 17 FE 00 8B 21 32 20 4D 4C 42 65 76
+RX 17 FE 00 8B 22 6F 20 20 AA AA AA AA
+TX 22F198
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F199
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F19A
+RX 17 FE 00 8B 10 09 62 F1 9A 00 00 0E
+RX 17 FE 00 8B 21 2C 18 BF AA AA AA AA
+TX 22F19B
+RX 17 FE 00 8B 06 62 F1 9B 22 05 31
+TX 22F19C
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F19D
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F19E
+RX 17 FE 00 8B 10 15 62 F1 9E 45 56 5F
+RX 17 FE 00 8B 21 42 43 4D 32 48 65 6C
+RX 17 FE 00 8B 22 6C 61 41 55 37 33 36
+RX 17 FE 00 8B 23 00 AA AA AA AA AA AA
+TX 22F19F
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F1A0
+RX 17 FE 00 8B 10 0E 62 F1 A0 38 57 32
+RX 17 FE 00 8B 21 39 30 39 35 30 31 4E
+RX 17 FE 00 8B 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 17 FE 00 8B 10 09 62 F1 A2 30 31 39
+RX 17 FE 00 8B 21 30 31 37 AA AA AA AA
+TX 22F1A3
+RX 17 FE 00 8B 06 62 F1 A3 30 34 34
+TX 22F1AA
+RX 17 FE 00 8B 10 08 62 F1 AA 4A 33 39
+RX 17 FE 00 8B 21 33 20 AA AA AA AA AA
+TX 22F400
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F405
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F40C
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F40D
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F41B
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F442
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F446
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F600
+RX 17 FE 00 8B 03 7F 22 31
+TX 22F800
+RX 17 FE 00 8B 03 7F 22 31
+TX 190108
+RX 17 FE 00 8B 03 7F 19 12
+TX ATCP17
+RX OK
+TX ATSHFC0096
+RX OK
+TX ATFCSH17FC0096
+RX OK
+TX STCFCPA 17FC0096, 17FE0096
+RX OK
+TX 22F180
+RX 17 FE 00 96 03 7F 22 31
+TX 22F181
+RX 17 FE 00 96 03 7F 22 31
+TX 22F182
+RX 17 FE 00 96 03 7F 22 31
+TX 22F186
+RX 17 FE 00 96 04 62 F1 86 01
+TX 22F187
+RX 17 FE 00 96 10 0E 62 F1 87 34 4B 30
+RX 17 FE 00 96 21 39 34 31 35 39 32 41
+RX 17 FE 00 96 22 44 AA AA AA AA AA AA
+TX 22F188
+RX 17 FE 00 96 03 7F 22 31
+TX 22F189
+RX 17 FE 00 96 07 62 F1 89 30 30 34 30
+TX 22F18A
+RX 17 FE 00 96 03 7F 22 31
+TX 22F18B
+RX 17 FE 00 96 03 7F 22 31
+TX 22F18C
+RX 17 FE 00 96 03 7F 22 31
+TX 22F18E
+RX 17 FE 00 96 03 7F 22 31
+TX 22F191
+RX 17 FE 00 96 10 0E 62 F1 91 34 4B 30
+RX 17 FE 00 96 21 39 34 31 35 39 32 41
+RX 17 FE 00 96 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 17 FE 00 96 03 7F 22 31
+TX 22F193
+RX 17 FE 00 96 03 7F 22 31
+TX 22F194
+RX 17 FE 00 96 03 7F 22 31
+TX 22F195
+RX 17 FE 00 96 03 7F 22 31
+TX 22F196
+RX 17 FE 00 96 03 7F 22 31
+TX 22F197
+RX 17 FE 00 96 10 10 62 F1 97 4C 4D 53
+RX 17 FE 00 96 21 5F 4D 4C 42 65 76 6F
+RX 17 FE 00 96 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 17 FE 00 96 03 7F 22 31
+TX 22F199
+RX 17 FE 00 96 03 7F 22 31
+TX 22F19A
+RX 17 FE 00 96 10 09 62 F1 9A 30 30 30
+RX 17 FE 00 96 21 30 30 30 AA AA AA AA
+TX 22F19B
+RX 17 FE 00 96 06 62 F1 9B 00 00 00
+TX 22F19C
+RX 17 FE 00 96 03 7F 22 31
+TX 22F19D
+RX 17 FE 00 96 03 7F 22 31
+TX 22F19E
+RX 17 FE 00 96 10 19 62 F1 9E 45 56 5F
+RX 17 FE 00 96 21 4C 4D 53 4C 65 66 74
+RX 17 FE 00 96 22 48 45 4C 4C 41 41 55
+RX 17 FE 00 96 23 35 38 58 00 00 AA AA
+TX 22F19F
+RX 17 FE 00 96 03 7F 22 31
+TX 22F1A0
+RX 17 FE 00 96 10 0E 62 F1 A0 38 57 32
+RX 17 FE 00 96 21 39 30 39 34 37 31 45
+RX 17 FE 00 96 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 17 FE 00 96 10 09 62 F1 A2 30 30 31
+RX 17 FE 00 96 21 30 31 35 AA AA AA AA
+TX 22F1A3
+RX 17 FE 00 96 06 62 F1 A3 48 31 31
+TX 22F1AA
+RX 17 FE 00 96 10 08 62 F1 AA 41 33 31
+RX 17 FE 00 96 21 20 20 AA AA AA AA AA
+TX 22F400
+RX 17 FE 00 96 03 7F 22 31
+TX 22F405
+RX 17 FE 00 96 03 7F 22 31
+TX 22F40C
+RX 17 FE 00 96 03 7F 22 31
+TX 22F40D
+RX 17 FE 00 96 03 7F 22 31
+TX 22F41B
+RX 17 FE 00 96 03 7F 22 31
+TX 22F442
+RX 17 FE 00 96 03 7F 22 31
+TX 22F446
+RX 17 FE 00 96 03 7F 22 31
+TX 22F600
+RX 17 FE 00 96 03 7F 22 31
+TX 22F800
+RX 17 FE 00 96 03 7F 22 31
+TX 190108
+RX 17 FE 00 96 03 7F 19 12
+TX ATCP17
+RX OK
+TX ATSHFC0097
+RX OK
+TX ATFCSH17FC0097
+RX OK
+TX STCFCPA 17FC0097, 17FE0097
+RX OK
+TX 22F180
+RX 17 FE 00 97 03 7F 22 31
+TX 22F181
+RX 17 FE 00 97 03 7F 22 31
+TX 22F182
+RX 17 FE 00 97 03 7F 22 31
+TX 22F186
+RX 17 FE 00 97 04 62 F1 86 01
+TX 22F187
+RX 17 FE 00 97 10 0E 62 F1 87 34 4B 30
+RX 17 FE 00 97 21 39 34 31 35 39 32 41
+RX 17 FE 00 97 22 44 AA AA AA AA AA AA
+TX 22F188
+RX 17 FE 00 97 03 7F 22 31
+TX 22F189
+RX 17 FE 00 97 07 62 F1 89 30 30 34 30
+TX 22F18A
+RX 17 FE 00 97 03 7F 22 31
+TX 22F18B
+RX 17 FE 00 97 03 7F 22 31
+TX 22F18C
+RX 17 FE 00 97 03 7F 22 31
+TX 22F18E
+RX 17 FE 00 97 03 7F 22 31
+TX 22F191
+RX 17 FE 00 97 10 0E 62 F1 91 34 4B 30
+RX 17 FE 00 97 21 39 34 31 35 39 32 41
+RX 17 FE 00 97 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 17 FE 00 97 03 7F 22 31
+TX 22F193
+RX 17 FE 00 97 03 7F 22 31
+TX 22F194
+RX 17 FE 00 97 03 7F 22 31
+TX 22F195
+RX 17 FE 00 97 03 7F 22 31
+TX 22F196
+RX 17 FE 00 97 03 7F 22 31
+TX 22F197
+RX 17 FE 00 97 10 10 62 F1 97 4C 4D 53
+RX 17 FE 00 97 21 5F 4D 4C 42 65 76 6F
+RX 17 FE 00 97 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 17 FE 00 97 03 7F 22 31
+TX 22F199
+RX 17 FE 00 97 03 7F 22 31
+TX 22F19A
+RX 17 FE 00 97 10 09 62 F1 9A 30 30 30
+RX 17 FE 00 97 21 30 30 30 AA AA AA AA
+TX 22F19B
+RX 17 FE 00 97 06 62 F1 9B 00 00 00
+TX 22F19C
+RX 17 FE 00 97 03 7F 22 31
+TX 22F19D
+RX 17 FE 00 97 03 7F 22 31
+TX 22F19E
+RX 17 FE 00 97 10 19 62 F1 9E 45 56 5F
+RX 17 FE 00 97 21 4C 4D 53 52 69 67 68
+RX 17 FE 00 97 22 74 48 45 4C 4C 41 41
+RX 17 FE 00 97 23 55 35 38 58 00 AA AA
+TX 22F19F
+RX 17 FE 00 97 03 7F 22 31
+TX 22F1A0
+RX 17 FE 00 97 10 0E 62 F1 A0 38 57 32
+RX 17 FE 00 97 21 39 30 39 34 37 32 45
+RX 17 FE 00 97 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 17 FE 00 97 10 09 62 F1 A2 30 30 31
+RX 17 FE 00 97 21 30 31 35 AA AA AA AA
+TX 22F1A3
+RX 17 FE 00 97 06 62 F1 A3 48 31 31
+TX 22F1AA
+RX 17 FE 00 97 10 08 62 F1 AA 41 32 37
+RX 17 FE 00 97 21 20 20 AA AA AA AA AA
+TX 22F400
+RX 17 FE 00 97 03 7F 22 31
+TX 22F405
+RX 17 FE 00 97 03 7F 22 31
+TX 22F40C
+RX 17 FE 00 97 03 7F 22 31
+TX 22F40D
+RX 17 FE 00 97 03 7F 22 31
+TX 22F41B
+RX 17 FE 00 97 03 7F 22 31
+TX 22F442
+RX 17 FE 00 97 03 7F 22 31
+TX 22F446
+RX 17 FE 00 97 03 7F 22 31
+TX 22F600
+RX 17 FE 00 97 03 7F 22 31
+TX 22F800
+RX 17 FE 00 97 03 7F 22 31
+TX 190108
+RX 17 FE 00 97 03 7F 19 12
+TX ATCP17
+RX OK
+TX ATSHFC00A5
+RX OK
+TX ATFCSH17FC00A5
+RX OK
+TX STCFCPA 17FC00A5, 17FE00A5
+RX OK
+TX 22F180
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F181
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F182
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F186
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 04 62 F1 86 01
+TX 22F187
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 0E 62 F1 87 34 4B 30
+RX 17 FE 00 A5 21 30 33 35 35 30 32 42
+RX 17 FE 00 A5 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F189
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 07 62 F1 89 30 30 36 31
+TX 22F18A
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F18B
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F18C
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F18E
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F191
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 0E 62 F1 91 34 4B 30
+RX 17 FE 00 A5 21 30 33 35 35 30 32 42
+RX 17 FE 00 A5 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F193
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F194
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F195
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F196
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F197
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 10 62 F1 97 57 4C 43
+RX 17 FE 00 A5 21 20 46 72 6F 6E 74 20
+RX 17 FE 00 A5 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F199
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F19A
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F19B
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F19C
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F19D
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F19E
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 1C 62 F1 9E 45 56 5F
+RX 17 FE 00 A5 21 43 68 61 72 67 31 4D
+RX 17 FE 00 A5 22 6F 62 69 6C 44 65 76
+RX 17 FE 00 A5 23 69 63 41 55 36 35 31
+RX 17 FE 00 A5 24 00 AA AA AA AA AA AA
+TX 22F19F
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F1A0
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 0E 62 F1 A0 34 4E 30
+RX 17 FE 00 A5 21 39 30 39 34 38 35 41
+RX 17 FE 00 A5 22 20 AA AA AA AA AA AA
+TX 22F1A2
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 09 62 F1 A2 30 30 34
+RX 17 FE 00 A5 21 30 30 31 AA AA AA AA
+TX 22F1A3
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 06 62 F1 A3 48 31 34
+TX 22F1AA
+RX 17 FE 00 A5 03 7F 22 78
+RX 17 FE 00 A5 10 08 62 F1 AA 4A 31 31
+RX 17 FE 00 A5 21 34 36 AA AA AA AA AA
+TX 22F400
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F405
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F40C
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F40D
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F41B
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F442
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F446
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F600
+RX 17 FE 00 A5 03 7F 22 31
+TX 22F800
+RX 17 FE 00 A5 03 7F 22 31
+TX 190108
+RX 17 FE 00 A5 03 7F 19 12
+TX ATCP17
+RX OK
+TX ATSHFC00AE
+RX OK
+TX ATFCSH17FC00AE
+RX OK
+TX STCFCPA 17FC00AE, 17FE00AE
+RX OK
+TX 22F180
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F181
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F182
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F186
+RX 17 FE 00 AE 04 62 F1 86 01
+TX 22F187
+RX 17 FE 00 AE 10 0E 62 F1 87 38 57 30
+RX 17 FE 00 AE 21 39 31 35 31 30 31 41
+RX 17 FE 00 AE 22 20 AA AA AA AA AA AA
+TX 22F188
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F189
+RX 17 FE 00 AE 07 62 F1 89 30 31 32 37
+TX 22F18A
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F18B
+RX 17 FE 00 AE 06 62 F1 8B 22 02 19
+TX 22F18C
+RX 17 FE 00 AE 10 11 62 F1 8C 32 32 30
+RX 17 FE 00 AE 21 30 30 32 30 36 37 38
+RX 17 FE 00 AE 22 38 30 30 33 AA AA AA
+TX 22F18E
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F191
+RX 17 FE 00 AE 10 0E 62 F1 91 38 57 30
+RX 17 FE 00 AE 21 39 31 35 31 30 31 41
+RX 17 FE 00 AE 22 20 AA AA AA AA AA AA
+TX 22F192
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F193
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F194
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F195
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F196
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F197
+RX 17 FE 00 AE 10 10 62 F1 97 4D 51 2D
+RX 17 FE 00 AE 21 42 4D 53 20 20 20 20
+RX 17 FE 00 AE 22 20 20 20 AA AA AA AA
+TX 22F198
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F199
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F19A
+RX 17 FE 00 AE 10 09 62 F1 9A 00 00 00
+RX 17 FE 00 AE 21 00 00 00 AA AA AA AA
+TX 22F19B
+RX 17 FE 00 AE 06 62 F1 9B 00 01 01
+TX 22F19C
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F19D
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F19E
+RX 17 FE 00 AE 10 1A 62 F1 9E 45 56 5F
+RX 17 FE 00 AE 21 42 4D 53 31 32 56 4C
+RX 17 FE 00 AE 22 69 49 6F 6E 53 44 49
+RX 17 FE 00 AE 23 41 55 34 39 58 00 AA
+TX 22F19F
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F1A0
+RX 17 FE 00 AE 10 0E 62 F1 A0 2D 2D 2D
+RX 17 FE 00 AE 21 2D 2D 2D 2D 2D 2D 2D
+RX 17 FE 00 AE 22 2D AA AA AA AA AA AA
+TX 22F1A2
+RX 17 FE 00 AE 10 09 62 F1 A2 30 30 31
+RX 17 FE 00 AE 21 30 30 31 AA AA AA AA
+TX 22F1A3
+RX 17 FE 00 AE 06 62 F1 A3 48 32 30
+TX 22F1AA
+RX 17 FE 00 AE 10 08 62 F1 AA 41 31 20
+RX 17 FE 00 AE 21 20 20 AA AA AA AA AA
+TX 22F400
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F405
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F40C
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F40D
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F41B
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F442
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F446
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F600
+RX 17 FE 00 AE 03 7F 22 31
+TX 22F800
+RX 17 FE 00 AE 03 7F 22 31
+TX 190108
+RX 17 FE 00 AE 03 7F 19 12
+TX ATZ
+RX ELM327 v2.3

@@ -1,26 +1,24 @@
 ---
 name: project_scan_state
-description: Procedura quando arriva il report della scansione completa dall'auto (firmware o tools/pid_scan.ps1): DOCS, README §5, codifica del profilo suggerito con l'utente, domanda su TorqueModel se manca 0x62
+description: Stato della scansione completa sull'auto (report 22/11/2026 in DOCS, README §5 aggiornato) e decisioni aperte con l'utente: profilo obd_live.h, coppia di riferimento 370 Nm, casella BATT, DID VAG non plausibili; procedura per report futuri
 metadata:
   type: project
 ---
 
-I dati realmente leggibili sulla vettura si stabiliscono con la scansione completa eseguita sull'auto, da due fonti con le
-stesse fasi e regole: il firmware, avviata da `/scan` (report su Serial, su ESP-01 solo dal Serial monitor web con "Salva
-log"), e `tools/pid_scan.ps1` con il vLinker FS USB (report `pid_scan_<data>_<ora>.txt` nella cartella dello script,
-[[reference_vlinker_fs]]). Entrambi i report finiscono con il "profilo suggerito": `OBD_ENGINE_PIDS` con i PID del motore che
-hanno risposto fra quelli di lettura live e diagnostica, `OBD_ENGINE_MULTI_PID` dalla prova a 6 PID, coppia del PID `63` letta.
+Fonti del report, con le stesse fasi e regole: firmware (`/scan`, report su Serial) e `tools/pid_scan.ps1` con vLinker FS
+([[reference_vlinker_fs]]), report `pid_scan_<data>_<ora>.txt` accanto allo script.
 
-**Why:** senza un report della vettura, centraline e PID vengono dalle catture OBDb di altre A5 ([[project_vehicle]]) e il
-profilo di `obd_live.h` è solo iniziale.
+**Report reale:** `DOCS/pid_scan_20261122_195218.txt` (pid_scan.ps1, motore al minimo da fermo, 337 s, nessun errore di
+trasporto). README §5, §5.1-5.3, §5.5, §8, §13, §14 già allineati. Dati della vettura in [[project_vehicle]].
 
-**How to apply:**
-- Quando l'utente fornisce un report: salvarlo in `DOCS/`, aggiornare README §5 (tabella centraline, §5.1-5.3) e
-  sostituire **insieme all'utente** il blocco "Profilo vettura" di `obd_live.h` con il profilo suggerito.
-- Finchè il profilo contiene un PID del gruppo veloce che il motore non espone, ogni risposta multi-PID è un'anomalia e ogni
-  3 cicli parte una conferma a PID singolo in più; il profilo suggerito lo elimina.
-- Se il report mostra che `0x62` manca, riproporre la domanda su `TorqueModel.h`: `railPressureCorrection()` si aspetta
-  250-950 bar, incompatibili con l'iniezione diretta benzina, e abbassa la stima di circa il 12%. L'utente ha chiesto
-  esplicitamente di essere avvisato. Vedi [[feedback_helpers_readonly]].
-- Se il PID `63` letto differisce da 320 Nm, segnalarlo: la coppia di riferimento live è `TORQUE_MAX_NM`.
-- Se mancano `0x70` o `0x62`, il firmware ripiega su BoostModel e TorqueModel.
+**Decisioni aperte (chiedere all'utente, non applicare da soli):**
+- Profilo suggerito non ancora incollato in `obd_live.h`: `{0x70,0x0B,0x04,0x0C,0x62,0x0F,0x33,0x23,0x42,0x05,0x8E,0x0D,0x34,0x44,0x46,0x49,0x4A,0x4C,0x01,0x1F,0x21,0x30,0x5E}`, MULTI_PID true. Il profilo attuale ha `0x10` (gruppo veloce → anomalia multi-PID a ogni ciclo) e `0x5C`, assenti sull'auto. Dopo la sostituzione aggiornare README (nota Stato riga 5, §5.1, §14 "Profilo vettura").
+- PID `0x63` = 370 Nm, `obdReferenceTorqueNm()` in obd_live.h restituisce `TORQUE_MAX_NM` 320 → coppia letta −13.5%. Proposta: riferimento OBD separato a 370 senza toccare `TORQUE_MAX_NM` (lo usa TorqueModel, [[feedback_helpers_readonly]]); anche il commento di obd_live.h ("pari al PID 0x63 delle 40 TFSI") è falso.
+- `0x5B` assente → casella BATT sempre N/D; alternative possibili: SoC batteria avviamento dal gateway DID `2A0C` (UDS) o `0x42`.
+- DID VAG non plausibili al minimo (motore `1340`, `028D`, `11C8`, `11F1`; cambio `10EA`, `10EB`, `2142`/`2143`; clima `F405`/`F40C`): candidati all'esclusione in `tools/obdb_select.ps1` ([[feedback_data_must_be_interpretable]]).
+- 7E4/7EC (ESP) fuori dall'elenco ODIS di obd_scan.h: nel report compare come "Centralina senza nome 20" finchè non arriva `F197`.
+
+**How to apply per un report nuovo:** salvarlo in `DOCS/`, aggiornare README §5 (tabelle centraline OBD e UDS, §5.1-5.3);
+profilo in `obd_live.h` solo insieme all'utente; se manca `0x62` riproporre la domanda su `TorqueModel.h`
+(`railPressureCorrection()` attende 250-950 bar, incompatibile con l'iniezione diretta benzina); se `0x70` o `0x62` mancano
+il firmware ripiega su BoostModel/TorqueModel.

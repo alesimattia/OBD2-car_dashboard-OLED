@@ -14,11 +14,13 @@ decodifica OBDb pubblica.
 - Coppie richiesta/risposta: risposta = richiesta + `0x6A`, oppure + 8 per `7E0`-`7E7`; richieste nello spazio `700`-`773`.
   Elenco delle coppie estratto da ODIS in `OBD_ODIS_ECUS` di `obd_scan.h` (github.com/ConnorHowell/vag-uds-ids, senza
   licenza: nel progetto solo le coppie di ID, nomi italiani nostri).
-- A 29 bit (`17FC00xx` → `17FE00xx`) risponde solo la batteria alta tensione di PHEV e BEV: sulla A5 non c'è.
+- A 29 bit (`17FC00xx` → `17FE00xx`) sulla vettura rispondono 5 centraline: BCM2, fari LMS sx/dx, ricarica wireless, MQ-BMS
+  (batteria 12 V Li-ion); OBDb non ha DID per nessuna, quindi solo identificazione.
 - Discovery con `3E 00`, come dtcsweep; per gli ID ODIS muti un tentativo con `22 F197`. SFD non blocca le letture.
 - Flow control in UDS all'ID di richiesta: l'ELM327 in modo 0 lo manda a risposta − 8, quindi servono `ATFCSH`, `ATFCSD300005`
   e `ATFCSM1`, in quest'ordine (altrimenti `?`).
 - I DTC UDS VAG non seguono la codifica SAE (VCDS li mostra da una tabella VW): si riportano solo i conteggi con `19 01`.
+  Sulla vettura `19 01` lo accetta solo l'infotainment `773`; tutte le altre rispondono NRC `12` → conteggi "non letti".
 
 **Mode 03 su CAN:** la risposta ha il byte di conteggio dopo `0x43` (ISO 15765-4).
 

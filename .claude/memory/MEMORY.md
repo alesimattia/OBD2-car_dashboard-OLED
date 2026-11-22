@@ -1,9 +1,9 @@
 - [Hardware setup](project_hardware.md): CANbus_conn solo D1 Mini; WIFI_conn su D1 Mini o ESP-01 con profilo dalla board (pulsante su RX, niente LDR); scelta dei pin; limite OTA ESP-01 di 512.000 byte
-- [Veicolo target](project_vehicle.md): Audi A5 F5 B9.5 40 TFSI DMSA MHEV 12 V MY2022, S-tronic 0CK: dati motore/cambio, centraline OBD e UDS osservate nelle catture OBDb, limiti del mild hybrid
+- [Veicolo target](project_vehicle.md): Audi A5 F5 B9.5 40 TFSI DMSA MHEV 12 V MY2022, S-tronic 0CK: dati motore/cambio, centraline OBD e UDS e PID reali dalla scansione del 22/11/2026, limiti del mild hybrid
 - [OBD2 e UDS su VAG](project_obd2_vag.md): cosa la B9.5 espone via OBD standard e via UDS, coppie di ID ODIS, discovery, flow control, DTC UDS solo come conteggi, sola lettura
 - [Architettura sketch](project_architecture.md): header condivisi obd_proto/obd_scan/obd_live/obdb_signals, contratto di trasporto per sketch, scansione completa a passi, lettura multi-PID, pulsante, web, strumenti in tools/ e tabelle lette da pid_scan.ps1
 - [Decisioni di scope](project_scope_obd2.md): boot senza scansione con profilo statico, scansione completa OBD2 + UDS in sola lettura solo dal web, servizi ammessi e vietati, lettura live solo sul motore
-- [Report della scansione completa](project_scan_state.md): fonti firmware e pid_scan.ps1, cosa fare all'arrivo del report (DOCS, README §5, profilo suggerito da codificare con l'utente, domanda su TorqueModel se manca 0x62)
+- [Stato della scansione completa](project_scan_state.md): report reale 22/11/2026 in DOCS, decisioni aperte (profilo obd_live.h, 0x63 = 370 Nm, BATT N/D, DID non plausibili), procedura per report futuri
 - [Helper non modificabili](feedback_helpers_readonly.md): formule, costanti e soglie di TorqueModel.h e BoostModel.h appartengono all'utente
 - [I dati devono essere interpretabili](feedback_data_must_be_interpretable.md): solo decodifiche pubbliche e verificate (regole della selezione OBDb), niente byte grezzi, DTC UDS VAG solo conteggi, niente indirizzi hex in dashboard
 - [Non configurare la macchina di sviluppo](feedback_no_machine_config.md): niente install/config di tool sulla workstation, build manuale a carico dell'utente

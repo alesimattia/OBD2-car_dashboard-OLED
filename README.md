@@ -2,7 +2,7 @@
 
 Dashboard motore in tempo reale per **Audi A5 F5 (B9.5) 40 TFSI 150 kW mild hybrid S-tronic**, basata su ESP8266 e display OLED SH1106 1.3" (128×64). Il progetto offre **due sketch alternativi** che condividono dashboard, modelli fisici e web server, e si differenziano solo per il transport verso l'ECU.
 
-> ℹ️ **Stato**: firmware e anteprime sono allineati alla A5 F5 40 TFSI. Il profilo vettura in [`obd_live.h`](obd_live.h) è quello iniziale, ricavato da catture di altre B9: va sostituito con il profilo suggerito dalla prima scansione completa eseguita sull'auto (§5.1, §5.5).
+> ℹ️ **Stato**: firmware e anteprime sono allineati alla A5 F5 40 TFSI. La prima scansione completa sull'auto è del 22/11/2026 ([`DOCS/pid_scan_20261122_195218.txt`](DOCS/pid_scan_20261122_195218.txt), §5.5), e centraline e PID di §5 vengono da lì. Il profilo vettura in [`obd_live.h`](obd_live.h) è ancora quello iniziale, ricavato da catture di altre B9: contiene `0x10` e `0x5C`, che il motore non espone, e va sostituito con il profilo suggerito dal report (§5.1).
 
 > 🖥️ **Anteprime interattive** nel browser, senza clonare la repo: [display OLED](https://raw.githack.com/alesimattia/OBD2-car_dashboard-OLED/main/ui_preview.html) (§3.1) e [dashboard web](https://raw.githack.com/alesimattia/OBD2-car_dashboard-OLED/main/monitor_preview.html) (§11.5).
 
@@ -226,7 +226,7 @@ Cablaggio su ESP-01 (display + pulsante, niente LDR):
 | Potenza / Coppia | **150 kW (204 CV)** a 4475-6000 rpm / **320 Nm** a 1450-4475 rpm |
 | Cambio | **S-tronic 7 rapporti** DL382, codice `0CK`: doppia frizione in bagno d'olio a comando idraulico, rapporti nella tabella più sotto |
 | Trazione | anteriore |
-| Ibridazione | **Mild hybrid 12 V**: belt alternator starter (BAS) collegato all'albero motore, recupero in rilascio fino a 5 kW, batteria agli ioni di litio 12 V 10 Ah separata nella zona posteriore |
+| Ibridazione | **Mild hybrid 12 V**: belt alternator starter (BAS) collegato all'albero motore, recupero in rilascio fino a 5 kW, batteria agli ioni di litio 12 V 10 Ah separata nella zona posteriore, gestita dalla centralina MQ-BMS (UDS a 29 bit, §5) |
 | Impianto elettrico | 12 V, potenza elettrica massima 3.1 kW |
 | Post-trattamento | catalizzatore, sonda lambda, filtro antiparticolato benzina (GPF) |
 | Emissioni | Euro 6d o Euro 6e secondo l'anno di produzione (la scheda Audi 06/2024 riporta Euro 6e) |
@@ -239,7 +239,7 @@ Cablaggio su ESP-01 (display + pulsante, niente LDR):
 
 > ℹ️ I dati vengono dalla scheda tecnica Audi (eTD) della A5 Sportback 40 TFSI S-tronic 150 kW MHEV a trazione anteriore. Su Coupè e Cabriolet cambiano masse e prestazioni: per la Coupè ADAC riporta 1560 kg e 0-100 km/h in 7.1 s. Le costanti che il firmware usa per questo motore sono in [`EngineConstants.h`](EngineConstants.h).
 
-> ⚠️ VAG espone solo i PID Mode 01 richiesti per le emissioni: su un benzina Euro 6d compaiono tipicamente correzioni carburante, sonda lambda a valle del catalizzatore e temperatura catalizzatore. L'elenco effettivo va rilevato con la scansione completa (§5.1).
+> ⚠️ VAG espone solo i PID Mode 01 richiesti per le emissioni: su un benzina Euro 6d compaiono tipicamente correzioni carburante, sonda lambda a valle del catalizzatore e temperatura catalizzatore. L'elenco della vettura, rilevato con la scansione completa (§5.1), è in "Convenzione ECU ID OBD2" più sotto.
 
 #### Rapporti del cambio S-tronic `0CK`
 
@@ -264,24 +264,77 @@ Il belt alternator starter sostituisce alternatore e motorino nelle ripartenze, 
 - **Veleggio a motore spento** fra 55 e 160 km/h quando si rilascia l'acceleratore: il cambio apre le frizioni, il motore si spegne e l'impianto resta alimentato dalla batteria agli ioni di litio.
 - **Start-stop esteso**: il motore si spegne già sotto i 22 km/h in fase di arresto.
 
-In entrambi i casi la centralina motore resta raggiungibile sul CAN e riporta RPM, carico e MAF a zero con il quadro acceso, mentre il MAP si porta alla pressione barometrica: boost, coppia e potenza valgono zero e i calcoli che dividono per RPM o potenza mostrano `N/D`, senza che si tratti di un errore di lettura. Il BAS e la batteria agli ioni di litio non hanno PID standard: il sistema si osserva solo indirettamente da queste condizioni.
+In entrambi i casi la centralina motore resta raggiungibile sul CAN e riporta RPM, carico e MAF a zero con il quadro acceso, mentre il MAP si porta alla pressione barometrica: boost, coppia e potenza valgono zero e i calcoli che dividono per RPM o potenza mostrano `N/D`, senza che si tratti di un errore di lettura. Il BAS e la batteria agli ioni di litio non hanno PID standard: il sistema si osserva solo indirettamente da queste condizioni. La centralina della batteria agli ioni di litio (MQ-BMS, `17FC00AE`) risponde in UDS, ma solo con l'identificazione, perchè OBDb non ne pubblica DID. Il gateway espone invece in UDS i dati della batteria di avviamento 12 V da 68 Ah e del generatore: tensione, corrente, carica, temperatura e bilancio energetico.
 
 #### Convenzione ECU ID OBD2
 
-Sul bus CAN 11-bit le richieste OBD2 vengono inviate al **broadcast** `0x7DF`; ogni controllore presente risponde con il proprio **ID di risposta** nell'intervallo `0x7E8`-`0x7EF`. Sull'A5 F5 i moduli rilevanti sono:
+Sul bus CAN 11-bit le richieste OBD2 vengono inviate al **broadcast** `0x7DF`; ogni controllore presente risponde con il proprio **ID di risposta** nell'intervallo `0x7E8`-`0x7EF`. Sulla vettura rispondono tre centraline. I dati vengono dalla scansione completa del 22/11/2026 ([`DOCS/pid_scan_20261122_195218.txt`](DOCS/pid_scan_20261122_195218.txt)), eseguita con motore al minimo e auto ferma:
 
-| Response ID | Modulo | Ruolo |
+| Response ID | Modulo | PID Mode 01 dichiarati e letti |
 |---|---|---|
-| `0x7E8` | **ECU motore** (J623, 2.0 TFSI) | espone i PID standard Mode 01 di motore, emissioni, turbo, sonde lambda e catalizzatore |
-| `0x7E9` | **ECU cambio** (J217, meccatronica S-tronic DL382) | sulle B9 catturate risponde con pochi PID: `01 04 05 0C 0D 41 42 49` |
-| `0x7EC` | centralina di funzione non identificata (richiesta su `0x7E4`, assente dall'elenco ODIS) | sulle B9 catturate risponde con `01 04 05 0C 0D 41 42 46 49`; presente anche su vetture senza mild hybrid. La scansione completa ne stampa il nome di sistema UDS `F197`, se lo espone |
-| altri `0x7EA`-`0x7EF` | nessuna sulle B9 termiche catturate | `0x7ED`-`0x7EF` compaiono solo sulle ibride plug-in (batteria ad alta tensione, motori elettrici) |
+| `0x7E8` | **ECU motore** (J623): nome di sistema `R4 2.0l TFSI`, nome Mode 09 `ECM-EngineControl` | 48 PID, elencati sotto la tabella |
+| `0x7E9` | **ECU cambio** (J217, meccatronica S-tronic DL382): nome di sistema `2.0T 150kW EU`, nome Mode 09 `TCM-TransmisCtrl` | `01 04 05 0C 0D 41 42 49` |
+| `0x7EC` | **Freni ABS/ESP** (J104, `ESP9 Plus`, nome Mode 09 `BSCM-BrakeSystem`), con richiesta su `0x7E4`. È la stessa centralina che in UDS risponde anche su `0x713/0x77D`. Risponde solo alle richieste fisiche, non a quelle funzionali su `0x7DF` | `01 04 05 0C 0D 41 42 46 49` |
+| altri `0x7EA`-`0x7EF` | nessuna | `0x7ED`-`0x7EF` compaiono solo sulle ibride plug-in (batteria ad alta tensione, motori elettrici) |
 
-Nelle tabelle che seguono ogni PID è etichettato con l'ECU di provenienza. Le centraline e i PID di `0x7E9` e `0x7EC` vengono da catture reali di Audi A4/A5/Q5 B9 2019-2024 raccolte dal progetto OBDb (stessa piattaforma, nessuna con certezza motore DMSA): sulle stesse vetture la centralina motore espone fra l'altro `0x5C` olio, `0x61`/`0x62`/`0x63` coppia (`0x63` = 320 Nm sulle 40 TFSI), `0x8E` attrito, `0x70` boost (sensore A assoluto), `0x2F`, `0x5E`, `0x9D`, `0x9E` e `0xA6`, mentre `0x5B`, `0x9A`, `0xA4` e `0x7A`-`0x7C` non compaiono mai. La scansione completa (§5.1) dice quali centraline e PID sono attivi sulla vettura specifica.
+Il motore `0x7E8` dichiara e legge `01 03 04 05 06 07 0B 0C 0D 0E 0F 11 13 15 1C 1F 21 23 2E 2F 30 31 33 34 3C 41 42 43 44 45 46 47 49 4A 4C 51 56 5E 62 63 67 70 8B 8E 9D 9E A4 A6`. Nessuna centralina ha PID dichiarati senza risposta, nè risposte a PID non dichiarati. Il profilo iniziale veniva dalle catture OBDb di altre B9 (A4/A5/Q5 2019-2024). Rispetto a quelle catture:
+- mancano `0x10` MAF, `0x5C` olio e `0x61` coppia richiesta;
+- mancano anche, come nelle catture, `0x24`, `0x5B`, `0x9A` e `0x7A`-`0x7C`; la sonda lambda è esposta solo come `0x34`;
+- `0x63` vale **370 Nm**, non i 320 Nm di targa (§5.2);
+- `0xA4` (marcia) c'è, ma lo espone il motore e non il cambio;
+- compaiono in più `0x8B`, lo stato del filtro antiparticolato (§5.3.1), e `0x67`, la temperatura del liquido su due sensori.
+
+Nessuna centralina risponde al `0100` a 29 bit. Le tre centraline OBD hanno la MIL spenta e nessun DTC confermato o in attesa. Il Mode `0A` (DTC permanenti) resta senza risposta su motore e cambio, e l'ESP lo rifiuta.
+
+#### Centraline UDS della vettura
+
+La scansione completa trova 25 centraline UDS, tutte leggibili nella default session:
+- 17 coppie VAG nello spazio `0x7xx`;
+- motore, cambio ed ESP su `0x7E0`, `0x7E1` e `0x7E4`;
+- 5 centraline a 29 bit.
+
+La colonna "Sigla" è il nome di sistema officina VW letto dalla centralina (`F1AA`).
+
+| Centralina | Richiesta / risposta | Sigla | Letture oltre l'identificazione |
+|---|---|---|---|
+| Elettronica piantone sterzo | `70C/776` | J527 | — |
+| Elettronica centrale (`BCM1 MLBevo`) | `70E/778` | J519 | — |
+| Gateway | `710/77A` | J533 | 19 DID: batteria di avviamento 12 V, generatore, bilancio energetico, autonomia residua |
+| Servosterzo | `712/77C` | J500 | — |
+| Freni ABS/ESP (`ESP9 Plus`) | `713/77D` | J104 | 9 PID standard `F4xx`, pressione freno, angolo volante |
+| Quadro strumenti | `714/77E` | J285 | 6 DID: temperatura esterna, contachilometri, usura termica dell'olio |
+| Airbag | `715/77F` | J234 | — |
+| Portellone | `723/78D` | J605 | — |
+| Porta posteriore lato passeggero | `73F/7A9` | — | risponde alla ricerca, poi resta muta |
+| Climatizzatore | `746/7B0` | E87 | 10 DID: pressione del refrigerante, ventola del radiatore, temperature di abitacolo e bocchette; 3 PID `F4xx` con valori non plausibili |
+| Porta lato guida | `74A/7B4` | J386 | — |
+| Porta lato passeggero | `74B/7B5` | J387 | — |
+| Sensori anteriori di assistenza alla guida | `74F/7B9` | R242 | — |
+| Leva del cambio | `753/7BD` | J587 | — |
+| Telematica | `767/7D1` | J949 | satelliti GPS visibili e tracciati |
+| Telecamera posteriore | `769/7D3` | J772 | — |
+| Infotainment | `773/7DD` | J794 | conteggio DTC: 2 confermati, 1 fallito al momento |
+| Motore | `7E0/7E8` | `evo4` | 55 DID: temperature, pressione carburante, livello olio, fasatura, avviamenti, preaccensioni per cilindro |
+| Cambio | `7E1/7E9` | J217 | 61 DID: tempi di guida per programma, velocità delle ruote, temperature e pressioni delle frizioni, adattamenti, marcia |
+| Freni ABS/ESP, indirizzo OBD | `7E4/7EC` | J104 | stessa centralina di `713/77D`, solo identificazione |
+| Elettronica centrale 2 (`BCM2 MLBevo`) | `17FC008B/17FE008B` | J393 | — |
+| Faro sinistro (`LMS_MLBevo`) | `17FC0096/17FE0096` | A31 | — |
+| Faro destro (`LMS_MLBevo`) | `17FC0097/17FE0097` | A27 | — |
+| Ricarica wireless dello smartphone (`WLC Front`) | `17FC00A5/17FE00A5` | J1146 | — |
+| Batteria 12 V agli ioni di litio (`MQ-BMS`) | `17FC00AE/17FE00AE` | A1 | — |
+
+Il conteggio dei DTC con `19 01` lo accetta solo l'infotainment. Le altre 23 centraline rispondono NRC `12` (sub-funzione non supportata), quindi i loro DTC UDS restano "non letti" (§5.1).
+
+> ⚠️ Alcuni DID VAG rispondono ma danno, al minimo e da fermo, valori non plausibili:
+> - motore: `1340` −65536 Nm, `028D` 150 °C, `11C8` pressione carburante bassa 0 kPa contro 500 kPa comandati, `11F1` 1597 rpm all'albero d'ingresso del cambio con il motore a 810 rpm;
+> - cambio: `10EB` 327700 km, `10EA` 32770 adattamenti, `2142`/`2143` −500 Nm;
+> - climatizzatore: i PID `F405` −37 °C e `F40C` 200 rpm.
+>
+> Sono probabilmente valori di sostituzione, oppure decodifiche OBDb che non valgono per questo software. Vanno verificati prima di usarli.
 
 ### 5.1 Scansione completa (OBD2 e UDS)
 
-Al boot non c'è nessuna scansione nè discovery: la variante CAN va al monitor subito dopo `canInit()`, quella WiFi subito dopo connessione e inizializzazione dell'ELM327 (`executeConnectMode()`). PID del motore e modo di lettura vengono dal blocco "Profilo vettura" in testa a [`obd_live.h`](obd_live.h), cioè `OBD_ENGINE_PIDS` e `OBD_ENGINE_MULTI_PID`. Il profilo iniziale contiene i PID di lettura live e diagnostica (§8) tranne `0x5B` e `0x24`, mai visti sulle B9 termiche, e va sostituito con il profilo suggerito stampato a fine scansione completa.
+Al boot non c'è nessuna scansione nè discovery: la variante CAN va al monitor subito dopo `canInit()`, quella WiFi subito dopo connessione e inizializzazione dell'ELM327 (`executeConnectMode()`). PID del motore e modo di lettura vengono dal blocco "Profilo vettura" in testa a [`obd_live.h`](obd_live.h), cioè `OBD_ENGINE_PIDS` e `OBD_ENGINE_MULTI_PID`. Il profilo iniziale contiene i PID di lettura live e diagnostica (§8) tranne `0x5B` e `0x24`, mai visti sulle B9 termiche, e va sostituito con il profilo suggerito stampato a fine scansione completa. Sulla vettura il profilo suggerito toglie `0x10` e `0x5C`, che il motore non espone (§5).
 
 La **scansione completa** è identica nelle due varianti ([`obd_scan.h`](obd_scan.h)) e parte solo dal web, con il pulsante "Avvia scansione completa" della tab "PID supportati" o della pagina `/scan`, a quadro acceso e auto ferma; viene rifiutata se è già in corso o se l'adattatore non è ancora connesso. Interroga in sola lettura, nella default session, le centraline OBD2 e UDS e legge solo dati realmente interpretabili (vedi più sotto). Una macchina a stati esegue un'azione per giro di loop (una richiesta, un comando AT o la raffica della discovery), così il web server resta servito; nel frattempo il monitor è sospeso, il display mostra fase e percentuale (schermata 14 di §3.1) e la dashboard non interroga il bus. Per rilevare centraline e PID da un PC, senza ESP, vedi §5.5.
 
@@ -300,7 +353,7 @@ La **scansione completa** è identica nelle due varianti ([`obd_scan.h`](obd_sca
 
 La percentuale arriva al 40% con le fasi OBD, al 55% con la ricerca delle centraline UDS e al 95% con le letture UDS.
 
-**Centraline e nomi**: una centralina OBD `0x7E8+n` e la UDS `0x7E0+n` sono la stessa e compaiono una volta, con i dati UDS sotto la scheda OBD; per lo stesso motivo la lettura `F4xx` si salta sulle centraline OBD, che hanno già risposto in Mode 01. I nomi vengono dall'elenco ODIS delle coppie di ID UDS VAG (88 coppie richiesta/risposta in `obd_scan.h`, con nomi italiani scritti per questo progetto, per esempio `0x710/0x77A` "Gateway" e `0x728/0x792` "Regolazione batteria 12 V"); fuori elenco vale il nome di sistema `F197`, altrimenti "Centralina senza nome N". Display e dashboard chiamano le centraline OBD fuori elenco, come `0x7EC`, "Centralina N".
+**Centraline e nomi**: una centralina OBD `0x7E8+n` e la UDS `0x7E0+n` sono la stessa e compaiono una volta, con i dati UDS sotto la scheda OBD; per lo stesso motivo la lettura `F4xx` si salta sulle centraline OBD, che hanno già risposto in Mode 01. I nomi vengono dall'elenco ODIS delle coppie di ID UDS VAG (88 coppie richiesta/risposta in `obd_scan.h`, con nomi italiani scritti per questo progetto, per esempio `0x710/0x77A` "Gateway" e `0x728/0x792` "Regolazione batteria 12 V"); fuori elenco vale il nome di sistema `F197`, altrimenti "Centralina senza nome N". Display e dashboard chiamano le centraline OBD fuori elenco, come `0x7EC`, "Centralina N"; sulla vettura `0x7EC` è l'ESP (§5).
 
 **Ricerca delle centraline UDS**:
 - sul CAN nativo una raffica, come fa il tool open source dtcsweep, invia `3E 00` a tutti i candidati ogni 10 ms e ascolta per 1 s, raccogliendo chi risponde con `7E 00`, `7F 3E` o un first frame. Ogni risposta si conferma con un secondo `3E 00` alla richiesta ricavata (risposta − 8 per `0x7E8`-`0x7EF`, − `0x6A` per le altre a 11 bit, `17FC00xx` a 29 bit); dopo una raffica a 11 bit riuscita gli ID ODIS che non hanno risposto ricevono una volta `22 F197`. Se un invio fallisce o il MCP2515 segnala un overflow di ricezione la raffica si ferma e la ricerca procede in sequenza;
@@ -311,7 +364,7 @@ La percentuale arriva al 40% con le fasi OBD, al 55% con la ricerca delle centra
 2. PID standard via UDS (`22 F4xx`), solo sulle centraline che non sono anche OBD: con `F400` positivo la catena delle bitmap e i PID dichiarati e selezionati, altrimenti `F405`, `F40C`, `F40D`, `F41B`, `F442` e `F446`, l'insieme visto sulle centraline VAG non OBD;
 3. `22 F600` e `22 F800`, solo per segnalare se la centralina dichiara monitor o InfoType OBD via UDS;
 4. i DID VAG della selezione OBDb con la stessa coppia di ID;
-5. conteggio dei DTC con `19 01` e maschere `08` (confermati), `04` (in attesa) e `01` (falliti al momento); il riepilogo del report mostra i tre conteggi, i falliti solo se letti, la pagina confermati e in attesa. I DTC UDS VAG non seguono la codifica SAE, perchè il codice che mostra VCDS viene da una tabella VW, quindi se ne riportano solo i conteggi.
+5. conteggio dei DTC con `19 01` e maschere `08` (confermati), `04` (in attesa) e `01` (falliti al momento); il riepilogo del report mostra i tre conteggi, i falliti solo se letti, la pagina confermati e in attesa. I DTC UDS VAG non seguono la codifica SAE, perchè il codice che mostra VCDS viene da una tabella VW, quindi se ne riportano solo i conteggi. Sulla vettura `19 01` lo accetta solo l'infotainment: tutte le altre centraline rispondono NRC `12` e i loro conteggi restano "non letti" (§5).
 
 **Dati interpretabili**: le decodifiche vengono dai signalset OBDb (`OBDb/SAEJ1979` e `OBDb/Audi-A5`, §15.1) selezionati da `tools/obdb_select.ps1` per l'anno modello 2022: 683 segnali SAE (più 410 bit di supporto) su 205 PID, che valgono anche per il freeze frame e per i DID `F4xx`, e 184 segnali VAG su 169 DID di sette centraline (gateway, freni, quadro strumenti, climatizzatore, telematica, motore e cambio). Un segnale entra nella selezione solo se ha un'unità fisica, una mappa di valori testuali o è booleano, se non è un valore grezzo e, per i DID VAG, se OBDb lo considera verificato per il 2022 e leggibile nella default session; l'elenco incluso/escluso con il motivo è in [`tools/obdb/selection.txt`](tools/obdb/selection.txt). In esecuzione un valore si mostra solo se il suo bit di supporto dice "supportato", un segnale oltre la fine della risposta non si decodifica e i PID la cui scala dipende da `0x4F`/`0x50` (λ e sonde, MAP, MAF) si escludono se questi dichiarano massimi diversi da quelli predefiniti. Per il Mode 06 si mostrano esito di ogni test e, per i TID standard `0x01`-`0x0C`, valore e limiti con la scala UASID; per il Mode 09 ID calibrazione come testo, contatori IPT con il nome SAE, nome della centralina e OBFCM.
 
@@ -329,22 +382,22 @@ La percentuale arriva al 40% con le fasi OBD, al 55% con la ricerca delle centra
 
 **Report**: su Serial (USB o tab "Serial monitor" della dashboard) compare `=== SCANSIONE COMPLETA: OBD2 e UDS in sola lettura, solo dati interpretabili ===`, poi una riga per valore con la centralina, l'identificatore, il nome, il valore e l'unità, per esempio `[Motore 7E8] PID 05 Engine coolant temperature: 91 °C`: i nomi di PID e DID sono quelli inglesi di OBDb, quelli di identificazione UDS, monitor Mode 06 e InfoType sono in italiano; le righe dei DID VAG terminano con "(risposto nelle catture OBDb A5 2022)" oppure "(assente nelle catture OBDb A5 2022)". Seguono `=== RIEPILOGO SCANSIONE COMPLETA (N s) ===` con PID dichiarati e letti, DTC e decisioni failsafe per centralina, il profilo suggerito e `=== FINE SCANSIONE COMPLETA ===`. Il report non contiene mai byte grezzi nè il VIN. Per non perdere righe nel buffer da 4 KB del Serial monitor web, la scansione attende finchè un browser che ha letto `/serial-data` negli ultimi 3 s ha più di 2 KB di arretrato; durante la scansione la pagina legge il log anche fuori dalla tab Serial monitor e "Salva log" lo scarica come `obd_scan.txt`. Sull'ESP-01, senza seriale USB, il report si legge solo così. Il report eseguito sull'auto è il dump da conservare in [`DOCS/`](DOCS/); la tab "PID supportati" ne mostra il riepilogo per nome (§11.3).
 
-**Profilo suggerito**: a fine report il firmware stampa il blocco da incollare al posto del "Profilo vettura" di `obd_live.h`:
+**Profilo suggerito**: a fine report il firmware stampa il blocco da incollare al posto del "Profilo vettura" di `obd_live.h`. Quello della vettura, dal report del 22/11/2026, è:
 
 ```cpp
 // Profilo suggerito dalla scansione completa: sostituire il blocco "Profilo vettura" di obd_live.h
-static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x01, 0x04, 0x05, ...};
+static const uint8_t OBD_ENGINE_PIDS[] PROGMEM = {0x70, 0x0B, 0x04, 0x0C, 0x62, 0x0F, 0x33, 0x23, 0x42, 0x05, 0x8E, 0x0D, 0x34, 0x44, 0x46, 0x49, 0x4A, 0x4C, 0x01, 0x1F, 0x21, 0x30, 0x5E};
 static constexpr bool OBD_ENGINE_MULTI_PID = true;
-// Coppia di riferimento letta (PID 63): 320 Nm, confrontarla con TORQUE_MAX_NM di EngineConstants.h
+// Coppia di riferimento letta (PID 63): 370 Nm, confrontarla con TORQUE_MAX_NM di EngineConstants.h
 ```
 
 `OBD_ENGINE_PIDS` contiene i PID di lettura live e diagnostica a cui il motore `0x7E8` ha risposto nella fase PID Mode 01; `OBD_ENGINE_MULTI_PID` vale `true` se la richiesta con 6 PID, quanti ne chiede la lettura live, ha avuto una risposta completa e ben formata; se il motore dichiara meno di 6 dei PID di lettura live e diagnostica vale l'esito della prova con 2 PID. La riga della coppia compare solo se il PID `0x63` è stato letto: il firmware non lo usa, perchè la coppia di riferimento resta `TORQUE_MAX_NM` (§8). Senza il motore il report scrive che il profilo non è disponibile.
 
-**Consumo reale OBFCM** (Mode 09, InfoType `0x17`): le vetture omologate Euro 6d-ISC-FCM ed Euro 6e devono registrare a bordo il consumo reale (On-Board Fuel Consumption Monitoring, regolamento UE 2018/1832) e renderlo leggibile dalla presa OBD secondo SAE J1979-DA, con quattro contatori a 32 bit di distanza (0.1 km) e carburante (0.01 L), recenti e di vita; il valore `FFFFFFFF` significa non disponibile. La scansione completa legge `0917` dalle centraline che la dichiarano e, nel report e nella pagina `/scan`, mostra distanza e litri di vita e il consumo medio reale dall'immatricolazione, misurato dall'ECU e non stimato. VCDS legge "Mode 9, Type 17" su varie vetture del gruppo (Golf 8, Q5, A6), ma il layout dei byte viene da un'implementazione open source verificata su una sola vettura non VAG, perchè il testo SAE J1979-DA è a pagamento: per questo i contatori si mostrano solo se il consumo medio di vita cade fra 3 e 30 L/100 km, altrimenti il report scrive "layout non plausibile, non mostrato" e la pagina non riporta il riquadro.
+**Consumo reale OBFCM** (Mode 09, InfoType `0x17`): le vetture omologate Euro 6d-ISC-FCM ed Euro 6e devono registrare a bordo il consumo reale (On-Board Fuel Consumption Monitoring, regolamento UE 2018/1832) e renderlo leggibile dalla presa OBD secondo SAE J1979-DA, con quattro contatori a 32 bit di distanza (0.1 km) e carburante (0.01 L), recenti e di vita; il valore `FFFFFFFF` significa non disponibile. La scansione completa legge `0917` dalle centraline che la dichiarano e, nel report e nella pagina `/scan`, mostra distanza e litri di vita e il consumo medio reale dall'immatricolazione, misurato dall'ECU e non stimato. VCDS legge "Mode 9, Type 17" su varie vetture del gruppo (Golf 8, Q5, A6), ma il layout dei byte viene da un'implementazione open source verificata su una sola vettura non VAG, perchè il testo SAE J1979-DA è a pagamento: per questo i contatori si mostrano solo se il consumo medio di vita cade fra 3 e 30 L/100 km, altrimenti il report scrive "layout non plausibile, non mostrato" e la pagina non riporta il riquadro. Sulla vettura il layout trova conferma nei contatori di vita: la distanza OBFCM (127614 km) coincide con il contachilometri `0xA6` (127615.7 km), e i 10543 L danno 8.26 L/100 km.
 
 ### 5.2 PID letti dal firmware e formule
 
-La lettura live e l'istantanea diagnostica interrogano solo i PID del profilo vettura (`OBD_ENGINE_PIDS`, §5.1). Le formule sono quelle della tabella SAE J1979 pubblica e non dipendono dal veicolo.
+La lettura live e l'istantanea diagnostica interrogano solo i PID del profilo vettura (`OBD_ENGINE_PIDS`, §5.1). Le formule sono quelle della tabella SAE J1979 pubblica e non dipendono dal veicolo. Sulla vettura il motore non espone `0x10`, `0x24`, `0x5B` e `0x5C` (§5), che restano `N/D`.
 
 | PID | Descrizione | Formula | Unità | Uso |
 |---|---|---|---|---|
@@ -367,90 +420,97 @@ La lettura live e l'istantanea diagnostica interrogano solo i PID del profilo ve
 | `0x5C` | Temperatura olio motore | `A − 40` | °C | diagnostica; sul TFSI sovralimentato è il riferimento per decidere quando sfruttare tutta la coppia |
 | `0x5E` | Portata carburante motore | `(256 × A + B) / 20` | L/h | consumo misurato, al posto della stima da MAF e lambda |
 | `0x62` / `0x8E` | Coppia effettiva / di attrito | `A − 125` | % di `0x63` | casella COPPIA: `0x62` è la coppia indicata, comprensiva dell'attrito `0x8E` che viene sottratto |
-| `0x63` | Coppia di riferimento | `256 × A + B` | Nm | letta solo dalla scansione completa, che la stampa per il confronto: come "100%" il firmware usa i 320 Nm di targa di `TORQUE_MAX_NM`, pari al `0x63` delle 40 TFSI |
+| `0x63` | Coppia di riferimento | `256 × A + B` | Nm | letta solo dalla scansione completa, che la stampa per il confronto: come "100%" il firmware usa i 320 Nm di targa di `TORQUE_MAX_NM`. Sulla vettura `0x63` vale 370 Nm, quindi la coppia letta da `0x62`/`0x8E` risulta più bassa del reale del 13.5% (320/370) |
 | `0x70` | Boost pressure control, sensore A | presente se il bit 1 di A è 1; `(256 × D + E) / 32` | kPa assoluti | casella BOOST; il valore comandato contenuto nello stesso PID non viene usato |
 
 Caratteristiche del 2.0 TFSI di cui tengono conto i calcoli:
 
 - `0x2C` / `0x2D` (EGR) non vengono letti: l'EA888 realizza il ricircolo dei gas internamente con la fasatura variabile.
-- `0x23` (rail) è la pressione dell'iniezione diretta benzina: 70-100 bar al minimo e fino a 350 bar.
-- `0x24` (lambda) resta intorno a λ = 1 nel funzionamento stechiometrico, con arricchimenti sotto 1 a pieno carico. Sulle B9 catturate la sonda è esposta come `0x34`, che il firmware usa in alternativa: il profilo iniziale contiene solo `0x34`.
+- `0x23` (rail) è la pressione dell'iniezione diretta benzina: 70-100 bar al minimo (101 bar sulla vettura) e fino a 350 bar.
+- `0x24` (lambda) resta intorno a λ = 1 nel funzionamento stechiometrico, con arricchimenti sotto 1 a pieno carico. Sulla vettura, come sulle B9 catturate, la sonda è esposta solo come `0x34`, che il firmware usa in alternativa: il profilo contiene solo `0x34`.
 - `0x4C` (farfalla) è l'organo principale di regolazione dell'aria, non una farfalla di supporto all'EGR.
-- `0x5B` è definito da SAE per le batterie di trazione ad alta tensione e sulle B9 termiche catturate non compare mai: il profilo iniziale lo esclude, quindi la casella BATT mostra `N/D` finchè un profilo suggerito non lo contiene.
+- `0x5B` è definito da SAE per le batterie di trazione ad alta tensione e non compare nè sulle B9 termiche catturate nè sulla vettura: il profilo lo esclude, quindi la casella BATT mostra sempre `N/D`.
 
 ### 5.3 Parametri monitorabili in più
 
-Parametri che il firmware non legge e non calcola ancora. §5.3.1 elenca i PID standard SAE J1979 che un 2.0 TFSI Euro 6d può esporre: sono *potenziali*, e quali siano davvero supportati lo dice la scansione completa (§5.1), che li interroga tutti. §5.3.2 elenca le grandezze ricavabili dai PID già letti (§5.2) senza nuove richieste OBD; quelle già calcolate sono in §9.
+Parametri che il firmware non legge e non calcola ancora. §5.3.1 elenca i PID standard SAE J1979 che un 2.0 TFSI Euro 6d può esporre. La colonna "Vettura" dice se il motore li ha dichiarati e letti nella scansione completa del 22/11/2026 (§5). §5.3.2 elenca le grandezze ricavabili dai PID già letti (§5.2) senza nuove richieste OBD; quelle già calcolate sono in §9.
 
 #### 5.3.1 PID diretti potenziali
 
 ##### Motore, termici e lubrificazione
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E8` motore | `0x3C` | Temperatura catalizzatore banco 1 sensore 1 | spesso calcolata dall'ECU; mostra il light-off dopo l'avviamento e il raffreddamento durante il veleggio a motore spento |
-| `0x7E8` motore | `0x3E` | Temperatura catalizzatore banco 1 sensore 2 | a valle, utile insieme al GPF |
-| `0x7E8` motore | `0x77` | Temperatura aria di sovralimentazione (CACT) | aria all'uscita dell'intercooler |
-| `0x7E8` motore | `0x78` | Temperatura gas di scarico (EGT) banco 1 | se esposta |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x3C` | Temperatura catalizzatore banco 1 sensore 1 | sì | spesso calcolata dall'ECU; mostra il light-off dopo l'avviamento e il raffreddamento durante il veleggio a motore spento |
+| `0x7E8` motore | `0x3E` | Temperatura catalizzatore banco 1 sensore 2 | no | a valle, utile insieme al GPF |
+| `0x7E8` motore | `0x67` | Temperatura liquido di raffreddamento, sensori 1 e 2 | sì | il firmware legge solo `0x05` |
+| `0x7E8` motore | `0x77` | Temperatura aria di sovralimentazione (CACT) | no | aria all'uscita dell'intercooler |
+| `0x7E8` motore | `0x78` | Temperatura gas di scarico (EGT) banco 1 | no | — |
 
 ##### Iniezione, accensione e miscela
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E8` motore | `0x06` | Correzione carburante a breve termine banco 1 (STFT) | regolazione in anello chiuso istante per istante |
-| `0x7E8` motore | `0x07` | Correzione carburante a lungo termine banco 1 (LTFT) | adattamento memorizzato: una deriva persistente indica infiltrazioni d'aria o iniettori fuori norma |
-| `0x7E8` motore | `0x0E` | Anticipo di accensione | i ritardi sotto carico segnalano detonazione o carburante di qualità scarsa |
-| `0x7E8` motore | `0x15` | Sonda banco 1 sensore 2, a valle del catalizzatore | tensione della sonda post-catalizzatore, base del controllo di efficienza |
-| `0x7E8` motore | `0x59` | Pressione rail assoluta | alternativa a `0x23` |
-| `0x7E8` motore | `0x2F` | Livello serbatoio % | presente sulle B9 catturate |
-| `0x7E8` motore | `0x51` | Tipo di carburante | informazione statica |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x03` | Stato del sistema carburante | sì | anello aperto o chiuso sulla sonda lambda |
+| `0x7E8` motore | `0x06` | Correzione carburante a breve termine banco 1 (STFT) | sì | regolazione in anello chiuso istante per istante |
+| `0x7E8` motore | `0x07` | Correzione carburante a lungo termine banco 1 (LTFT) | sì | adattamento memorizzato: una deriva persistente indica infiltrazioni d'aria o iniettori fuori norma |
+| `0x7E8` motore | `0x0E` | Anticipo di accensione | sì | i ritardi sotto carico segnalano detonazione o carburante di qualità scarsa |
+| `0x7E8` motore | `0x15` | Sonda banco 1 sensore 2, a valle del catalizzatore | sì | tensione della sonda post-catalizzatore, base del controllo di efficienza |
+| `0x7E8` motore | `0x56` | Correzione a lungo termine della sonda secondaria, banco 1 | sì | — |
+| `0x7E8` motore | `0x59` | Pressione rail assoluta | no | alternativa a `0x23` |
+| `0x7E8` motore | `0x2E` | Spurgo evaporativo comandato | sì | apertura della valvola del canister |
+| `0x7E8` motore | `0x2F` | Livello serbatoio % | sì | — |
+| `0x7E8` motore | `0x51` | Tipo di carburante | sì | informazione statica |
+| `0x7E8` motore | `0x9D` | Portata carburante | sì | in g/s, alternativa a `0x5E` |
 
 ##### Coppia e aspirazione
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E8` motore | `0x61` | Coppia richiesta dal pilota % | confrontata con `0x62` (calcoli più sotto) |
-| `0x7E8` motore | `0x11` | Posizione farfalla | sul benzina è l'organo principale di regolazione dell'aria |
-| `0x7E8` motore | `0x45` | Posizione relativa farfalla | — |
-| `0x7E8` motore | `0x47` / `0x48` | Posizione assoluta farfalla B/C | — |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x61` | Coppia richiesta dal pilota % | no | da confrontare con `0x62` (calcoli più sotto) |
+| `0x7E8` motore | `0x11` | Posizione farfalla | sì | sul benzina è l'organo principale di regolazione dell'aria |
+| `0x7E8` motore | `0x45` | Posizione relativa farfalla | sì | — |
+| `0x7E8` motore | `0x47` / `0x48` | Posizione assoluta farfalla B/C | solo `0x47` | — |
 
 ##### Turbo e scarico
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E8` motore | `0x74` | Regime turbocompressore | raro |
-| `0x7E8` motore | `0x7A` / `0x7B` / `0x7C` | Pressione differenziale e temperatura del filtro antiparticolato | SAE li definisce per il DPF diesel e non compaiono sulle B9 catturate; da verificare se l'ECU li usa per il GPF |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x74` | Regime turbocompressore | no | raro |
+| `0x7E8` motore | `0x7A` / `0x7B` / `0x7C` | Pressione differenziale e temperatura del filtro antiparticolato | no | SAE li definisce per il DPF diesel |
+| `0x7E8` motore | `0x8B` | Post-trattamento: rigenerazione in corso, soglia normalizzata, distanza media fra le rigenerazioni | sì | SAE lo definisce per il diesel; sulla vettura riporta il filtro antiparticolato benzina (GPF) |
+| `0x7E8` motore | `0x9E` | Portata gas di scarico | sì | in kg/h |
 
-##### Cambio S-tronic (esposti da `0x7E9` se risponde)
+##### Cambio S-tronic
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E9` cambio | `0xA4` | Marcia attuale | sul DL382 è una marcia reale da 1 a 7 e sostituisce la stima del rapporto; non compare sulle B9 catturate |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0xA4` | Marcia attuale | sì | lo espone il motore, non il cambio `0x7E9`. Da fermo vale 0 mentre il cambio riporta in UDS la 1ª, quindi va verificato in marcia se riporta la marcia reale da 1 a 7 |
 
 ##### Contatori e diagnostica
 
-| ECU | PID | Parametro | Note |
-|---|---|---|---|
-| `0x7E8` motore | `0x31` | Distanza percorsa dal clear DTC | odometro parziale dal reset, distinto da `0x21` (km con MIL) |
-| `0x7E8` motore | `0x41` | Monitor status drive cycle | bitmap dei monitor di emissioni completati nel ciclo corrente, **utile in pre-revisione** per sapere se l'auto è "Ready" |
-| `0x7E8` motore | `0x4D` | Tempo motore con MIL accesa | in ore; il firmware legge solo i km con MIL (`0x21`) |
-| `0x7E8` motore | `0x4E` | Tempo dal clear DTC | — |
-| `0x7E8` motore | `0x43` | Carico assoluto | carico % normalizzato sul massimo teorico, diverso da `0x04` |
-| `0x7E8` motore | `0xA6` | Contachilometri | odometro totale, presente sulle B9 catturate |
-| `0x7E8` motore | `0x13` | Sonde lambda presenti (2 banchi) | informazione statica (configurazione del veicolo) |
-| `0x7E8` motore | `0x1C` | Standard OBD del veicolo | informazione statica (EOBD, OBD-II, ecc.) |
-| `0x7E8` motore | `0x4F` | Massimi calibrazione (lambda, V/I sonda, MAP) | informazione statica, utile per validare le letture nel range |
+| ECU | PID | Parametro | Vettura | Note |
+|---|---|---|---|---|
+| `0x7E8` motore | `0x31` | Distanza percorsa dal clear DTC | sì | odometro parziale dal reset, distinto da `0x21` (km con MIL) |
+| `0x7E8` motore | `0x41` | Monitor status drive cycle | sì | bitmap dei monitor di emissioni completati nel ciclo corrente, **utile in pre-revisione** per sapere se l'auto è "Ready" |
+| `0x7E8` motore | `0x4D` | Tempo motore con MIL accesa | no | in ore; il firmware legge solo i km con MIL (`0x21`) |
+| `0x7E8` motore | `0x4E` | Tempo dal clear DTC | no | — |
+| `0x7E8` motore | `0x43` | Carico assoluto | sì | carico % normalizzato sul massimo teorico, diverso da `0x04` |
+| `0x7E8` motore | `0xA6` | Contachilometri | sì | odometro totale |
+| `0x7E8` motore | `0x13` | Sonde lambda presenti (2 banchi) | sì | informazione statica: sulla vettura banco 1 sensori 1 e 2 |
+| `0x7E8` motore | `0x1C` | Standard OBD del veicolo | sì | informazione statica: sulla vettura EOBD |
+| `0x7E8` motore | `0x4F` | Massimi calibrazione (lambda, V/I sonda, MAP) | no | senza `0x4F` valgono le scale predefinite |
 
 ##### Valori calcolabili con questi PID
 
 | Calcolo | Formula | Beneficio |
 |---|---|---|
-| Δ coppia richiesta vs effettiva | `0x61 − 0x62` | mostra quando l'auto non riesce a soddisfare la domanda (limp mode, boost insufficiente, cut-off) |
+| Δ coppia richiesta vs effettiva | `0x61 − 0x62` | mostra quando l'auto non riesce a soddisfare la domanda (limp mode, boost insufficiente, cut-off); non calcolabile sulla vettura, che non espone `0x61` |
 | Correzione carburante totale | `0x06 + 0x07` | valori stabilmente oltre ±10% indicano infiltrazioni d'aria, pressione carburante o iniettori fuori norma |
-| Attività della sonda a valle | ampiezza dell'oscillazione di `0x15` confrontata con `0x24` | una sonda a valle che oscilla come quella a monte indica un catalizzatore poco efficiente |
-| Drift temperatura GPF | `d(0x7C)/dt` | evidenzia le fasi di rigenerazione |
-| Contropressione GPF | `0x7A` nel tempo a parità di portata | indicatore di intasamento del filtro |
-| Rapporto totale per marcia (`0x7E9` + `0x7E8`) | `RPM / velocità` registrato per ciascun valore di `0xA4` | un rapporto instabile a marcia fissa indica slittamento della frizione |
+| Attività della sonda a valle | ampiezza dell'oscillazione di `0x15` confrontata con la lambda di `0x34` | una sonda a valle che oscilla come quella a monte indica un catalizzatore poco efficiente |
+| Drift temperatura GPF | `d(0x7C)/dt` | evidenzia le fasi di rigenerazione; non calcolabile sulla vettura, dove lo stato della rigenerazione viene direttamente da `0x8B` |
+| Contropressione GPF | `0x7A` nel tempo a parità di portata | indicatore di intasamento del filtro; non calcolabile sulla vettura |
+| Rapporto totale per marcia (`0x7E8`) | `RPM / velocità` registrato per ciascun valore di `0xA4` | un rapporto instabile a marcia fissa indica slittamento della frizione |
 
 ##### Considerazioni pratiche
 
@@ -550,7 +610,7 @@ I servizi diagnostici "estesi" usati dai costruttori (VAG VCDS, BMW INPA, Merced
 | `0x11` | `0x7E0` → `0x7E8` motore | sub `0x01` | ECU Reset hard | ✅ ISO 14229 | ➖ non interrogato |
 | `0x11` | `0x7E0` → `0x7E8` motore | sub `0x03` | ECU Reset soft | ✅ ISO 14229 | ➖ non interrogato |
 | `0x14` | `0x7E0` → `0x7E8` motore | DTC mask | Clear Diagnostic Information (selettivo) | ✅ ISO 14229 | ➖ non interrogato (usiamo Mode 04 OBD2) |
-| `0x19` | tutte le UDS trovate | sub `0x01`, maschere `0x08` / `0x04` / `0x01` | Report number of DTC by status mask | ✅ ISO 14229 | 🔍 scansione completa, solo conteggi: i codici UDS VAG non seguono la codifica SAE |
+| `0x19` | tutte le UDS trovate | sub `0x01`, maschere `0x08` / `0x04` / `0x01` | Report number of DTC by status mask | ✅ ISO 14229 | 🔍 scansione completa, solo conteggi: i codici UDS VAG non seguono la codifica SAE. Sulla vettura lo accetta solo l'infotainment, le altre centraline rispondono NRC `12` |
 | `0x19` | `0x7E0` → `0x7E8` motore | sub `0x02` | Read DTC by status mask | ✅ ISO 14229 | ➖ non interrogato (la lettura live usa Mode 03 OBD2) |
 | `0x19` | `0x7E0` → `0x7E8` motore | sub `0x06` | Read DTC extended data record | ✅ ISO 14229 | ➖ non interrogato |
 | `0x22` | `0x7E0` → `0x7E8` motore | DID `0xF190` | VIN via UDS | ✅ ISO 14229 (DID standard) | ➖ non interrogato: il VIN non viene mai letto |
@@ -615,7 +675,13 @@ Senza `-BaudRate` lo script prova 115200, 38400, 230400 e 500000 finchè `ATI` r
 - nei modi UDS il flow control va all'ID di richiesta (`ATFCSD300005`, `ATFCSH`, `ATFCSM1`); se l'adattatore risponde a `STI`, dall'auto-test del flow control in poi registra anche la coppia richiesta/risposta con `STCFCPA` o, se rifiutato, `STCAFCP`, perchè gli STN inviano il flow control solo alle coppie registrate;
 - la ricerca delle centraline UDS è in sequenza, come su ogni ELM327; a fine scansione `ATZ` riporta l'adattatore ai valori iniziali.
 
-Il report `pid_scan_<data>_<ora>.txt` si scrive nella cartella dello script anche dopo un errore o un Ctrl+C, con riepilogo e profilo costruiti sui dati raccolti fin lì e marcati "interrotta". Dopo adattatore, protocollo e tensione contiene le stesse righe del report del firmware (§5.1): nomi, valori e unità, DID VAG con l'etichetta delle catture OBDb, identificazione UDS, DTC UDS solo come conteggi e le decisioni failsafe. Il riepilogo elenca le centraline OBD per ID, con i PID letti, dichiarati e non letti o letti senza essere dichiarati, per nome italiano, e sotto ciascuna la stessa centralina vista in UDS (`0x7E0/0x7E8` compare una volta). Seguono le centraline UDS per nome e coppia di ID, le capacità rilevate dell'adattatore e il profilo suggerito nello stesso formato del firmware. Il corpo non contiene byte grezzi nè il VIN; la traccia TX/RX completa è in coda. La durata stimata con il vLinker FS è di 4-5 minuti. Come il report del firmware, va conservato in [`DOCS/`](DOCS/).
+Il report `pid_scan_<data>_<ora>.txt` si scrive nella cartella dello script anche dopo un errore o un Ctrl+C, con riepilogo e profilo costruiti sui dati raccolti fin lì e marcati "interrotta". Dopo adattatore, protocollo e tensione contiene le stesse righe del report del firmware (§5.1): nomi, valori e unità, DID VAG con l'etichetta delle catture OBDb, identificazione UDS, DTC UDS solo come conteggi e le decisioni failsafe. Il riepilogo elenca le centraline OBD per ID, con i PID letti, dichiarati e non letti o letti senza essere dichiarati, per nome italiano, e sotto ciascuna la stessa centralina vista in UDS (`0x7E0/0x7E8` compare una volta). Seguono le centraline UDS per nome e coppia di ID, le capacità rilevate dell'adattatore e il profilo suggerito nello stesso formato del firmware. Il corpo non contiene byte grezzi nè il VIN; la traccia TX/RX completa è in coda. Come il report del firmware, va conservato in [`DOCS/`](DOCS/).
+
+Sulla vettura la scansione del 22/11/2026 ([`DOCS/pid_scan_20261122_195218.txt`](DOCS/pid_scan_20261122_195218.txt)) è durata 337 s, con 3 centraline OBD e 25 UDS, e si è chiusa senza errori di trasporto. Il vLinker FS, a 115200 baud, si presenta come ELM327 v2.3 su STN1170 v4.3.2 e ha superato tutti i controlli:
+- richieste fisiche (`ATAT1`);
+- flow control verso l'ID di richiesta (`ATFCSM1`), confermato dall'auto-test sul gateway, con le coppie registrate da `STCFCPA`;
+- CAN a 29 bit (`ATSP7`);
+- gestione autonoma delle attese `7F 22 78`, comparse 18 volte e tutte seguite dalla risposta.
 
 > ℹ️ Le unità vLinker FS prodotte prima del 7/2/2025 hanno problemi su alcune porte USB 3.0 e vanno collegate tramite un hub USB 2.0. L'interfaccia Ross-Tech HEX-V2 di VCDS non è utilizzabile: si presenta come dispositivo HID, senza porta COM nè comandi ELM327.
 
@@ -730,7 +796,7 @@ Il modo di lettura parte da `OBD_ENGINE_MULTI_PID` del profilo. A regime conta c
 Dopo ogni ciclo `obdLiveRecalc()` aggiorna i valori mostrati, con l'indicazione "misurato" o "stimato" in dashboard:
 
 - **Boost**: `(pressione 0x70 − BARO) / 100` bar, misurato prima della farfalla e senza la saturazione del MAP; senza BARO fa da riferimento il MAP letto a motore fermo. Senza `0x70` resta la stima di `BoostModel` (§9).
-- **Coppia**: `(0x62 − 0x8E) / 100 × TORQUE_MAX_NM` Nm all'albero, con i 320 Nm di targa pari al `0x63` delle 40 TFSI; senza `0x8E` solo `0x62`, a motore fermo zero. Il `0x63` della vettura lo legge solo la scansione completa, che lo stampa per il confronto con `TORQUE_MAX_NM`. Senza `0x62` resta la stima di `TorqueModel` (§9), e se mancano i suoi ingressi la casella mostra `N/D`.
+- **Coppia**: `(0x62 − 0x8E) / 100 × TORQUE_MAX_NM` Nm all'albero, con i 320 Nm di targa; senza `0x8E` solo `0x62`, a motore fermo zero. Il `0x63` della vettura lo legge solo la scansione completa, che lo stampa per il confronto con `TORQUE_MAX_NM`. Sulla vettura vale 370 Nm, e poichè SAE J1979 esprime `0x62` e `0x8E` in percentuale di `0x63`, la coppia mostrata risulta più bassa del reale del 13.5%. Senza `0x62` resta la stima di `TorqueModel` (§9), e se mancano i suoi ingressi la casella mostra `N/D`.
 
 **Stale detection**: dopo 3 letture fallite consecutive dello stesso PID il valore in cache torna `NAN` o non disponibile, così display e dashboard mostrano `N/D` invece di un valore congelato. Dopo `SILENT_CYCLES_BEFORE_RECOVERY` (10) cicli senza alcuna risposta dal motore: sul ramo CAN il MCP2515 viene reinizializzato se l'`EFLG` segnala bus-off, altrimenti il display mostra "Motore non risponde" e la lettura riprende dopo `ENGINE_SILENT_RETRY_MS` (10 s); sul ramo WiFi compare la stessa schermata, la connessione TCP all'ELM327 viene chiusa e dopo 10 s riparte la connessione con una nuova inizializzazione dell'adattatore. In nessun caso si ripete una scansione.
 
@@ -1031,7 +1097,7 @@ Prima della prova di presenza la dashboard mostra LDR `N/D` e modo `fixed`, lo s
   - Su CAN nativo il flow control va all'ID fisico della centralina; con l'ELM327 lo invia l'adattatore.
   - Se nessuna centralina risponde a `0101` resta lo stato precedente, così i codici non spariscono per un timeout.
 - **Capienza**: fino a `OBD_MAX_DTC` = 12 codici, ognuno con la centralina che lo ha memorizzato. Sul display la centralina è "Motore", "Cambio" o "Centr.N", in dashboard il nome ODIS oppure "Centralina N".
-- **Scansione completa**: legge anche i DTC in attesa (Mode 07), i permanenti (Mode 0A) e i conteggi dei DTC UDS di tutte le centraline (§5.1), che compaiono solo nel report e nella tab "PID supportati", non sul display nè nel box DTC della dashboard.
+- **Scansione completa**: legge anche i DTC in attesa (Mode 07), i permanenti (Mode 0A) e i conteggi dei DTC UDS di tutte le centraline (§5.1), che compaiono solo nel report e nella tab "PID supportati", non sul display nè nel box DTC della dashboard. Sulla vettura i conteggi UDS arrivano solo dall'infotainment, perchè le altre centraline rifiutano `19 01` (§5).
 - **Decodifica**: la categoria (P/C/B/U) e i 4 nibble del codice vengono ricostruiti in stringa "P0301".
 - **Descrizione breve**: ricerca binaria in [`dtc_descriptions.h`](dtc_descriptions.h): 73 codici in PROGMEM, italiano, ≤ 21 caratteri, con quelli tipici del benzina (fasatura, sonde lambda, miscela, accensione e bobine, catalizzatore, EVAP, pompa carburante, filtro antiparticolato) e di rete (`U0100`, `U0101`). Per i codici assenti viene mostrato solo il codice.
 - **Display**: alternanza automatica fra schermata dati e pagine DTC ogni `SCREEN_SWITCH_MS` (5 s), con codice e centralina sulla prima riga e descrizione sulla seconda. Il click breve sul pulsante avanza manualmente la pagina e posticipa l'auto-cycle (§10). La lettura OBD continua anche sulle pagine DTC, che si ridisegnano solo quando cambiano.
@@ -1055,7 +1121,7 @@ Prima della prova di presenza la dashboard mostra LDR `N/D` e modo `fixed`, lo s
 - **MAP saturato**: il PID `0x0B` è 1 byte (0-255 kPa). Sopra ~2.5 bar assoluti il valore satura, quindi il boost stimato dal modello è limitato a ~1.5 bar relativi; il boost letto da `0x70` non ha questo limite.
 - **Mild hybrid**: a motore spento nel veleggio e nello start-stop boost, coppia e potenza valgono zero senza che si tratti di un guasto di lettura (§5).
 - **Adattatori ELM327 clone**: le versioni "v1.5" non sono prodotti Elm Electronics e possono rifiutare `ATH1`, `ATSH` o il suffisso del numero di risposte, che il firmware verifica a ogni connessione; durante la scansione completa rileva anche flow control verso l'ID di richiesta, CAN a 29 bit e gestione delle attese `78`. Ogni limite è dichiarato nella tab "PID supportati" (§5.1).
-- **Profilo vettura**: il profilo iniziale di [`obd_live.h`](obd_live.h) viene da catture di altre B9, non certamente con motore DMSA. Finchè non lo si sostituisce con il profilo suggerito, un PID del profilo che il motore non espone resta `N/D` e, se è nel gruppo veloce, rende anomala ogni risposta multi-PID, con una richiesta di conferma in più ogni 3 cicli; un motore che rifiuta le richieste multi-PID viene riconosciuto solo a regime, dopo 3 anomalie (§8).
+- **Profilo vettura**: il profilo iniziale di [`obd_live.h`](obd_live.h) viene da catture di altre B9, non certamente con motore DMSA. Finchè non lo si sostituisce con il profilo suggerito, un PID del profilo che il motore non espone resta `N/D` e, se è nel gruppo veloce, rende anomala ogni risposta multi-PID, con una richiesta di conferma in più ogni 3 cicli; un motore che rifiuta le richieste multi-PID viene riconosciuto solo a regime, dopo 3 anomalie (§8). Sulla vettura è il caso di `0x10` (MAF, gruppo veloce) e `0x5C`, assenti dal profilo suggerito del 22/11/2026 (§5.1).
 - **Scansione completa**: va avviata a quadro acceso e auto ferma, perchè sospende il monitor per alcuni minuti. Sull'ESP-01 il report si legge solo dal Serial monitor web: la pagina va tenuta aperta fino alla fine e il log salvato con "Salva log". I DTC UDS VAG si riportano solo come conteggi, perchè i loro codici non seguono la codifica SAE.
 - **Filo dell'LDR interrotto durante la guida**: dopo la prova di presenza il firmware non distingue un filo interrotto dal buio totale, quindi il display resta al contrasto minimo fino al riavvio successivo, che riparte da `defaultBrightness` (§12).
 - **Refresh display**: l'aggiornamento parziale (`u8g2.updateDisplayArea`) trasmette solo le tile rows modificate, riducendo il traffico I²C da ~1024 byte a ~256-384 byte per frame.
