@@ -195,7 +195,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
     var lambda = coasting ? null : fullLoad ? rnd(0.86, 0.92) : rnd(0.98, 1.02);
     // Solo per la simulazione: la portata d'aria non è un dato della vettura, che non espone il MAF
     var air = coasting ? 0 : rpm * load / 2200 + 2;
-    var fuelLh = coasting ? 0 : air * 3600 / (14.7 * (lambda || 1) * 745);
+    var fuelLh = coasting ? 0 : air * 3600 / (14.4 * (lambda || 1) * 745);
     var gear = coasting || speed < 5 ? 0 : speed < 20 ? 1 : speed < 35 ? 2 : speed < 55 ? 3 : speed < 80 ? 4 : speed < 110 ? 5 : speed < 140 ? 6 : 7;
     var powerKw = coasting ? 0 : torque * rpm / 9549;
     var g = {
@@ -205,7 +205,7 @@ h1{text-align:center;color:#00d4ff;font-size:1.2em;margin-bottom:4px}
       o2ma: lambda === null ? null : (lambda - 1) * 2, baro: baro, volts: coasting ? rnd(12.6, 12.9) : rnd(14.1, 14.8),
       ambient: 18, pedalD: Math.round(load * 0.8), pedalE: Math.round(load * 0.4), throttle: Math.round(coasting ? 0 : load * 0.9),
       runtime: tick, kmMil: 0, starts: 14, boost: (boostKpa - baro) / 100, torque: torque,
-      powerKw: powerKw, afr: lambda === null ? null : lambda * 14.7, fuelLh: fuelLh,
+      powerKw: powerKw, afr: lambda === null ? null : lambda * 14.4, fuelLh: fuelLh,
       fuelL100: speed > 3 ? fuelLh / speed * 100 : null, bsfc: powerKw > 1 ? Math.round(fuelLh * 745 / powerKw) : null,
       altitude: 110, airDensity: map * 1000 / (287.05 * 303), intercoolerEff: boostKpa > baro + 5 ? Math.round(rnd(60, 80)) : null,
       pressureRatio: boostKpa / baro, driftPedal: Math.round(rnd(0, 2)),

@@ -1,19 +1,24 @@
 ﻿<#
     Scansione completa OBD2 e UDS della vettura da PC, tramite un adattatore ELM327 su porta COM (Vgate vLinker FS USB:
-    bridge FTDI, 115200 baud di fabbrica). Esegue le stesse fasi della scansione completa del firmware (obd_scan.h),
-    con gli stessi servizi in sola lettura e le stesse regole failsafe: centraline OBD e UDS, PID e DID con decodifica
-    OBDb, freeze frame, monitor Mode 06, info veicolo, identificazione UDS, DTC e profilo motore suggerito. Non invia
-    mai Mode 04/08 nè i servizi UDS che scrivono o cambiano sessione, e non legge il VIN.
+    bridge FTDI, 115200 baud di fabbrica). Esegue le fasi della scansione completa del firmware (obd_scan.h) con le
+    stesse regole failsafe: centraline OBD e UDS, PID e DID con decodifica OBDb, freeze frame, monitor Mode 06, info
+    veicolo, identificazione UDS, DTC e profilo motore suggerito. Non invia mai Mode 04/08 nè i servizi UDS che
+    scrivono, resettano o sbloccano, e non legge il VIN.
+
+    Rispetto al firmware estrae di più, per il reverse engineering: risposte, DTC, test e testi senza i limiti dei
+    buffer del microcontrollore; sessione estesa 10 03 (chiusa con 10 01) sulle centraline che non sono di sicurezza;
+    prove dei DID OBDb interpretabili ma non verificati, con i byte grezzi; DTC UDS con numero e stato; test Mode 06
+    del costruttore con valore e unità; CVN. La stessa centralina raggiunta da due indirizzi si legge una volta sola.
 
     Le tabelle si leggono all'avvio dal firmware, così restano allineate: elenco ODIS, DID di identificazione, nomi dei
     TID e contatori IPT da obd_scan.h, scale UASID e lunghezze dei PID da obd_proto.h, PID del profilo da obd_live.h,
     segnali dalla selezione comune tools\obdb\selection.json, nomi italiani di PID e DTC da pid_descriptions.h e
     dtc_descriptions.h se presenti.
 
-    Il report pid_scan_<data>_<ora>.txt, con nomi, valori e unità, riepilogo per centralina, profilo suggerito e in
+    Il report pid_scan_<data>_<ora>.log, con nomi, valori e unità, riepilogo per centralina, profilo suggerito e in
     coda la traccia TX/RX, si scrive nella cartella dello script anche dopo un errore o un Ctrl+C.
 
-    Uso, a quadro acceso, auto ferma e con FORScan e VCDS chiusi:
+    Uso a motore acceso (il relè della batteria Li-ion si chiude all'avviamento), auto ferma, FORScan e VCDS chiusi:
       .\pid_scan.ps1 -Port COM5                     porta del vLinker in Gestione dispositivi
       .\pid_scan.ps1                                se c'è una sola porta COM
       .\pid_scan.ps1 -Port COM5 -BaudRate 115200    baud fisso invece della ricerca
@@ -41,6 +46,21 @@ $PidScanToolsDirectory = $PSScriptRoot
 
 # Messaggio con cui la regola dei 5 errori di trasporto di fila interrompe la fase corrente
 $PhaseSkippedMarker = 'PID_SCAN_PHASE_SKIPPED'
+
+# Capacità dello script, che sul PC non ha i buffer del firmware: risposte fino al massimo ISO-TP e testi interi
+$ScriptMaxMessageLength = 4095
+$ScriptMaxTextChars = 4095
+
+# Centraline di sicurezza che restano sempre nella default session: piantone, servosterzo, ESP (anche come 7E4), airbag
+# e leva del cambio
+$DefaultSessionOnlyRequestIds = @('70C', '712', '713', '715', '753', '7E4')
+
+# NRC dopo cui, in sessione estesa, un DID atteso si rilegge nella default session: fuori intervallo, servizio non
+# supportato nella sessione, condizioni non corrette, accesso negato
+$SessionRetryNrcs = @(0x31, 0x7F, 0x22, 0x33)
+
+# Durata delle prove DID oltre cui il report segnala un aggravio di tempo alto
+$CandidateProbeWarningMs = 120000
 
 # Invia un comando all'ELM327 e ne raccoglie le righe fino al prompt '>'; ogni riga 7F xx 78 sposta la scadenza di 5 s
 # entro il tetto del firmware. Senza prompt scarta per 1 s e interrompe l'ELM con uno spazio, che a riposo ignora, così
@@ -401,6 +421,7 @@ function ConvertTo-ScanCommand($Command) {
     }
     return @{
         IsSae        = ($Command.source -eq 'SAE')
+        IsCandidate  = $false
         IdValue      = [Convert]::ToInt32([string]$Command.id, 16)
         Header       = ([string]$Command.hdr).ToUpperInvariant()
         Response     = ([string]$Command.rax).ToUpperInvariant()
@@ -427,7 +448,7 @@ function Import-ScanTables {
     $selection = [IO.File]::ReadAllText($selectionPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
     $constants = @{}
-    foreach ($name in @('OBD_MAX_ECUS', 'OBD_MAX_MESSAGE_LEN', 'OBD_MAX_PIDS_PER_REQUEST', 'OBD_RESPONSE_PENDING_CAP_MS', 'OBD_SCAN_DTC_PER_KIND')) {
+    foreach ($name in @('OBD_MAX_ECUS', 'OBD_MAX_PIDS_PER_REQUEST', 'OBD_RESPONSE_PENDING_CAP_MS')) {
         $constants[$name] = Get-HeaderConstant $protoText $name 'obd_proto.h'
     }
     foreach ($name in @('OBD_MAX_UDS_ECUS', 'OBD_SCAN_ECU_BUDGET_MS', 'OBD_SCAN_SILENCE_LIMIT', 'OBD_SCAN_TRANSPORT_ERROR_LIMIT', 'OBD_SCAN_F4_NRC_LIMIT')) {
@@ -523,6 +544,29 @@ function Import-ScanTables {
             $vagCommands.Add($entry)
         }
     }
+    # Candidati alle prove DID raggruppati per coppia di ID e DID: una richiesta sola, decodificata con ogni variante.
+    # Il gruppo richiede la sessione estesa solo se tutte le varianti la richiedono.
+    $candidateGroups = New-Object System.Collections.Generic.List[object]
+    $groupByKey = @{}
+    if ($null -ne $selection.PSObject.Properties['candidates']) {
+        foreach ($candidate in $selection.candidates) {
+            $entry = ConvertTo-ScanCommand $candidate
+            $entry.IsCandidate = $true
+            $entry.Verification = [string]$candidate.verification
+            $entry.Session = if ($candidate.session) { [string]$candidate.session } else { $null }
+            $entry.Capture = [string]$candidate.capture
+            $key = '{0}/{1}/{2:X4}' -f $entry.Header, $entry.Response, $entry.IdValue
+            if (-not $groupByKey.ContainsKey($key)) {
+                $group = @{ Header = $entry.Header; Response = $entry.Response; IdValue = $entry.IdValue; Session = $entry.Session; PayloadBytes = 0; Variants = (New-Object System.Collections.Generic.List[object]) }
+                $groupByKey[$key] = $group
+                $candidateGroups.Add($group)
+            }
+            $group = $groupByKey[$key]
+            $group.Variants.Add($entry)
+            if (-not $entry.Session) { $group.Session = $null }
+            $group.PayloadBytes = [math]::Max($group.PayloadBytes, $entry.PayloadBytes)
+        }
+    }
 
     $script:ScanTables = @{
         Constants         = $constants
@@ -543,6 +587,7 @@ function Import-ScanTables {
         Booleans          = $booleans
         SaeCommands       = $saeCommands
         VagCommands       = $vagCommands
+        CandidateGroups   = $candidateGroups
         SaeByPid          = $saeByPid
         ModelYear         = [int]$selection.modelYear
     }
@@ -571,6 +616,8 @@ function Initialize-ScanState {
         ReferenceTorqueNm = $null
         Obd29Responders   = 0
         ObfcmAvailable    = $false
+        CandidateMs       = 0
+        SessionMs         = 0
     }
 }
 
@@ -748,12 +795,12 @@ function Get-MultiPidCheck([byte[]] $Message) {
 }
 
 # Estrae i DTC da una risposta Mode 03/07/0A come obdParseDtcs(): conteggio dopo il servizio, due byte per codice,
-# senza i codici 0000 di riempimento e al più quanti ne conserva il firmware per tipo.
+# senza i codici 0000 di riempimento; a differenza del firmware li tiene tutti.
 function Get-ObdDtcCodes([byte[]] $Message) {
     $codes = New-Object System.Collections.Generic.List[int]
     if ($Message.Length -lt 2 -or @(0x43, 0x47, 0x4A) -notcontains $Message[0]) { return , $codes }
     $limit = [math]::Min([int]$Message[1], [math]::Floor(($Message.Length - 2) / 2))
-    for ($i = 0; $i -lt $limit -and $codes.Count -lt $script:ScanTables.Constants['OBD_SCAN_DTC_PER_KIND']; $i++) {
+    for ($i = 0; $i -lt $limit; $i++) {
         $code = ([int]$Message[2 + 2 * $i] -shl 8) -bor $Message[3 + 2 * $i]
         if ($code -ne 0) { $codes.Add($code) }
     }
@@ -766,12 +813,29 @@ function Get-UdsDtcCount([byte[]] $Message) {
     return ([int]$Message[4] -shl 8) -bor $Message[5]
 }
 
-# Conta i DTC di una risposta positiva 59 02 dalla lunghezza dichiarata del messaggio, come obdParseDtcListCount():
-# [59 02 maschera disponibile, n × (DTC a 3 byte, stato)]; i codici VAG non si decodificano. $null se non è una lista.
-function Get-UdsDtcListCount($Slot) {
-    $data = $Slot.Data
-    if ($data.Count -lt 3 -or $data[0] -ne 0x59 -or $data[1] -ne 0x02 -or $Slot.ExpectedLength -lt 3 -or ($Slot.ExpectedLength - 3) % 4 -ne 0) { return $null }
-    return [int](($Slot.ExpectedLength - 3) / 4)
+# Separa una risposta positiva 59 02 [59 02 maschera disponibile, n × (DTC a 3 byte, stato)] nei suoi DTC. Il numero
+# a 3 byte è quello del costruttore (formato ISO 14229-1), lo stesso che VCDS mostra in decimale; $null se non è una
+# lista ben formata.
+function Get-UdsDtcList([byte[]] $Message) {
+    if ($Message.Length -lt 3 -or $Message[0] -ne 0x59 -or $Message[1] -ne 0x02 -or ($Message.Length - 3) % 4 -ne 0) { return $null }
+    $entries = New-Object System.Collections.Generic.List[object]
+    for ($position = 3; $position + 4 -le $Message.Length; $position += 4) {
+        $code = ([int]$Message[$position] -shl 16) -bor ([int]$Message[$position + 1] -shl 8) -bor $Message[$position + 2]
+        $entries.Add(@{ Code = $code; Status = [int]$Message[$position + 3] })
+    }
+    return @{ Availability = [int]$Message[2]; Entries = $entries }
+}
+
+# Bit di stato di un DTC UDS per nome (ISO 14229-1), dal bit 0 al bit 7.
+function Format-UdsDtcStatus([int] $Status) {
+    $names = @('fallito ora', 'fallito nel ciclo', 'in attesa', 'confermato', 'test non completato dalla cancellazione',
+        'fallito dalla cancellazione', 'test non completato nel ciclo', 'spia richiesta')
+    $set = New-Object System.Collections.Generic.List[string]
+    for ($bit = 0; $bit -lt 8; $bit++) {
+        if (($Status -shr $bit) -band 1) { $set.Add($names[$bit]) }
+    }
+    if ($set.Count -eq 0) { return 'nessun bit' }
+    return $set -join ', '
 }
 
 # Copia un contenuto come testo se è stampabile, con il riempimento finale di zeri, spazi o FF tolto, come
@@ -861,12 +925,12 @@ function Get-Mode06MonitorName([int] $Mid) {
     return $null
 }
 
-# Separa una risposta Mode 06 [46 (MID TID UASID valore min max)...] nei test da 9 byte come obdParseMode06(), al più
-# 8; un blocco incompleto in coda si scarta.
+# Separa una risposta Mode 06 [46 (MID TID UASID valore min max)...] nei test da 9 byte come obdParseMode06(), senza
+# il tetto di 8 del firmware; un blocco incompleto in coda si scarta.
 function Get-Mode06Tests([byte[]] $Message) {
     $tests = New-Object System.Collections.Generic.List[object]
     if ($Message.Length -lt 1 -or $Message[0] -ne 0x46) { return , $tests }
-    for ($position = 1; $position + 9 -le $Message.Length -and $tests.Count -lt 8; $position += 9) {
+    for ($position = 1; $position + 9 -le $Message.Length; $position += 9) {
         $tests.Add(@{
                 Mid   = [int]$Message[$position]
                 Tid   = [int]$Message[$position + 1]
@@ -934,10 +998,10 @@ function Get-CollectorSlot([string] $CanId) {
     return $slot
 }
 
-# Accoda byte al messaggio entro la capacità del firmware (OBD_MAX_MESSAGE_LEN): l'eccedenza si conta soltanto, così
-# le decodifiche lavorano sugli stessi byte del firmware.
+# Accoda byte al messaggio fino al massimo ISO-TP: lo script tiene le risposte intere, mentre il firmware le tronca a
+# OBD_MAX_MESSAGE_LEN (72 byte); l'eventuale eccedenza si conta soltanto.
 function Add-IsoTpData($Slot, [byte[]] $Frame, [int] $Offset, [int] $Count) {
-    $capacity = $script:ScanTables.Constants['OBD_MAX_MESSAGE_LEN']
+    $capacity = $script:ScriptMaxMessageLength
     for ($i = 0; $i -lt $Count; $i++) {
         if ($Slot.Data.Count -lt $capacity) { $Slot.Data.Add($Frame[$Offset + $i]) } else { $Slot.Truncated = $true }
         $Slot.TotalReceived++
@@ -1108,11 +1172,13 @@ function Register-StnFlowControlPair([string] $RequestId, [string] $ResponseId) 
 }
 
 # Ultima difesa contro i servizi vietati: passano solo le richieste di lettura della scansione (OBD 01 02 03 06 07 09 0A,
-# UDS 22, 19 01, 19 02 e 3E 00) e mai il VIN (09 02 e 22 F190), qualunque sia il chiamante.
+# UDS 22, 19 01, 19 02 e 3E 00), il cambio fra sessione predefinita ed estesa (10 01 e 10 03, mai la 02 di
+# programmazione nè altre) e mai il VIN (09 02 e 22 F190), qualunque sia il chiamante.
 function Assert-ReadOnlyRequest([byte[]] $Request) {
     $service = [int]$Request[0]
-    $allowed = @(0x01, 0x02, 0x03, 0x06, 0x07, 0x09, 0x0A, 0x19, 0x22, 0x3E)
+    $allowed = @(0x01, 0x02, 0x03, 0x06, 0x07, 0x09, 0x0A, 0x10, 0x19, 0x22, 0x3E)
     $blocked = $allowed -notcontains $service
+    if ($service -eq 0x10 -and ($Request.Length -ne 2 -or @(0x01, 0x03) -notcontains $Request[1])) { $blocked = $true }
     if ($service -eq 0x19 -and ($Request.Length -lt 2 -or @(0x01, 0x02) -notcontains $Request[1])) { $blocked = $true }
     if ($service -eq 0x3E -and ($Request.Length -lt 2 -or $Request[1] -ne 0x00)) { $blocked = $true }
     if ($service -eq 0x09 -and $Request.Length -ge 2 -and $Request[1] -eq 0x02) { $blocked = $true }
@@ -1120,7 +1186,7 @@ function Assert-ReadOnlyRequest([byte[]] $Request) {
         if ($Request[$i] -eq 0xF1 -and $Request[$i + 1] -eq 0x90) { $blocked = $true }
     }
     if ($blocked) {
-        throw ('Richiesta {0} bloccata: la scansione usa solo servizi di lettura e non legge il VIN.' -f (($Request | ForEach-Object { '{0:X2}' -f $_ }) -join ' '))
+        throw ('Richiesta {0} bloccata: la scansione usa solo servizi di lettura e le sessioni 01 e 03, e non legge il VIN.' -f (($Request | ForEach-Object { '{0:X2}' -f $_ }) -join ' '))
     }
 }
 
@@ -1265,13 +1331,13 @@ function Register-TransportOutcome([bool] $IsError) {
 }
 
 # Vero se la risposta positiva ripete l'identificatore chiesto, come obdScanEchoMatches(): DID per il 22, sub-funzione
-# per il 19, PID, MID o InfoType per le richieste OBD con un solo parametro.
+# per il 19 e per il cambio di sessione 10, PID, MID o InfoType per le richieste OBD con un solo parametro.
 function Test-ScanEcho([byte[]] $Request, [byte[]] $Data) {
     if ($Request[0] -eq 0x22) {
         return ($Request.Length -ge 3 -and $Data.Length -ge 3 -and $Data[1] -eq $Request[1] -and $Data[2] -eq $Request[2])
     }
     $singleObdParameter = ((@(0x01, 0x06, 0x09) -contains $Request[0]) -and $Request.Length -eq 2) -or ($Request[0] -eq 0x02 -and $Request.Length -eq 3)
-    if ($Request[0] -eq 0x19 -or $singleObdParameter) {
+    if ($Request[0] -eq 0x19 -or $Request[0] -eq 0x10 -or $singleObdParameter) {
         return ($Request.Length -ge 2 -and $Data.Length -ge 2 -and $Data[1] -eq $Request[1])
     }
     return $true
@@ -1342,7 +1408,8 @@ function Test-SingleFrameOnly {
 
 # Richiesta a una centralina UDS con le regole failsafe di obdScanUdsRequest(): muta, oltre il budget o con il servizio
 # escluso non riceve richieste; NRC 21 si ripete una volta; 3 silenzi di fila la marcano muta; NRC 11, 7F, 7E o 12
-# escludono il resto del servizio. NRC, risposta incompleta e positiva azzerano i silenzi.
+# escludono il resto del servizio, tranne il 12 su una sub-funzione del 19 e il 7F in sessione estesa, che chiude la
+# sessione e ripete la richiesta in default. NRC, risposta incompleta e positiva azzerano i silenzi.
 function Send-ScanUdsRequest($Ecu, [byte[]] $Request) {
     $tables = $script:ScanTables
     $skipped = @{ Result = 'Silent'; Nrc = 0; Message = $null; Slot = $null }
@@ -1359,6 +1426,12 @@ function Send-ScanUdsRequest($Ecu, [byte[]] $Request) {
     $reply = Send-ScanRequest $Ecu.RequestId $Ecu.ResponseId $mode $Request
     # NRC 21 (centralina occupata): un solo nuovo tentativo, poi l'identificatore si salta
     if ($reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x21) { $reply = Send-ScanRequest $Ecu.RequestId $Ecu.ResponseId $mode $Request }
+    # Un servizio non supportato nella sessione estesa (NRC 7F) la chiude: la centralina torna in default, dove la stessa
+    # richiesta si ripete una volta e le letture successive proseguono
+    if ($reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x7F -and $Ecu.ExtendedSession) {
+        Exit-UdsExtendedSession $Ecu ('servizio {0:X2} non supportato in sessione estesa (NRC 7F)' -f $Request[0])
+        if (-not $Ecu.ExtendedSession) { $reply = Send-ScanRequest $Ecu.RequestId $Ecu.ResponseId $mode $Request }
+    }
     if ($reply.Result -eq 'Silent') {
         $Ecu.Silence++
         if ($Ecu.Silence -ge $tables.Constants['OBD_SCAN_SILENCE_LIMIT']) {
@@ -1368,9 +1441,9 @@ function Send-ScanUdsRequest($Ecu, [byte[]] $Request) {
         return $reply
     }
     if ($reply.Result -ne 'Transport') { $Ecu.Silence = 0 }
-    # 19 01 rifiutato come sub-funzione (NRC 12) non esclude il servizio: la lettura dei DTC ripiega su 19 02
-    $dtcCountRefused = $Request[0] -eq 0x19 -and $Request[1] -eq 0x01 -and $reply.Nrc -eq 0x12
-    if ($reply.Result -eq 'Negative' -and $null -ne $serviceFlag -and -not $dtcCountRefused -and @(0x11, 0x7F, 0x7E, 0x12) -contains $reply.Nrc) {
+    # Una sub-funzione del 19 rifiutata (NRC 12) non esclude il servizio: la lettura dei DTC ripiega sull'altra
+    $dtcSubFunctionRefused = $Request[0] -eq 0x19 -and $reply.Nrc -eq 0x12
+    if ($reply.Result -eq 'Negative' -and $null -ne $serviceFlag -and -not $dtcSubFunctionRefused -and @(0x11, 0x7F, 0x7E, 0x12) -contains $reply.Nrc) {
         $Ecu[$serviceFlag] = $true
         Add-ReportLine ((Get-UdsTag $Ecu) + ('servizio {0:X2} non supportato (NRC {1:X2}), richieste restanti saltate' -f $Request[0], $reply.Nrc))
     }
@@ -1440,7 +1513,8 @@ function Write-CommandSignals($Command, [byte[]] $Payload, [string] $Prefix) {
             }
         }
         if ($null -eq $text) { continue }
-        if (-not $Command.IsSae) {
+        # I candidati alle prove DID riportano verifica e catture nella riga d'intestazione della prova
+        if (-not $Command.IsSae -and -not $Command.IsCandidate) {
             $captureLabel = if ($Command.Captured) { 'risposto nelle catture' } else { 'assente nelle catture' }
             $text += '  ({0} OBDb A5 {1})' -f $captureLabel, $tables.ModelYear
         }
@@ -1462,13 +1536,14 @@ function Write-SaePid($Ecu, $Command, [int] $ParameterId, [byte[]] $Payload, [bo
     $null = Write-CommandSignals $Command $Payload $prefix
 }
 
-# Scrive i test di un monitor Mode 06 come obdPrintMode06Tests(): esito di tutti, valore e limiti solo per i TID
-# standard 01-0C con UASID noto.
+# Scrive i test di un monitor Mode 06 come obdPrintMode06Tests(): esito di tutti e, per ogni test con UASID noto,
+# valore e limiti nell'unità SAE. A differenza del firmware mostra anche i monitor senza nome standard e i TID del
+# costruttore, che hanno scala e unità pubbliche ma un nome del test non pubblico.
 function Write-Mode06Tests([byte[]] $Message, [string] $Prefix) {
     $tests = Get-Mode06Tests $Message
     if ($tests.Count -eq 0) { return }
     $name = Get-Mode06MonitorName $tests[0].Mid
-    if ($null -eq $name) { return }
+    if ($null -eq $name) { $name = 'MID 0x{0:X2} (senza nome standard)' -f $tests[0].Mid }
     $passed = 0
     $failed = 0
     $unknown = 0
@@ -1481,20 +1556,27 @@ function Write-Mode06Tests([byte[]] $Message, [string] $Prefix) {
     Add-ReportLine $line
     foreach ($test in $tests) {
         $uas = Get-UasidEntry $test.Uasid
-        if ($test.Tid -lt 0x01 -or $test.Tid -gt 0x0C -or $null -eq $uas) { continue }
-        Add-ReportLine ($Prefix + '    ' + $script:ScanTables.TidNames[$test.Tid - 1] + ': ' + (Format-ScanNumber (Get-UasidValue $uas $test.Value)) +
+        if ($null -eq $uas) { continue }
+        $testName = if ($test.Tid -ge 0x01 -and $test.Tid -le 0x0C) { $script:ScanTables.TidNames[$test.Tid - 1] } else { 'Test 0x{0:X2} del costruttore' -f $test.Tid }
+        Add-ReportLine ($Prefix + '    ' + $testName + ': ' + (Format-ScanNumber (Get-UasidValue $uas $test.Value)) +
             ' (limiti ' + (Format-ScanNumber (Get-UasidValue $uas $test.Min)) + ' - ' + (Format-ScanNumber (Get-UasidValue $uas $test.Max)) + ') ' + $uas.Unit)
     }
 }
 
-# Scrive una InfoType Mode 09 interpretabile come obdPrintInfoType(): ID calibrazione come testo, contatori IPT con il
-# nome SAE, OBFCM solo se plausibile. Data è la risposta dopo 49 e InfoType.
+# Scrive una InfoType Mode 09 interpretabile come obdPrintInfoType(): ID calibrazione come testo, CVN in esadecimale
+# (solo nello script), contatori IPT con il nome SAE, OBFCM solo se plausibile. Data è la risposta dopo 49 e InfoType.
 function Write-InfoType([int] $InfoType, [byte[]] $Data, [string] $Prefix) {
     $tables = $script:ScanTables
     if ($InfoType -eq 0x04 -and $Data.Length -ge 1) {
         for ($position = 1; $position + 16 -le $Data.Length; $position += 16) {
-            $text = ConvertFrom-PrintableText (Get-ByteSlice $Data $position 16) 23
+            $text = ConvertFrom-PrintableText (Get-ByteSlice $Data $position 16) $script:ScriptMaxTextChars
             if ($null -ne $text) { Add-ReportLine ($Prefix + 'ID calibrazione software: ' + $text) }
+        }
+    }
+    elseif ($InfoType -eq 0x06 -and $Data.Length -ge 1) {
+        # Un CVN di 4 byte per ID di calibrazione, nello stesso ordine, come lo mostra VCDS
+        for ($position = 1; $position + 4 -le $Data.Length; $position += 4) {
+            Add-ReportLine ($Prefix + 'CVN: ' + [BitConverter]::ToString($Data, $position, 4).Replace('-', ''))
         }
     }
     elseif ($InfoType -eq 0x08 -or $InfoType -eq 0x0B) {
@@ -1503,9 +1585,7 @@ function Write-InfoType([int] $InfoType, [byte[]] $Data, [string] $Prefix) {
         $line = $Prefix + 'Contatori di completamento dei monitor (IPT):'
         $nameIndex = 0
         for ($position = 1; $position + 2 -le $Data.Length -and $nameIndex -lt $names.Count; $position += 2) {
-            # Il buffer del firmware tiene 11 caratteri per nome
             $name = $names[$nameIndex]
-            if ($name.Length -gt 11) { $name = $name.Substring(0, 11) }
             if ($name.Length -eq 0) { break }
             $line += ' {0}={1}' -f $name, (([int]$Data[$position] -shl 8) -bor $Data[$position + 1])
             $nameIndex++
@@ -1513,8 +1593,7 @@ function Write-InfoType([int] $InfoType, [byte[]] $Data, [string] $Prefix) {
         Add-ReportLine $line
     }
     elseif ($InfoType -eq 0x17) {
-        $copy = [math]::Min($Data.Length, $tables.Constants['OBD_MAX_MESSAGE_LEN'] - 2)
-        [byte[]]$message = @(0x49, 0x17) + (Get-ByteSlice $Data 0 $copy)
+        [byte[]]$message = @(0x49, 0x17) + $Data
         $counters = ConvertFrom-Obfcm $message
         if ($null -eq $counters -or -not $counters.Plausible) {
             Add-ReportLine ($Prefix + 'Consumo reale OBFCM: layout non plausibile, non mostrato')
@@ -1564,10 +1643,10 @@ function Write-Identification($Ecu, [int] $Did, [string] $Name, [byte[]] $Data) 
     }
     elseif (@(0xF18B, 0xF199, 0xF19B, 0xF19D) -contains $Did) {
         $text = ConvertFrom-BcdDate $Data
-        if ($null -eq $text) { $text = ConvertFrom-PrintableText $Data 47 }
+        if ($null -eq $text) { $text = ConvertFrom-PrintableText $Data $script:ScriptMaxTextChars }
     }
     else {
-        $text = ConvertFrom-PrintableText $Data 47
+        $text = ConvertFrom-PrintableText $Data $script:ScriptMaxTextChars
     }
     if ($null -eq $text) { return }
     if ($Did -eq 0xF197) {
@@ -1798,21 +1877,23 @@ function Invoke-PhaseMode02 {
     }
 }
 
-# Fase 7: monitor Mode 06 dichiarati che lo standard nomina, uno per richiesta per ogni centralina.
+# Fase 7: monitor Mode 06 dichiarati, uno per richiesta per ogni centralina; a differenza del firmware anche quelli
+# senza nome standard, i cui test hanno comunque scala e unità UASID.
 function Invoke-PhaseMode06 {
     foreach ($ecu in $script:ScanState.ObdEcus) {
         for ($mid = 1; $mid -le 0xFF; $mid++) {
-            if ((Test-RangeId $mid) -or -not (Test-BitmapId $ecu.Mode06 $mid) -or $null -eq (Get-Mode06MonitorName $mid)) { continue }
+            if ((Test-RangeId $mid) -or -not (Test-BitmapId $ecu.Mode06 $mid)) { continue }
             $reply = Send-ScanObdRequest $ecu ([byte[]]@(0x06, $mid))
             if ($reply.Result -eq 'Positive') { Write-Mode06Tests $reply.Message (Get-ObdTag $ecu) }
         }
     }
 }
 
-# Fase 8: InfoType Mode 09 interpretabili (04, 08, 0A, 0B, 17) dichiarate da ogni centralina; mai la 02 del VIN.
+# Fase 8: InfoType Mode 09 interpretabili (04, 06 solo nello script, 08, 0A, 0B, 17) dichiarate da ogni centralina;
+# mai la 02 del VIN.
 function Invoke-PhaseMode09 {
     foreach ($ecu in $script:ScanState.ObdEcus) {
-        foreach ($infoType in @(0x04, 0x08, 0x0A, 0x0B, 0x17)) {
+        foreach ($infoType in @(0x04, 0x06, 0x08, 0x0A, 0x0B, 0x17)) {
             if (-not (Test-BitmapId $ecu.Mode09 $infoType)) { continue }
             $reply = Send-ScanObdRequest $ecu ([byte[]]@(0x09, $infoType))
             if ($reply.Result -ne 'Positive' -or $reply.Message.Length -lt 3 -or $reply.Message[1] -ne $infoType) { continue }
@@ -1886,7 +1967,6 @@ function Add-UdsEcu([string] $RequestId, [string] $ResponseId) {
         Skip22       = $false
         Skip19       = $false
         SkipF4       = $false
-        DtcList      = $false
         Failure      = $null
         Silence      = 0
         F4NrcStreak  = 0
@@ -1896,6 +1976,22 @@ function Add-UdsEcu([string] $RequestId, [string] $ResponseId) {
         DtcConfirmed = $null
         DtcPending   = $null
         DtcFailed    = $null
+        DtcListed    = $null
+        # Solo nello script: firma per riconoscere la stessa centralina su due indirizzi, sessione estesa, prove DID
+        IdentCache        = @{}
+        Fingerprint       = $null
+        AliasOf           = $null
+        ExtendedSession   = $false
+        SessionOutcome    = 'non aperta'
+        SessionSuspect    = $false
+        SessionRetries    = (New-Object System.Collections.Generic.List[object])
+        RetryOutcome      = $null
+        CandidateRequests = 0
+        CandidatePositive = 0
+        CandidateNrc      = @{}
+        CandidateOther    = 0
+        CandidateSkipped  = 0
+        CandidateMs       = 0
     }
     $scan.UdsEcus.Add($ecu)
     return $ecu
@@ -1994,6 +2090,8 @@ function Invoke-PhaseFlowControlTest {
         if ($ecu.RequestId -ne '710') { continue }
         $reply = Send-ScanRequest '710' $ecu.ResponseId 'UDS11' ([byte[]]@(0x22, 0xF1, 0x87))
         if ($reply.Result -eq 'Positive' -and $reply.Message.Length -gt 7) { $scan.FlowControlTest = 'Ok' }
+        # La risposta vale anche come F187 del gateway, che firma e identificazione non richiedono di nuovo
+        if ($reply.Result -eq 'Positive') { $ecu.IdentCache[0xF187] = $reply }
         # Guasto solo se la risposta resta al first frame: un frame perso a metà non dice nulla sul flow control
         if ($reply.Result -eq 'Incomplete' -and $reply.Slot.State -eq 'Receiving' -and $reply.Slot.NextSequence -eq 1) { $scan.FlowControlTest = 'Broken' }
     }
@@ -2003,16 +2101,165 @@ function Invoke-PhaseFlowControlTest {
     Add-ReportLine "Flow control verso le centraline UDS: $outcome"
 }
 
+# Annota per la rilettura nella default session un DID che la sessione estesa ha rifiutato con un NRC che può dipendere
+# dalla sessione; Entry dice come riscriverne la risposta (Kind, Did e i dati del suo tipo).
+function Register-SessionRetry($Ecu, $Reply, $Entry) {
+    if ($Ecu.ExtendedSession -and $Reply.Result -eq 'Negative' -and $script:SessionRetryNrcs -contains $Reply.Nrc) { $Ecu.SessionRetries.Add($Entry) }
+}
+
+# Scrive la risposta a un DID di identificazione: testo, data o sessione, oppure la nota di risposta incompleta.
+function Write-UdsIdentReply($Ecu, [int] $Did, [string] $Name, $Reply) {
+    if ($Reply.Result -eq 'Positive' -and $Reply.Message.Length -gt 3) { Write-Identification $Ecu $Did $Name (Get-ByteSlice $Reply.Message 3) }
+    elseif ($Reply.Result -eq 'Incomplete') { Write-IncompleteReply $Ecu $Did }
+}
+
+# Firma della centralina per riconoscerla quando risponde su due indirizzi: codice ricambio F187 e file ODX F19E, letti
+# nella default session prima di ogni altra lettura e tenuti in cache, così l'identificazione non li richiede di nuovo.
+# Senza uno dei due la firma resta vuota e la centralina non può diventare alias di un'altra.
+function Read-UdsFingerprint($Ecu) {
+    $texts = New-Object System.Collections.Generic.List[string]
+    foreach ($did in @(0xF187, 0xF19E)) {
+        if (-not $Ecu.IdentCache.ContainsKey($did)) {
+            # Con il flow control guasto i testi su più frame non arrivano: l'identificazione li salta comunque
+            if (Test-SingleFrameOnly) { return }
+            $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($did -shr 8), ($did -band 0xFF)))
+            if ($reply.Result -ne 'Silent') { $Ecu.IdentCache[$did] = $reply }
+        }
+        else {
+            $reply = $Ecu.IdentCache[$did]
+        }
+        if ($reply.Result -ne 'Positive' -or $reply.Message.Length -le 3) { return }
+        $text = ConvertFrom-PrintableText (Get-ByteSlice $reply.Message 3) $script:ScriptMaxTextChars
+        if ($null -eq $text) { return }
+        $texts.Add($text)
+    }
+    $Ecu.Fingerprint = $texts -join '|'
+}
+
+# Marca come alias la centralina che ha la stessa firma di una precedente: ESP 713/77D e 7E4/7EC sono lo stesso
+# J104. La primaria è quella sull'indirizzo VAG ed eredita il legame con la centralina OBD, così non rilegge in F4xx i
+# PID già letti in Mode 01; l'alias non riceve altre richieste.
+function Resolve-UdsAliases {
+    $ecus = $script:ScanState.UdsEcus
+    for ($index = 0; $index -lt $ecus.Count; $index++) {
+        $ecu = $ecus[$index]
+        if ($null -eq $ecu.Fingerprint -or $null -ne $ecu.AliasOf) { continue }
+        for ($earlier = 0; $earlier -lt $index; $earlier++) {
+            $other = $ecus[$earlier]
+            if ($null -ne $other.AliasOf -or $other.Fingerprint -ne $ecu.Fingerprint) { continue }
+            $primary = $other
+            $alias = $ecu
+            if ($null -ne $other.ObdEcu -and $null -eq $ecu.ObdEcu) {
+                $primary = $ecu
+                $alias = $other
+            }
+            if ($null -eq $primary.ObdEcu) { $primary.ObdEcu = $alias.ObdEcu }
+            $alias.AliasOf = $primary
+            Add-ReportLine ((Get-UdsTag $alias) + ('stessa centralina di {0}/{1} (codice ricambio e file ODX uguali): non si legge di nuovo' -f $primary.RequestId, $primary.ResponseId))
+            break
+        }
+    }
+}
+
+# Apre la sessione estesa 03 prima delle letture, tranne sulle centraline di sicurezza e su quelle mute: così ogni DID,
+# compresi quelli che OBDb legge solo in sessione 03, si chiede una volta sola. Un rifiuto lascia la default session.
+function Enter-UdsExtendedSession($Ecu) {
+    if ($script:DefaultSessionOnlyRequestIds -contains $Ecu.RequestId) {
+        $Ecu.SessionOutcome = 'predefinita (centralina di sicurezza)'
+        return
+    }
+    if ($Ecu.Mute) { return }
+    $started = Get-ScanMilliseconds
+    $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x10, 0x03))
+    $script:ScanState.SessionMs += (Get-ScanMilliseconds) - $started
+    if ($reply.Result -eq 'Positive') {
+        $Ecu.ExtendedSession = $true
+        $Ecu.SessionOutcome = 'estesa'
+        Add-ReportLine ((Get-UdsTag $Ecu) + 'sessione estesa 03 aperta')
+    }
+    elseif ($reply.Result -eq 'Negative') {
+        $Ecu.SessionOutcome = 'estesa rifiutata (NRC {0:X2})' -f $reply.Nrc
+        Add-ReportLine ((Get-UdsTag $Ecu) + ('sessione estesa 03 rifiutata (NRC {0:X2}): letture nella default session, DID della sessione 03 saltati' -f $reply.Nrc))
+    }
+    else {
+        $Ecu.SessionOutcome = 'estesa senza risposta'
+        Add-ReportLine ((Get-UdsTag $Ecu) + 'nessuna risposta a 10 03: letture nella default session, DID della sessione 03 saltati')
+    }
+}
+
+# Riporta la centralina nella default session con 10 01, inviato direttamente così parte anche a budget esaurito o
+# con la centralina marcata muta. Se la conferma non arriva la centralina ci torna da sola allo scadere del timer S3.
+function Exit-UdsExtendedSession($Ecu, [string] $Reason) {
+    if (-not $Ecu.ExtendedSession) { return }
+    $mode = if ($Ecu.Extended) { 'UDS29' } else { 'UDS11' }
+    $started = Get-ScanMilliseconds
+    $reply = Send-ScanRequest $Ecu.RequestId $Ecu.ResponseId $mode ([byte[]]@(0x10, 0x01))
+    if ($reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x21) { $reply = Send-ScanRequest $Ecu.RequestId $Ecu.ResponseId $mode ([byte[]]@(0x10, 0x01)) }
+    $script:ScanState.SessionMs += (Get-ScanMilliseconds) - $started
+    if ($reply.Result -ne 'Positive') {
+        Add-ReportLine ((Get-UdsTag $Ecu) + 'ritorno alla default session non confermato: la centralina ci torna allo scadere del timer S3')
+        return
+    }
+    $Ecu.ExtendedSession = $false
+    if ($Reason) {
+        # I rifiuti già raccolti in sessione estesa potrebbero dipendere dalla sessione: si rileggono tutti
+        $Ecu.SessionSuspect = $true
+        $Ecu.SessionOutcome = 'estesa, chiusa prima: ' + $Reason
+        Add-ReportLine ((Get-UdsTag $Ecu) + 'sessione estesa chiusa: ' + $Reason + '; letture successive nella default session')
+    }
+}
+
+# Rilegge nella default session i DID rifiutati in sessione estesa: sempre quelli che OBDb ha visto rispondere nelle
+# catture, tutti gli altri solo se la sessione è sospetta (F189 rifiutato o servizio chiuso con NRC 7F). Nel caso
+# normale non parte nessuna richiesta.
+function Invoke-UdsSessionRetries($Ecu) {
+    $entries = @($Ecu.SessionRetries | Where-Object { $Ecu.SessionSuspect -or $_.Expected })
+    $Ecu.SessionRetries.Clear()
+    if ($entries.Count -eq 0) { return }
+    $answered = 0
+    foreach ($entry in $entries) {
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($entry.Did -shr 8), ($entry.Did -band 0xFF)))
+        if ($reply.Result -eq 'Positive') { $answered++ }
+        switch ($entry.Kind) {
+            'Ident' { Write-UdsIdentReply $Ecu $entry.Did $entry.Name $reply }
+            'StdPid' { Write-UdsStdPidReply $Ecu ($entry.Did -band 0xFF) $reply }
+            'Monitor' { Write-UdsMonitorReply $Ecu $entry.Did $reply }
+            'Obdb' { Write-UdsObdbReply $Ecu $entry.Command $reply }
+        }
+    }
+    $Ecu.RetryOutcome = "$($entries.Count) DID rifiutati in sessione estesa e riletti in default, $answered risposti"
+    Add-ReportLine ((Get-UdsTag $Ecu) + $Ecu.RetryOutcome)
+}
+
+# Chiude la sessione estesa a fine centralina e, tornati in default, rilegge i DID rifiutati per la sessione. Se il
+# ritorno in default non è confermato le riletture si saltano, perchè avverrebbero ancora in sessione estesa.
+function Close-UdsExtendedSession($Ecu) {
+    Exit-UdsExtendedSession $Ecu $null
+    if ($Ecu.ExtendedSession) {
+        $Ecu.SessionRetries.Clear()
+        return
+    }
+    Invoke-UdsSessionRetries $Ecu
+}
+
 # Identificazione UDS: i DID con significato pubblico di obd_scan.h, come testo o data; con il flow control guasto
-# resta solo la sessione attiva F186, perchè gli altri sono testi su più frame.
+# resta solo la sessione attiva F186, perchè gli altri sono testi su più frame. F187 e F19E vengono dalla cache della
+# firma. F189 risponde su ogni centralina VAG: se la sessione estesa lo rifiuta, la sessione diventa sospetta.
 function Read-UdsIdentification($Ecu) {
     $tables = $script:ScanTables
     for ($index = 0; $index -lt $tables.IdentDids.Count; $index++) {
         $did = $tables.IdentDids[$index]
+        $name = $tables.IdentNames[$index]
         if ((Test-SingleFrameOnly) -and $did -ne 0xF186) { continue }
-        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($did -shr 8), ($did -band 0xFF)))
-        if ($reply.Result -eq 'Positive' -and $reply.Message.Length -gt 3) { Write-Identification $Ecu $did $tables.IdentNames[$index] (Get-ByteSlice $reply.Message 3) }
-        elseif ($reply.Result -eq 'Incomplete') { Write-IncompleteReply $Ecu $did }
+        if ($Ecu.IdentCache.ContainsKey($did)) {
+            $reply = $Ecu.IdentCache[$did]
+        }
+        else {
+            $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($did -shr 8), ($did -band 0xFF)))
+            if ($did -eq 0xF189 -and $Ecu.ExtendedSession -and $reply.Result -eq 'Negative' -and $script:SessionRetryNrcs -contains $reply.Nrc) { $Ecu.SessionSuspect = $true }
+            Register-SessionRetry $Ecu $reply @{ Kind = 'Ident'; Did = $did; Name = $name; Expected = $false }
+        }
+        Write-UdsIdentReply $Ecu $did $name $reply
     }
 }
 
@@ -2047,33 +2294,49 @@ function Read-UdsStandardPids($Ecu) {
         $dataLength = $tables.PidDataLength[$parameterId]
         if ((Test-SingleFrameOnly) -and ($dataLength -eq 0 -or $dataLength -gt 4)) { continue }
         $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, 0xF4, $parameterId))
-        if ($reply.Result -eq 'Positive' -and $reply.Message.Length -ge 3) {
-            $Ecu.F4NrcStreak = 0
-            $Ecu.StdPids++
-            $prefix = '  [{0}] PID standard F4{1:X2} ' -f (Get-UdsDisplayName $Ecu), $parameterId
-            $null = Write-CommandSignals $tables.SaeByPid[$parameterId] (Get-ByteSlice $reply.Message 3) $prefix
-        }
-        elseif ($reply.Result -eq 'Negative') {
-            if ($reply.Nrc -eq $Ecu.F4LastNrc) { $Ecu.F4NrcStreak++ } else { $Ecu.F4NrcStreak = 1 }
-            $Ecu.F4LastNrc = $reply.Nrc
-            if ($Ecu.F4NrcStreak -ge $tables.Constants['OBD_SCAN_F4_NRC_LIMIT']) { $Ecu.SkipF4 = $true }
-        }
-        elseif ($reply.Result -eq 'Incomplete') {
-            Write-IncompleteReply $Ecu (0xF400 -bor $parameterId)
-        }
+        Register-SessionRetry $Ecu $reply @{ Kind = 'StdPid'; Did = (0xF400 -bor $parameterId); Expected = $false }
+        Write-UdsStdPidReply $Ecu $parameterId $reply
+    }
+}
+
+# Scrive la risposta a un PID standard F4xx; NRC uguali di fila oltre il limite chiudono la lettura dei F4xx.
+function Write-UdsStdPidReply($Ecu, [int] $ParameterId, $Reply) {
+    $tables = $script:ScanTables
+    if ($Reply.Result -eq 'Positive' -and $Reply.Message.Length -ge 3) {
+        $Ecu.F4NrcStreak = 0
+        $Ecu.StdPids++
+        $prefix = '  [{0}] PID standard F4{1:X2} ' -f (Get-UdsDisplayName $Ecu), $ParameterId
+        $null = Write-CommandSignals $tables.SaeByPid[$ParameterId] (Get-ByteSlice $Reply.Message 3) $prefix
+    }
+    elseif ($Reply.Result -eq 'Negative') {
+        if ($Reply.Nrc -eq $Ecu.F4LastNrc) { $Ecu.F4NrcStreak++ } else { $Ecu.F4NrcStreak = 1 }
+        $Ecu.F4LastNrc = $Reply.Nrc
+        if ($Ecu.F4NrcStreak -ge $tables.Constants['OBD_SCAN_F4_NRC_LIMIT']) { $Ecu.SkipF4 = $true }
+    }
+    elseif ($Reply.Result -eq 'Incomplete') {
+        Write-IncompleteReply $Ecu (0xF400 -bor $ParameterId)
     }
 }
 
 # 22 F600 e 22 F800, solo per segnalare se la centralina dichiara monitor o InfoType OBD via UDS.
 function Read-UdsMonitorDeclarations($Ecu) {
-    $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, 0xF6, 0x00))
-    if ($reply.Result -eq 'Positive') { Add-ReportLine ((Get-UdsTag $Ecu) + 'dichiara monitor OBD via UDS (F600)') }
-    $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, 0xF8, 0x00))
-    if ($reply.Result -eq 'Positive') { Add-ReportLine ((Get-UdsTag $Ecu) + 'dichiara InfoType OBD via UDS (F800)') }
+    foreach ($did in @(0xF600, 0xF800)) {
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($did -shr 8), 0x00))
+        Register-SessionRetry $Ecu $reply @{ Kind = 'Monitor'; Did = $did; Expected = $false }
+        Write-UdsMonitorReply $Ecu $did $reply
+    }
+}
+
+# Scrive la dichiarazione di monitor (F600) o InfoType (F800) OBD via UDS, se la risposta è positiva.
+function Write-UdsMonitorReply($Ecu, [int] $Did, $Reply) {
+    if ($Reply.Result -ne 'Positive') { return }
+    $text = if ($Did -eq 0xF600) { 'dichiara monitor OBD via UDS (F600)' } else { 'dichiara InfoType OBD via UDS (F800)' }
+    Add-ReportLine ((Get-UdsTag $Ecu) + $text)
 }
 
 # DID VAG della selezione OBDb con la stessa coppia di ID, come obdProbeUdsObdb(); i DID F4xx si saltano sulle
 # centraline OBD, che li hanno già letti in Mode 01, e con il flow control guasto quelli che non stanno in un frame.
+# Un rifiuto in sessione estesa di un DID che OBDb ha visto rispondere nelle catture si rilegge sempre in default.
 function Read-UdsObdbDids($Ecu) {
     foreach ($command in $script:ScanTables.VagCommands) {
         if ($Ecu.Skip22 -or $Ecu.Extended) { return }
@@ -2081,42 +2344,64 @@ function Read-UdsObdbDids($Ecu) {
         if ((Test-SingleFrameOnly) -and $command.PayloadBytes -gt 4) { continue }
         if (($command.IdValue -band 0xFF00) -eq 0xF400 -and $null -ne $Ecu.ObdEcu) { continue }
         $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($command.IdValue -shr 8), ($command.IdValue -band 0xFF)))
-        if ($reply.Result -eq 'Positive' -and $reply.Message.Length -ge 3) {
-            $prefix = '  [{0}] DID {1:X4} ' -f (Get-UdsDisplayName $Ecu), $command.IdValue
-            if ((Write-CommandSignals $command (Get-ByteSlice $reply.Message 3) $prefix) -gt 0) { $Ecu.VagDids++ }
-        }
-        elseif ($reply.Result -eq 'Incomplete') {
-            Write-IncompleteReply $Ecu $command.IdValue
-        }
+        Register-SessionRetry $Ecu $reply @{ Kind = 'Obdb'; Did = $command.IdValue; Command = $command; Expected = $command.Captured }
+        Write-UdsObdbReply $Ecu $command $reply
     }
 }
 
-# Conteggio dei DTC UDS con 19 01 e le maschere 08 (confermati), 04 (in attesa) e 01 (falliti ora): i codici VAG non
-# seguono la codifica SAE, quindi se ne riportano solo i conteggi. Se 19 01 è rifiutato come sub-funzione (NRC 12) la
-# stessa maschera si ripete con 19 02 e i DTC si contano dalla lunghezza della lista, come il firmware.
+# Scrive la risposta a un DID VAG della selezione: i valori decodificati, oppure la nota di risposta incompleta.
+function Write-UdsObdbReply($Ecu, $Command, $Reply) {
+    if ($Reply.Result -eq 'Positive' -and $Reply.Message.Length -ge 3) {
+        $prefix = '  [{0}] DID {1:X4} ' -f (Get-UdsDisplayName $Ecu), $Command.IdValue
+        if ((Write-CommandSignals $Command (Get-ByteSlice $Reply.Message 3) $prefix) -gt 0) { $Ecu.VagDids++ }
+    }
+    elseif ($Reply.Result -eq 'Incomplete') {
+        Write-IncompleteReply $Ecu $Command.IdValue
+    }
+}
+
+# DTC UDS con una sola richiesta 19 02 e maschera AF: falliti ora, falliti nel ciclo, in attesa, confermati, falliti
+# dalla cancellazione e spia. Restano fuori i bit di test non completato, che elencherebbero DTC non guasti; il bit 20
+# serve perchè VCDS mostra DTC con il solo stato 0x20. Ogni DTC si scrive con il numero del costruttore in decimale, come
+# VCDS, in esadecimale e con i bit di stato per nome; i conteggi vengono dai byte di stato, per i bit che la centralina
+# dichiara disponibili. Se 19 02 è rifiutato o la lista non arriva intera si ripiega sui conteggi di 19 01.
 function Read-UdsDtcCounts($Ecu) {
+    $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, 0x02, 0xAF))
+    if ($reply.Result -eq 'Positive') {
+        $list = Get-UdsDtcList $reply.Message
+        if ($null -ne $list) {
+            $Ecu.DtcListed = $list.Entries.Count
+            $counted = @(@('DtcConfirmed', 0x08), @('DtcPending', 0x04), @('DtcFailed', 0x01))
+            foreach ($field in $counted) {
+                if (($list.Availability -band $field[1]) -eq 0) { continue }
+                $Ecu[$field[0]] = @($list.Entries | Where-Object { ($_.Status -band $field[1]) -ne 0 }).Count
+            }
+            foreach ($entry in $list.Entries) {
+                Add-ReportLine ((Get-UdsTag $Ecu) + ('DTC {0} (0x{0:X6}), stato 0x{1:X2}: {2}' -f $entry.Code, $entry.Status, (Format-UdsDtcStatus $entry.Status)))
+            }
+            return
+        }
+    }
+    $fallback = $reply.Result -eq 'Incomplete' -or ($reply.Result -eq 'Negative' -and @(0x12, 0x31) -contains $reply.Nrc)
+    if (-not $fallback) { return }
+    if ($reply.Result -eq 'Incomplete') { Add-ReportLine ((Get-UdsTag $Ecu) + "19 02: elenco dei DTC non completato dall'adattatore, solo conteggi") }
     $masks = @(0x08, 0x04, 0x01)
     $fields = @('DtcConfirmed', 'DtcPending', 'DtcFailed')
     for ($index = 0; $index -lt 3; $index++) {
-        $subFunction = if ($Ecu.DtcList) { 0x02 } else { 0x01 }
-        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, $subFunction, $masks[$index]))
-        if ($subFunction -eq 0x01 -and $reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x12) {
-            $Ecu.DtcList = $true
-            $subFunction = 0x02
-            $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, $subFunction, $masks[$index]))
-        }
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x19, 0x01, $masks[$index]))
+        if ($reply.Result -eq 'Negative' -and $reply.Nrc -eq 0x12) { return }
         if ($reply.Result -ne 'Positive') { continue }
-        $count = if ($subFunction -eq 0x02) { Get-UdsDtcListCount $reply.Slot } else { Get-UdsDtcCount $reply.Message }
+        $count = Get-UdsDtcCount $reply.Message
         if ($null -ne $count) { $Ecu[$fields[$index]] = $count }
     }
 }
 
 # Prova dei DID candidati per la carica della batteria al litio del mild hybrid sulla centralina MQ-BMS
-# (17FC00AE/17FE00AE). Non esiste una decodifica pubblica, quindi si leggono nella default session alcuni DID delle
-# batterie VAG a 48 V di OBDb Audi-Q8: carica 028C e F45B, stato 7448, corrente 1E3D, tensioni di cella 1E3B e 1E3C,
-# temperatura 2A0B. Se ne scrivono i byte grezzi in una sezione separata: è un'eccezione alla regola "niente byte
-# grezzi", approvata per trovare il DID. Va eseguita a motore acceso, perchè il relè della batteria si chiude
-# all'avviamento.
+# (17FC00AE/17FE00AE). Non esiste una decodifica pubblica, quindi si leggono alcuni DID delle batterie VAG a 48 V di
+# OBDb Audi-Q8: carica 028C e F45B, stato 7448, corrente 1E3D, tensioni di cella 1E3B e 1E3C, temperatura 2A0B, nella
+# sessione estesa se la centralina l'ha accettata. Se ne scrivono i byte grezzi in una sezione separata: è
+# un'eccezione alla regola "niente byte grezzi", approvata per trovare il DID. Va eseguita a motore acceso, perchè il
+# relè della batteria si chiude all'avviamento.
 function Read-MhevBatteryProbe($Ecu) {
     $candidates = @(0x028C, 0xF45B, 0x7448, 0x1E3D, 0x1E3B, 0x1E3C, 0x2A0B)
     Add-ReportLine '=== PROVA DID BATTERIA AL LITIO MHEV (decodifica non verificata, byte grezzi) ==='
@@ -2134,24 +2419,103 @@ function Read-MhevBatteryProbe($Ecu) {
     Add-ReportLine '=== FINE PROVA DID BATTERIA AL LITIO MHEV ==='
 }
 
-# Fase 15: letture UDS per centralina, in ordine identificazione, PID standard F4xx, F600/F800, DID VAG OBDb e conteggio
-# DTC. Ogni centralina ha un proprio try/catch, così un errore imprevisto salta solo le sue letture; il budget di 60 s
-# parte dalla prima lettura.
+# Scrive una prova DID riuscita: intestazione con verifica e catture OBDb, valori decodificati con ogni variante e
+# risposta grezza, che resta il dato da confrontare finchè la decodifica non è verificata sulla vettura.
+function Write-CandidateReply($Ecu, $Group, [byte[]] $Message) {
+    $first = $Group.Variants[0]
+    $prefix = '  [{0}] PROVA DID {1:X4} ' -f (Get-UdsDisplayName $Ecu), $Group.IdValue
+    $session = if ($Group.Session) { ', sessione ' + $Group.Session } else { '' }
+    $variants = if ($Group.Variants.Count -gt 1) { "; $($Group.Variants.Count) varianti di decodifica" } else { '' }
+    Add-ReportLine ($prefix + '(non verificato: ' + $first.Verification + $session + '; catture OBDb A5 ' + $script:ScanTables.ModelYear + ': ' + $first.Capture + $variants + ')')
+    $payload = Get-ByteSlice $Message 3
+    foreach ($variant in $Group.Variants) { $null = Write-CommandSignals $variant $payload $prefix }
+    Add-ReportLine ($prefix + 'byte: ' + (($Message | ForEach-Object { '{0:X2}' -f $_ }) -join ' '))
+}
+
+# Prove DID: i DID A5 con decodifica OBDb interpretabile ma non verificata per l'anno, una richiesta per DID con la
+# stessa coppia di ID della centralina. Hanno un budget proprio, così non lo tolgono alle letture verificate; i DID
+# della sessione 03 si saltano se la centralina è rimasta in default. Rifiuti e silenzi vanno solo nei conteggi.
+function Read-UdsCandidateDids($Ecu) {
+    $groups = @($script:ScanTables.CandidateGroups | Where-Object { $_.Header -eq $Ecu.RequestId -and $_.Response -eq $Ecu.ResponseId })
+    if ($groups.Count -eq 0) { return }
+    $Ecu.StartedMs = Get-ScanMilliseconds
+    $Ecu.Budget = $false
+    $started = Get-ScanMilliseconds
+    foreach ($group in $groups) {
+        $needsSession = $group.Session -and -not $Ecu.ExtendedSession
+        $tooLong = (Test-SingleFrameOnly) -and $group.PayloadBytes -gt 4
+        if ($Ecu.Skip22 -or $Ecu.Mute -or $Ecu.Budget -or $needsSession -or $tooLong) {
+            $Ecu.CandidateSkipped++
+            continue
+        }
+        $reply = Send-ScanUdsRequest $Ecu ([byte[]]@(0x22, ($group.IdValue -shr 8), ($group.IdValue -band 0xFF)))
+        # Il budget scaduto proprio su questa richiesta la salta senza inviarla
+        if ($reply.Result -eq 'Silent' -and $Ecu.Budget) {
+            $Ecu.CandidateSkipped++
+            continue
+        }
+        $Ecu.CandidateRequests++
+        switch ($reply.Result) {
+            'Positive' {
+                $Ecu.CandidatePositive++
+                Write-CandidateReply $Ecu $group $reply.Message
+            }
+            'Negative' {
+                $key = '{0:X2}' -f $reply.Nrc
+                $Ecu.CandidateNrc[$key] = 1 + [int]$Ecu.CandidateNrc[$key]
+            }
+            'Incomplete' {
+                $Ecu.CandidateOther++
+                Write-IncompleteReply $Ecu $group.IdValue
+            }
+            default { $Ecu.CandidateOther++ }
+        }
+    }
+    $Ecu.CandidateMs = (Get-ScanMilliseconds) - $started
+    $script:ScanState.CandidateMs += $Ecu.CandidateMs
+}
+
+# Fase 15: letture UDS per centralina. Prima la firma di tutte (F187 e F19E in default session) per riconoscere la
+# stessa centralina su due indirizzi; poi, per ogni centralina che non è alias, sessione estesa dove ammessa,
+# identificazione, PID standard F4xx, F600/F800, DID VAG OBDb, DTC, prova MHEV, prove DID e ritorno in default con le
+# eventuali riletture. Ogni centralina ha un proprio try/catch, così un errore imprevisto salta solo le sue letture; il
+# budget di 60 s parte dalla prima lettura. Dopo un errore fatale o un Ctrl+C non si invia 10 01: vale il timer S3.
 function Invoke-PhaseUdsRead {
-    foreach ($ecu in $script:ScanState.UdsEcus) {
+    $scan = $script:ScanState
+    foreach ($ecu in $scan.UdsEcus) {
         try {
             $ecu.StartedMs = Get-ScanMilliseconds
+            Read-UdsFingerprint $ecu
+        }
+        catch {
+            if ($_.Exception.Message -eq $script:PhaseSkippedMarker -or (Test-FatalScanError $_.Exception)) { throw }
+            Add-ReportLine ((Get-UdsTag $ecu) + 'errore imprevisto nella firma: ' + $_.Exception.Message)
+        }
+    }
+    Resolve-UdsAliases
+    foreach ($ecu in $scan.UdsEcus) {
+        if ($null -ne $ecu.AliasOf) { continue }
+        $handled = $false
+        try {
+            $ecu.StartedMs = Get-ScanMilliseconds
+            Enter-UdsExtendedSession $ecu
             Read-UdsIdentification $ecu
             Read-UdsStandardPids $ecu
             Read-UdsMonitorDeclarations $ecu
             Read-UdsObdbDids $ecu
             Read-UdsDtcCounts $ecu
             if ($ecu.ResponseId -eq '17FE00AE') { Read-MhevBatteryProbe $ecu }
+            Read-UdsCandidateDids $ecu
+            $handled = $true
         }
         catch {
             if ($_.Exception.Message -eq $script:PhaseSkippedMarker -or (Test-FatalScanError $_.Exception)) { throw }
             $ecu.Failure = $_.Exception.Message
             Add-ReportLine ((Get-UdsTag $ecu) + 'errore imprevisto, letture restanti saltate: ' + $_.Exception.Message)
+            $handled = $true
+        }
+        finally {
+            if ($handled) { Close-UdsExtendedSession $ecu }
         }
     }
 }
@@ -2170,9 +2534,10 @@ function Test-FatalScanError([Exception] $Exception) {
 # Riepilogo e profilo suggerito
 # ============================================================
 
-# Riga di riepilogo di una centralina UDS come obdPrintUdsSummary(): decisioni failsafe, DTC (solo conteggi), PID standard
-# e DID VAG letti.
+# Riga di riepilogo di una centralina UDS come obdPrintUdsSummary(): decisioni failsafe, conteggi dei DTC, PID standard
+# e DID VAG letti; solo nello script anche alias, sessione, riletture in default e prove DID.
 function Get-UdsSummaryText($Ecu) {
+    if ($null -ne $Ecu.AliasOf) { return 'stessa centralina di {0}/{1}: non letta di nuovo' -f $Ecu.AliasOf.RequestId, $Ecu.AliasOf.ResponseId }
     $text = ''
     if ($Ecu.Mute) { $text += 'muta dopo la discovery; ' }
     if ($Ecu.Budget) { $text += 'budget esaurito; ' }
@@ -2181,7 +2546,17 @@ function Get-UdsSummaryText($Ecu) {
     $pending = if ($null -ne $Ecu.DtcPending) { $Ecu.DtcPending } else { 'non letti' }
     $text += "DTC confermati $confirmed, in attesa $pending"
     if ($null -ne $Ecu.DtcFailed) { $text += ", falliti ora $($Ecu.DtcFailed)" }
-    return $text + "; PID standard $($Ecu.StdPids), DID VAG $($Ecu.VagDids)"
+    if ($null -ne $Ecu.DtcListed) { $text += ", elencati $($Ecu.DtcListed)" }
+    $text += "; PID standard $($Ecu.StdPids), DID VAG $($Ecu.VagDids); sessione $($Ecu.SessionOutcome)"
+    if ($Ecu.RetryOutcome) { $text += "; $($Ecu.RetryOutcome)" }
+    if ($Ecu.CandidateRequests -gt 0 -or $Ecu.CandidateSkipped -gt 0) {
+        $text += '; prove DID {0} positive su {1} in {2} s' -f $Ecu.CandidatePositive, $Ecu.CandidateRequests, (Format-ScanNumber ([math]::Round($Ecu.CandidateMs / 1000.0, 1)))
+        $refusals = @($Ecu.CandidateNrc.GetEnumerator() | Sort-Object Name | ForEach-Object { 'NRC {0} {1}' -f $_.Name, $_.Value })
+        if ($refusals.Count -gt 0) { $text += ' (' + ($refusals -join ', ') + ')' }
+        if ($Ecu.CandidateOther -gt 0) { $text += ", $($Ecu.CandidateOther) senza risposta o incomplete" }
+        if ($Ecu.CandidateSkipped -gt 0) { $text += ", $($Ecu.CandidateSkipped) saltate" }
+    }
+    return $text
 }
 
 # Elenca gli ID presenti in una bitmap e assenti nell'altra, esclusi quelli di range, con il nome italiano di
@@ -2195,6 +2570,32 @@ function Format-PidList([byte[]] $Present, [byte[]] $Absent) {
         $items.Add(('{0:X2}{1}' -f $id, $name))
     }
     return $items -join ', '
+}
+
+# Riga globale delle letture che solo lo script fa, prove DID e sessione estesa, con l'avviso quando le prove superano
+# la soglia di tempo.
+function Add-ExtractionSummary {
+    $scan = $script:ScanState
+    $requests = 0
+    $positive = 0
+    $opened = 0
+    $refused = 0
+    $safety = 0
+    foreach ($uds in $scan.UdsEcus) {
+        if ($null -ne $uds.AliasOf) { continue }
+        $requests += $uds.CandidateRequests
+        $positive += $uds.CandidatePositive
+        if ($uds.SessionOutcome -like 'estesa*' -and $uds.SessionOutcome -notlike 'estesa rifiutata*' -and $uds.SessionOutcome -notlike 'estesa senza*') { $opened++ }
+        elseif ($uds.SessionOutcome -like 'estesa rifiutata*' -or $uds.SessionOutcome -like 'estesa senza*') { $refused++ }
+        elseif ($uds.SessionOutcome -like '*sicurezza*') { $safety++ }
+    }
+    Add-ReportLine ('Prove DID: {0} positive su {1} richieste in {2} s; sessione estesa aperta su {3} centraline, rifiutata da {4}, esclusa per sicurezza su {5}; {6} s di cambi di sessione' -f
+        $positive, $requests, (Format-ScanNumber ([math]::Round($scan.CandidateMs / 1000.0, 1))), $opened, $refused, $safety, (Format-ScanNumber ([math]::Round($scan.SessionMs / 1000.0, 1))))
+    if ($scan.CandidateMs -gt $script:CandidateProbeWarningMs) {
+        $warning = 'ATTENZIONE: le prove DID hanno richiesto {0} s, oltre la soglia di {1} s' -f (Format-ScanNumber ([math]::Round($scan.CandidateMs / 1000.0, 1))), ($script:CandidateProbeWarningMs / 1000)
+        Add-ReportLine $warning
+        Write-Host $warning -ForegroundColor Yellow
+    }
 }
 
 # Fase 16: riepilogo per centralina come obdProbeStepSummary(). Le centraline OBD per ID con PID dichiarati e letti e
@@ -2230,6 +2631,7 @@ function Add-ScanSummary {
     foreach ($uds in $scan.UdsEcus) {
         if ($null -eq $uds.ObdEcu) { Add-ReportLine ((Get-UdsTag $uds) + (Get-UdsSummaryText $uds)) }
     }
+    Add-ExtractionSummary
     if ($null -ne $elm) {
         $flowControl = Format-YesNo ($elm.FlowControlAvailable -and $scan.FlowControlTest -ne 'Broken')
         if ($scan.FlowControlTest -eq 'NotRun' -or $scan.FlowControlTest -eq 'Inconclusive') { $flowControl += ' (non verificato)' }
@@ -2300,7 +2702,7 @@ function Start-PidScan([string] $PortName, [int] $Baud, [string] $OutputDirector
     $ErrorActionPreference = 'Stop'
     $script:TraceLines.Clear()
     $startTime = Get-Date
-    $reportPath = Join-Path $OutputDirectory ('pid_scan_{0:yyyyMMdd_HHmmss}.txt' -f $startTime)
+    $reportPath = Join-Path $OutputDirectory ('pid_scan_{0:yyyyMMdd_HHmmss}.log' -f $startTime)
     Initialize-ScanState
     Add-ReportLine ('Scansione completa OBD2 e UDS da PC  {0:yyyy-MM-dd HH:mm:ss}' -f $startTime)
     $serialPort = $null
@@ -2309,7 +2711,8 @@ function Start-PidScan([string] $PortName, [int] $Baud, [string] $OutputDirector
     try {
         Import-ScanTables
         $tables = $script:ScanTables
-        Add-ReportLine "Selezione OBDb anno modello $($tables.ModelYear): $($tables.SaeCommands.Count) PID SAE, $($tables.VagCommands.Count) DID VAG; elenco ODIS di $($tables.OdisRows.Count) coppie"
+        Add-ReportLine "Selezione OBDb anno modello $($tables.ModelYear): $($tables.SaeCommands.Count) PID SAE, $($tables.VagCommands.Count) DID VAG, $($tables.CandidateGroups.Count) DID candidati alle prove; elenco ODIS di $($tables.OdisRows.Count) coppie"
+        if ($tables.CandidateGroups.Count -eq 0) { Add-ReportLine 'Prove DID saltate: selection.json senza candidati, va rigenerato con tools\obdb_select.ps1' }
         $serialPort = Open-ElmPort $PortName $Baud
         Initialize-ElmState $serialPort
         Write-Host "Adattatore ELM327 su $($serialPort.PortName) a $($serialPort.BaudRate) baud"

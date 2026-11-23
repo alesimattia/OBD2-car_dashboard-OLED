@@ -1007,6 +1007,30 @@ static inline bool obdParseDtcListCount(const ObdIsoTpRx &rx, uint16_t *count)
 	return true;
 }
 
+/**
+ * Conta per bit di stato i DTC di una risposta positiva 59 02 arrivata per intero: confermati (bit 3), in attesa (bit 2)
+ * e falliti al momento (bit 0), gli stessi conteggi di tre richieste con le maschere 08, 04 e 01. Ritorna false se la
+ * lista non è ben formata o se il buffer l'ha troncata, perchè i DTC mancanti non sarebbero contati.
+ */
+static inline bool obdParseDtcStatusCounts(const ObdIsoTpRx &rx, uint16_t *confirmed, uint16_t *pending, uint16_t *failed)
+{
+	if (rx.truncated || rx.receivedLen < 3 || rx.receivedLen != rx.expectedLen || rx.data[0] != 0x59 ||
+		rx.data[1] != 0x02 || (rx.receivedLen - 3) % 4 != 0)
+		return false;
+	*confirmed = *pending = *failed = 0;
+	for (uint16_t position = 3; position + 4 <= rx.receivedLen; position += 4)
+	{
+		const uint8_t status = rx.data[position + 3];
+		if (status & 0x08)
+			(*confirmed)++;
+		if (status & 0x04)
+			(*pending)++;
+		if (status & 0x01)
+			(*failed)++;
+	}
+	return true;
+}
+
 /** Vero se il byte è una coppia di cifre BCD valide. */
 static inline bool obdIsBcdByte(uint8_t value)
 {

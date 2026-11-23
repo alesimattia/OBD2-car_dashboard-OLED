@@ -4,7 +4,7 @@ Per ogni link: cosa ne è stato ricavato. File di testo, una fonte per riga.
 == Veicolo: motore, cambio, mild hybrid ==
 https://uploads.audi.com/system/production/car_motorizations/964/file_en/1efb854a2a376cbaeaba745c036c20e5805ecd0a/eTD-Audi-A5-Sportback-40-TFSI-S_tronic-150kW-MHEV_240613.pdf  scheda tecnica Audi eTD (copia in DOCS): alesaggio, corsa, compressione, rapporti del cambio, capacità, masse
 https://www.audi.com/en/audi-a5-sportback-33  pagina Audi A5 Sportback con i link alle schede eTD
-https://www.audi.com/en/the-audi-a5-new-look-and-new-technologies-2020-12622/drive-system-and-suspension-12627  Audi A5 2020: 40 TFSI ciclo B, mild hybrid 12 V, BAS, batteria Li-ion 10 Ah, veleggio 55-160 km/h, start-stop 22 km/h
+https://www.audi.com/en/the-audi-a5-new-look-and-new-technologies-2020-12622/drive-system-and-suspension-12627  Audi A5 2020: unica fonte dei dati MHEV di README §5, 40 TFSI ciclo B, mild hybrid 12 V, BAS con recupero fino a 5 kW, batteria Li-ion 10 Ah, veleggio 55-160 km/h, start-stop sotto 22 km/h con cambio automatico
 https://audi-mediacenter.com/en/the-audi-a4-major-upgrade-for-the-bestseller-11884/drive-and-suspension-11894  Audi A4 B9.5: mild hybrid 12 V sui TFSI
 https://www.audi.com/en/the-audi-a4-major-upgrade-for-the-bestseller-2019-11884/drive-and-suspension-11894  Audi A4 B9.5: recupero BAS fino a 5 kW
 https://www.adac.de/rund-ums-fahrzeug/autokatalog/marken-modelle/audi/a5/f5-facelift/330927/  ADAC A5 Coupè 40 TFSI: codice motore DMS, trazione anteriore, 1560 kg, 0-100 in 7,1 s

@@ -3,8 +3,9 @@
     del firmware, obdb_signals.h nella radice del progetto.
 
     File prodotti in tools\obdb:
-      selection.json   segnali selezionati, letto da pid_scan.ps1 e base della tabella del firmware
-      selection.txt    elenco incluso/escluso con il motivo, da rivedere prima di aggiornare il firmware
+      selection.json   segnali selezionati, letto da pid_scan.ps1 e base della tabella del firmware, più i candidati
+                       alle prove DID dello script (DID A5 interpretabili non verificati), che il firmware non usa
+      selection.txt    elenco incluso/escluso con il motivo e candidati, da rivedere prima di aggiornare il firmware
 
     Uso:
       .\obdb_select.ps1 -Download        scarica signalset e supporto per anno ai commit fissati, poi seleziona
@@ -245,10 +246,53 @@ function Read-CaptureSupport {
     return $support
 }
 
+# Converte i segnali interpretabili di un comando nelle definizioni lette dagli interpreti; quelli che non passano
+# Get-SignalVerdict finiscono in Excluded con il motivo, se l'elenco è dato.
+function ConvertTo-SelectedSignals($Command, $Identifier, [string] $Source, [string] $Capture, $Excluded) {
+    $signals = New-Object System.Collections.Generic.List[object]
+    foreach ($signal in $Command.signals) {
+        $verdict = Get-SignalVerdict $signal $Source
+        if ($verdict.Reason) {
+            if ($null -ne $Excluded) {
+                $Excluded.Add([pscustomobject]@{ Source = $Source; Hdr = $Command.hdr; Service = $Identifier.Service; Id = $Identifier.Id; Signal = $signal.id; Name = $signal.name; Unit = [string]$signal.fmt.unit; Reason = $verdict.Reason; Capture = $Capture })
+            }
+            continue
+        }
+        # Prefisso del monitor anche per i nomi senza trattino basso (ACRFCMPL, EVAPCMPL, HCATCMPL)
+        $prefix = (($signal.id -replace 'CMPL$', '') -split '_')[0]
+        $definition = ConvertTo-SignalDefinition $signal
+        $definition.name = if ($Source -eq 'SAE' -and $NameCorrections.ContainsKey($signal.id)) { $NameCorrections[$signal.id] } else { $signal.name }
+        $definition.kind = $verdict.Kind
+        $definition.unit = $verdict.Unit
+        $definition.gate = Find-GateSignal $Command $signal
+        $definition.sparkOnly = ($Identifier.Service -eq '01' -and @('01', '41') -contains $Identifier.Id -and $SparkMonitorPrefixes -contains $prefix)
+        $definition.scaleDependsOn = $null
+        if ($Source -eq 'SAE' -and $ScaleFrom4F -contains $Identifier.Id) { $definition.scaleDependsOn = '4F' }
+        if ($Source -eq 'SAE' -and $ScaleFrom50 -contains $Identifier.Id) { $definition.scaleDependsOn = '50' }
+        Convert-ImperialSignal $definition
+        $signals.Add($definition)
+    }
+    return , $signals
+}
+
+# Motivi per cui un comando escluso per verifica, anno o sessione resta un candidato alle prove DID di pid_scan.ps1:
+# la decodifica OBDb c'è, manca solo la conferma per l'anno modello o serve la sessione indicata da din.
+function Get-CandidateVerification($Command) {
+    $reasons = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-YearFilter $Command.filter $ModelYear)) { $reasons.Add('anno modello diverso') }
+    if ($Command.dbg) { $reasons.Add('dbg') }
+    if ($null -ne $Command.dbgfilter -and (Test-YearFilter $Command.dbgfilter $ModelYear)) { $reasons.Add("dbgfilter $ModelYear") }
+    if ($reasons.Count -eq 0) { $reasons.Add('solo in sessione ' + $Command.din) }
+    return $reasons -join ', '
+}
+
 # Costruisce la selezione di un signalset: comandi utilizzabili con i soli segnali interpretabili, più l'elenco
-# delle esclusioni con il motivo, usato da selection.txt.
+# delle esclusioni con il motivo, usato da selection.txt. Per l'A5 i comandi esclusi solo per verifica, anno o sessione
+# che hanno segnali interpretabili diventano candidati alle prove DID, tranne i DID già selezionati con la stessa coppia
+# di ID; non entrano nella tabella del firmware.
 function Get-Selection($SignalSet, [string] $Source, $CaptureSupport) {
     $commands = New-Object System.Collections.Generic.List[object]
+    $candidates = New-Object System.Collections.Generic.List[object]
     $excluded = New-Object System.Collections.Generic.List[object]
     foreach ($command in $SignalSet.commands) {
         $identifier = Get-CommandIdentifier $command
@@ -265,27 +309,29 @@ function Get-Selection($SignalSet, [string] $Source, $CaptureSupport) {
         if ($Source -eq 'A5') {
             $capture = if ($CaptureSupport.Supported.ContainsKey($captureKey)) { 'risposto' } elseif ($CaptureSupport.Unsupported.ContainsKey($captureKey)) { 'rifiutato' } else { 'assente' }
         }
-        $signals = New-Object System.Collections.Generic.List[object]
-        foreach ($signal in $command.signals) {
-            $verdict = if ($commandExclusion) { @{ Reason = $commandExclusion } } else { Get-SignalVerdict $signal $Source }
-            if ($verdict.Reason) {
-                $excluded.Add([pscustomobject]@{ Source = $Source; Hdr = $command.hdr; Service = $identifier.Service; Id = $identifier.Id; Signal = $signal.id; Name = $signal.name; Unit = [string]$signal.fmt.unit; Reason = $verdict.Reason; Capture = $capture })
-                continue
+        if ($commandExclusion) {
+            foreach ($signal in $command.signals) {
+                $excluded.Add([pscustomobject]@{ Source = $Source; Hdr = $command.hdr; Service = $identifier.Service; Id = $identifier.Id; Signal = $signal.id; Name = $signal.name; Unit = [string]$signal.fmt.unit; Reason = $commandExclusion; Capture = $capture })
             }
-            # Prefisso del monitor anche per i nomi senza trattino basso (ACRFCMPL, EVAPCMPL, HCATCMPL)
-            $prefix = (($signal.id -replace 'CMPL$', '') -split '_')[0]
-            $definition = ConvertTo-SignalDefinition $signal
-            $definition.name = if ($Source -eq 'SAE' -and $NameCorrections.ContainsKey($signal.id)) { $NameCorrections[$signal.id] } else { $signal.name }
-            $definition.kind = $verdict.Kind
-            $definition.unit = $verdict.Unit
-            $definition.gate = Find-GateSignal $command $signal
-            $definition.sparkOnly = ($identifier.Service -eq '01' -and @('01', '41') -contains $identifier.Id -and $SparkMonitorPrefixes -contains $prefix)
-            $definition.scaleDependsOn = $null
-            if ($Source -eq 'SAE' -and $ScaleFrom4F -contains $identifier.Id) { $definition.scaleDependsOn = '4F' }
-            if ($Source -eq 'SAE' -and $ScaleFrom50 -contains $identifier.Id) { $definition.scaleDependsOn = '50' }
-            Convert-ImperialSignal $definition
-            $signals.Add($definition)
+            if ($Source -ne 'A5') { continue }
+            $signals = ConvertTo-SelectedSignals $command $identifier $Source $capture $null
+            if (@($signals | Where-Object { $_.kind -ne 'gate' }).Count -eq 0) { continue }
+            $session = if ($command.din) { [string]$command.din } else { $null }
+            $candidates.Add([ordered]@{
+                    source       = $Source
+                    service      = $identifier.Service
+                    id           = $identifier.Id
+                    hdr          = $command.hdr
+                    rax          = $command.rax
+                    fcm1         = [bool]$command.fcm1
+                    capture      = $capture
+                    verification = (Get-CandidateVerification $command)
+                    session      = $session
+                    signals      = $signals.ToArray()
+                })
+            continue
         }
+        $signals = ConvertTo-SelectedSignals $command $identifier $Source $capture $excluded
         # Un comando senza valori da mostrare non si invia: i soli segnali di supporto non dicono nulla
         if (@($signals | Where-Object { $_.kind -ne 'gate' }).Count -eq 0) { continue }
         $commands.Add([ordered]@{
@@ -299,7 +345,14 @@ function Get-Selection($SignalSet, [string] $Source, $CaptureSupport) {
                 signals = $signals.ToArray()
             })
     }
-    return @{ Commands = $commands; Excluded = $excluded }
+    # Un DID già selezionato si legge con la variante verificata: la variante candidata non aggiunge una richiesta
+    $selectedKeys = @{}
+    foreach ($command in $commands) { $selectedKeys['{0}/{1}/{2}' -f $command.hdr, $command.rax, $command.id] = $true }
+    $kept = New-Object System.Collections.Generic.List[object]
+    foreach ($candidate in $candidates) {
+        if (-not $selectedKeys.ContainsKey(('{0}/{1}/{2}' -f $candidate.hdr, $candidate.rax, $candidate.id))) { $kept.Add($candidate) }
+    }
+    return @{ Commands = $commands; Candidates = $kept; Excluded = $excluded }
 }
 
 # Scrive l'elenco leggibile: riepilogo, validazione sulle catture, casi di confine, inclusi ed esclusi.
@@ -320,6 +373,14 @@ function Write-SelectionText($Sae, $A5) {
     $A5.Commands | Group-Object { $_.hdr } | Sort-Object Name | ForEach-Object {
         $group = $_.Group
         $lines.Add(('    {0}: {1} / {2} / {3} / {4}' -f $_.Name, @($group | Where-Object { $_.capture -eq 'risposto' }).Count, @($group | Where-Object { $_.capture -eq 'rifiutato' }).Count, @($group | Where-Object { $_.capture -eq 'assente' }).Count, $group.Count))
+    }
+    $lines.Add('')
+    $distinctCandidates = @($A5.Candidates | Group-Object { '{0}/{1}/{2}' -f $_.hdr, $_.rax, $_.id })
+    $lines.Add("Candidati alle prove DID di pid_scan.ps1 (decodifica interpretabile, non verificata per il $ModelYear o in sessione 03): $($distinctCandidates.Count) DID, $($A5.Candidates.Count) varianti")
+    $lines.Add('    centralina: DID / in sessione 03 / risposti / rifiutati / assenti nelle catture')
+    $A5.Candidates | Group-Object { '{0}/{1}' -f $_.hdr, $_.rax } | Sort-Object Name | ForEach-Object {
+        $group = @($_.Group | Group-Object { $_.id } | ForEach-Object { $_.Group[0] })
+        $lines.Add(('    {0}: {1} / {2} / {3} / {4} / {5}' -f $_.Name, $group.Count, @($group | Where-Object { $_.session }).Count, @($group | Where-Object { $_.capture -eq 'risposto' }).Count, @($group | Where-Object { $_.capture -eq 'rifiutato' }).Count, @($group | Where-Object { $_.capture -eq 'assente' }).Count))
     }
     $lines.Add('')
     $lines.Add('Casi di confine: adimensionali VAG risposti nelle catture')
@@ -366,6 +427,17 @@ function Write-SelectionText($Sae, $A5) {
             $lines.Add(('    {0,-14} {1,-22} {2}  ({3})' -f $where, $item.Signal, $item.Name, $item.Reason))
         }
     }
+    $lines.Add('')
+    $lines.Add('==================== CANDIDATI A5 ALLE PROVE DID ====================')
+    foreach ($candidate in $A5.Candidates) {
+        $session = if ($candidate.session) { ', sessione ' + $candidate.session } else { '' }
+        $lines.Add(('{0}/{1} 22 {2}  [verifica: {3}{4}; catture: {5}]' -f $candidate.hdr, $candidate.rax, $candidate.id, $candidate.verification, $session, $candidate.capture))
+        foreach ($signal in $candidate.signals) {
+            $unit = if ($signal.unit) { $signal.unit } else { $signal.kind }
+            $suffix = if ($signal.kind -eq 'gate') { '  (supporto)' } else { '' }
+            $lines.Add(('    {0,-22} {1} [{2}]{3}' -f $signal.id, $signal.name, $unit, $suffix))
+        }
+    }
     [IO.File]::WriteAllLines($SelectionTextPath, $lines.ToArray(), $Utf8NoBom)
 }
 
@@ -377,7 +449,7 @@ $UnitSymbols = @{
     'kilometersPerHour' = 'km/h'; 'degrees' = '°'; 'milliseconds' = 'ms'; 'ampereHours' = 'Ah'; 'kilogramsPerHour' = 'kg/h'
     'gramsPerLiter' = 'g/L'; 'minutes' = 'min'; 'millimeters' = 'mm'; 'litersPerHour' = 'L/h'; 'centimeters' = 'cm'
     'millivolts' = 'mV'; 'milligramsPerCubicMeter' = 'mg/m³'; 'liters' = 'L'; 'metersPerSecondSquared' = 'm/s²'
-    'milliohms' = 'mΩ'; 'milligramsPerStroke' = 'mg/corsa'; 'radians' = 'rad'
+    'milliohms' = 'mΩ'; 'milligramsPerStroke' = 'mg/corsa'; 'radians' = 'rad'; 'meters' = 'm'
 }
 # Testi dei booleani per il bit a 0 e a 1: la prima parola dell'unità OBDb è il valore del bit a 0
 $BooleanTexts = @{ 'noyes' = @('no', 'sì'); 'yesno' = @('sì', 'no'); 'offon' = @('spento', 'acceso'); 'onoff' = @('acceso', 'spento') }
@@ -583,6 +655,8 @@ $document = [ordered]@{
     booleans  = $BooleanTexts
     # In PowerShell 5.1 @() su una List di dizionari ordinati fallisce ("Tipi di argomento non corrispondenti")
     commands  = $saeSelection.Commands.ToArray() + $a5Selection.Commands.ToArray()
+    # Solo per le prove DID di pid_scan.ps1: la tabella del firmware riceve soltanto commands
+    candidates = $a5Selection.Candidates.ToArray()
 }
 [IO.File]::WriteAllText($SelectionJsonPath, ($document | ConvertTo-Json -Depth 10 -Compress), $Utf8NoBom)
 Write-SelectionText $saeSelection $a5Selection

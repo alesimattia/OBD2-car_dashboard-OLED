@@ -1,19 +1,21 @@
 ---
 name: reference_vlinker_fs
-description: Vgate vLinker FS USB per la scansione completa da PC Windows con tools\pid_scan.ps1 (README §5.5): cosa fa lo script, comandi ELM/STN usati, driver FTDI, baud, vincoli USB e seriali; il Ross-Tech HEX-V2 non è utilizzabile da script
+description: Vgate vLinker FS USB per la scansione completa da PC Windows con tools\pid_scan.ps1 (README §6.2, dettagli ELM/STN in §12.6): cosa fa lo script, comandi ELM/STN usati, driver FTDI, baud, vincoli USB e seriali; il Ross-Tech HEX-V2 non è utilizzabile da script
 metadata:
   type: reference
 ---
 
-La scansione completa da PC Windows si fa con il **Vgate vLinker FS USB** e `tools\pid_scan.ps1` (README §5.5), Windows
-PowerShell 5.1 senza dipendenze, file UTF-8 con BOM. Esegue le stesse fasi e regole failsafe del firmware
-([[project_scope_obd2]]), legge segnali da `tools\obdb\selection.json` e tabelle dagli header del firmware, e scrive
-`pid_scan_<data>_<ora>.txt` nella cartella dello script anche dopo un errore o un Ctrl+C, con riepilogo, profilo suggerito e
-traccia TX/RX in coda. Ogni richiesta passa da `Assert-ReadOnlyRequest`, che ammette solo i servizi di lettura e blocca il VIN.
-Con dot-source non parte (guard finale): così i test nello scratchpad lo caricano e sostituiscono `Invoke-ElmCommand` (o
-`Send-ScanUdsRequest`) con uno stub; sul Mac gira con `pwsh` 7.7 ([[reference_build]]). Come il firmware: ripiego `19 02` ed eco
-obbligatoria nelle risposte positive (`Test-ScanEcho`). Solo nello script: se trova `17FE00AE`, la prova DID della batteria
-Li-ion MHEV (`Read-MhevBatteryProbe`, sezione separata con byte grezzi; da lanciare a motore acceso).
+La scansione completa da PC Windows si fa con il **Vgate vLinker FS USB** e `tools\pid_scan.ps1` (README §6.2), Windows
+PowerShell 5.1 senza dipendenze, file UTF-8 con BOM. Esegue le fasi e le regole failsafe del firmware ed estrae in più
+quanto elencato in [[project_scope_obd2]] (sessione estesa, prove DID, alias, `19 02 AF`, Mode 06 e CVN, niente limiti di
+buffer); si lancia a motore acceso. Legge segnali e candidati da `tools\obdb\selection.json` e tabelle dagli header del
+firmware, e scrive `pid_scan_<data>_<ora>.log` nella cartella dello script anche dopo un errore o un Ctrl+C, con riepilogo,
+profilo suggerito e traccia TX/RX in coda. Ogni richiesta passa da `Assert-ReadOnlyRequest`, che ammette solo i servizi di
+lettura, `10 01`/`10 03` e blocca il VIN; eco obbligatoria nelle risposte positive (`Test-ScanEcho`).
+Con dot-source non parte (guard finale): i test nello scratchpad lo caricano e sostituiscono `Send-ScanRequest` con un
+modello delle centraline (sessioni, rifiuti, DTC), oppure `Invoke-ElmCommand`; sul Mac gira con `pwsh` 7.7 ([[reference_build]]).
+In PowerShell 5.1 `Group-Object`/`Measure-Object` con un nome di proprietà non leggono le chiavi delle hashtable: si usa un
+blocco `{ $_.Chiave }`; `Get-ByteSlice` restituisce l'array come oggetto unico, quindi non va messo in pipeline.
 
 **Comandi ELM327/STN dello script:** `ATS1` e `ATH1` (riga a 29 bit in 4 token di ID), protocollo trovato con `ATSP0` e poi
 fissato, gemello a 29 bit (`ATSP7` per il 6, `ATSP9` per l'8) con `ATCP`; `ATAT0` per le richieste funzionali, `ATAT1` per

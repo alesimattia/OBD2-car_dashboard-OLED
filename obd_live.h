@@ -97,7 +97,7 @@ inline bool torqueAvailable = false;
 inline int coolantC = 0;
 inline bool coolantAvailable = false;
 // Carica della batteria al litio del mild hybrid: nessun DID con decodifica verificata, quindi resta non
-// disponibile finchè la prova di tools/pid_scan.ps1 non ne trova uno (README §5.5)
+// disponibile finchè la prova di tools/pid_scan.ps1 non ne trova uno (README §6.2)
 inline int hybBattPct = 0;
 inline bool hybBattAvailable = false;
 
@@ -108,8 +108,9 @@ inline float cachedBoostKpa = NAN, cachedTorquePct = NAN, cachedFrictionPct = NA
 // dopo l'avvio e mai scaduta
 inline float referenceTorqueNm = NAN;
 
-// Rapporto aria/carburante stechiometrico della benzina senza etanolo: con la E5 il valore reale è circa il 2% più basso
-static constexpr float OBD_FUEL_STOICHIOMETRIC_AFR = 14.7f;
+// Rapporto aria/carburante stechiometrico della benzina E5 (EN 228, 5% di etanolo in volume): media in massa di benzina
+// senza etanolo (14.7) ed etanolo (9.0)
+static constexpr float OBD_FUEL_STOICHIOMETRIC_AFR = 14.4f;
 // Costante specifica dei gas dell'aria secca, J/(kg*K)
 static constexpr float OBD_GAS_CONSTANT_AIR = 287.05f;
 
@@ -1012,7 +1013,7 @@ inline void obdPrintDiagnostics(const ObdDiagSnapshot &s)
 	obdPrintDiagLine(F("Coppia all'albero"), s.torqueOk, (float)s.torqueNm, 0, F(" Nm  [max: 320]"));
 	obdPrintDiagLine(F("Potenza"), s.powerOk, s.powerKw, 1, F(" kW  [max: 150]"));
 	obdPrintDiagLine(F("Potenza"), s.powerOk, s.powerKw * 1.36f, 1, F(" CV  [max: 204]"));
-	obdPrintDiagLine(F("Air/Fuel Ratio"), s.afrOk, s.afr, 1, F("  [stechiometrico: 14.7]"));
+	obdPrintDiagLine(F("Air/Fuel Ratio"), s.afrOk, s.afr, 1, F("  [stechiometrico E5: 14.4]"));
 	obdPrintDiagLine(F("Consumo"), s.fuelL100Ok, s.fuelL100, 1, F(" L/100km"));
 	obdPrintDiagLine(F("Cons. specifico"), s.bsfcOk, (float)s.bsfc, 0, F(" g/kWh  [ottimo: 230-260]"));
 	obdPrintDiagLine(F("Altitudine"), s.altitudeOk, (float)s.altitude, 0, F(" m"));

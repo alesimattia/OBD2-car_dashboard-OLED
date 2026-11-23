@@ -1,6 +1,6 @@
 ---
 name: feedback_data_must_be_interpretable
-description: Leggere e proporre solo dati con decodifica pubblica e verificata (regole OBDb della selezione), niente valori grezzi; DTC UDS VAG solo come conteggi; in dashboard descrizioni testuali, mai indirizzi hex
+description: Leggere e proporre solo dati con decodifica pubblica (regole OBDb della selezione), niente valori grezzi fuori dalle prove DID di pid_scan.ps1; DTC UDS VAG come conteggi nel firmware, con numero e stato nello script; in dashboard descrizioni testuali, mai indirizzi hex
 metadata:
   type: feedback
 ---
@@ -9,8 +9,9 @@ Si leggono e si propongono solo dati con decodifica e significato fisico da font
 ISO 14229, signalset OBDb validati sulle catture reali. Mai byte grezzi nei report, nè valori di sensori dichiarati non
 supportati.
 
-**Why:** richiesta ripetuta dell'utente ("solo pid realmente interpretabili"); esclusi per questo il brute force dei DID,
-i DID VAG senza decodifica pubblica, i TID Mode 06 non standard e gli indirizzi dei PID in dashboard.
+**Why:** richiesta ripetuta dell'utente ("solo pid realmente interpretabili"), valida anche per il reverse engineering con
+`pid_scan.ps1` ("non ha senso interrogare DID non interpretabili"); esclusi per questo il brute force dei DID, i DID VAG
+senza decodifica pubblica e gli indirizzi dei PID in dashboard.
 
 **Regole della selezione OBDb** (applicate da `tools/obdb_select.ps1`, firmware e `pid_scan.ps1` usano la stessa):
 - il segnale ha un'unità fisica, una mappa di valori testuali o è booleano; non `unknown`, `hex`, `normal`, nè con "raw";
@@ -24,9 +25,13 @@ i DID VAG senza decodifica pubblica, i TID Mode 06 non standard e gli indirizzi 
 **DID con valori sospetti:** la selezione non esclude DID per valori implausibili letti sulla vettura; si applicano solo
 correzioni determinabili, in `$VehicleCorrections` di `tools/obdb_select.ps1` (028D: variante Kelvin di OBDb, confermata da
 `0x0BA3` = 24.8 °C). Un'ipotesi da un solo punto (11F1 /4 invece di /2) non è una correzione determinabile.
-**Eccezione ai byte grezzi:** solo la prova DID della batteria Li-ion MHEV di `pid_scan.ps1` ([[project_scope_obd2]]).
-**DTC UDS VAG:** non si decodificano dai byte, perchè VCDS li mostra da una tabella VW proprietaria: solo conteggi per stato.
-**Mode 06:** nome del monitor ed esito per i MID standard; valore e limiti solo per i TID `01`-`0C`.
+**Eccezione ai byte grezzi:** solo in `pid_scan.ps1`, nella prova DID della batteria Li-ion MHEV e nelle prove dei DID
+candidati, dove la risposta grezza accompagna la decodifica OBDb non verificata ([[project_scope_obd2]]).
+**DTC UDS VAG:** formato ISO 14229-1, numero del costruttore (quello della prima colonna di VCDS), descrizione e codice SAE da
+una tabella VW proprietaria: il firmware ne riporta solo i conteggi per stato, `pid_scan.ps1` anche numero e bit di stato.
+**Mode 06:** nel firmware nome del monitor ed esito per i MID standard, valore e limiti per i TID `01`-`0C`; in
+`pid_scan.ps1` anche MID senza nome e TID del costruttore, perchè la scala UASID è pubblica anche quando il nome del test
+non lo è.
 
 **How to apply:** prima di proporre un PID, DID o TID verificare formula, unità e significato pubblici; se è interpretabile
 solo in parte dichiararlo e aspettarsi un rifiuto. In dashboard descrizioni italiane da `pid_descriptions.h` e nomi delle

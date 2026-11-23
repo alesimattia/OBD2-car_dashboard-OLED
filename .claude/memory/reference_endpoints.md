@@ -5,20 +5,21 @@ metadata:
   type: reference
 ---
 
-**SoftAP ESP:** SSID `OBD2_UPDATE`, password in `OTA_PASS` degli sketch, IP `192.168.4.1`. Attivo per 3 minuti dal boot
+**SoftAP ESP:** SSID `OBD2_UPDATE`, password `OTA_PASS` degli sketch, pubblica di proposito ([[feedback_softap_password_public]]), IP `192.168.4.1`. Attivo per 3 minuti dal boot
 (`OTA_WINDOW_MS`), sospeso finchè un client è connesso e durante la scansione completa, con la finestra che riparte a fine
 scansione; dopo la chiusura una riconnessione WiFi non lo riaccende.
 
 **Endpoint:** `/dashboard`, `/scan` (stessa pagina sulla tab "PID supportati"), `/data` (campi `busy` e `scan`),
 `/scan-data`, `/probe?start|stop`, `/probe-status`, `/serial-data`, `/debug?on|off`, `/brightness?set=N|auto`, `/clear-dtc` (solo POST);
-OTA `/ota` (WiFi) o `/update` (CAN). Schema JSON in README §11.2-11.4.
+OTA `/ota` (WiFi) o `/update` (CAN). Endpoint e schemi JSON in README §13.
 
 **ELM327 WiFi (WIFI_conn):** rete `WiFi_OBDII` aperta, TCP `192.168.0.10:35000`, init `ATZ ATE0 ATL0 ATS0 ATH1`, protocollo
 `ATSP6`, `ATSH 7E0`/`7DF` per fisico/funzionale; la scansione completa aggiunge `ATSP7`/`ATCP`, filtri `ATCF`/`ATCM`/`ATAR`
 e flow control `ATFCSH`/`ATFCSD`/`ATFCSM1`, e a fine scansione reinizializza l'adattatore.
 
 **Documentazione nel repo:** `DOCS/TJA1050.pdf`, `DOCS/MCP2515-...pdf`, la scheda tecnica Audi
-`DOCS/eTD-Audi-A5-Sportback-40-TFSI-S_tronic-150kW-MHEV_240613.pdf` e `DOCS/references.lnk` (file di testo con le fonti web:
+`DOCS/eTD-Audi-A5-Sportback-40-TFSI-S_tronic-150kW-MHEV_240613.pdf`, `DOCS/DMSA_engine.pdf` (SSP 683),
+l'autoscan VCDS `DOCS/vcds_autoscan_20261122.log` (nome senza VIN) e `DOCS/references.lnk` (file di testo con le fonti web:
 su Windows l'estensione `.lnk` non si apre con doppio clic, va aperto con un editor).
 
 **Anteprime offline:** `monitor_preview.html` è `DASHBOARD_HTML` di `web_dashboard.h` con titolo e banner di anteprima più

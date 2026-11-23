@@ -6,17 +6,21 @@ Genera le tabelle dei segnali che la scansione completa sa decodificare. Le usan
 
 Lo script parte dai signalset [OBDb](https://github.com/OBDb), le definizioni pubbliche per decodificare i PID OBD2
 (`OBDb/SAEJ1979`) e i DID UDS dell'Audi A5 (`OBDb/Audi-A5`). Tiene solo i segnali realmente interpretabili per l'anno
-modello scelto e scarta quelli opachi, in debug o non validi per quell'anno. I criteri sono nel README, §5.1.
+modello scelto e scarta quelli opachi, in debug o non validi per quell'anno. I criteri sono nel README, §12.4.
 Quando OBDb ha più varianti dello stesso DID per anni diversi e la scansione della vettura conferma quella di un altro
 anno, la tabella `$VehicleCorrections` dello script la sostituisce: oggi `028D`, che la vettura riporta in kelvin.
+
+I DID dell'A5 esclusi solo perchè non verificati per l'anno (`dbg`, `dbgfilter`, filtro anni) o perchè chiedono la
+sessione 03 (`din`), ma con segnali interpretabili, diventano **candidati alle prove DID** di `pid_scan.ps1`. Non
+entrano nella tabella del firmware, e un DID già selezionato con la stessa coppia di ID non diventa candidato.
 
 Produce tre file:
 
 | File | Chi lo usa |
 |---|---|
 | `obdb_signals.h` (radice del progetto) | il firmware, compilato insieme agli sketch |
-| `tools/obdb/selection.json` | `pid_scan.ps1`, che lo legge all'avvio |
-| `tools/obdb/selection.txt` | tu: elenco dei segnali inclusi ed esclusi, con il motivo |
+| `tools/obdb/selection.json` | `pid_scan.ps1`, che lo legge all'avvio: `commands` per le letture verificate, `candidates` per le prove DID |
+| `tools/obdb/selection.txt` | tu: elenco dei segnali inclusi ed esclusi con il motivo, più i candidati con verifica, sessione e catture |
 
 I file sono già generati e presenti nel progetto. Non va lanciato prima di compilare il firmware nè prima di
 `pid_scan.ps1`, che non lo richiama.

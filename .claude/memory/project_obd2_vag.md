@@ -20,13 +20,19 @@ decodifica OBDb pubblica.
 - Discovery con `3E 00`, come dtcsweep; per gli ID ODIS muti un tentativo con `22 F197`. SFD non blocca le letture.
 - Flow control in UDS all'ID di richiesta: l'ELM327 in modo 0 lo manda a risposta − 8, quindi servono `ATFCSH`, `ATFCSD300005`
   e `ATFCSM1`, in quest'ordine (altrimenti `?`).
-- I DTC UDS VAG non seguono la codifica SAE (VCDS li mostra da una tabella VW): si riportano solo i conteggi, con `19 01`.
-  Sulla vettura `19 01` lo accetta solo l'infotainment `773`; le altre rispondono NRC `12` → ripiego `19 02` (stessa maschera),
-  conteggio = (lunghezza dichiarata − 3)/4 (`obdParseDtcListCount`, `Get-UdsDtcListCount`); esito da verificare sul prossimo report.
+- I DTC UDS VAG sono in formato ISO 14229-1 (`59 01 .. 01` sull'infotainment): 3 byte di numero del costruttore, non un codice
+  SAE; VCDS ne mostra il numero in decimale, il byte di stato in binario fra parentesi e descrizione e codice SAE da una
+  tabella VW. Sulla vettura `19 01` lo accetta solo l'infotainment `773`, le altre rispondono NRC `12`. Il firmware riporta
+  solo i conteggi con una sola `19 02 0D`, contati dai byte di stato (`obdParseDtcStatusCounts`); ripieghi: lista oltre il
+  buffer da 72 byte (più di 17 DTC) → una `19 02` per maschera contata dalla lunghezza dichiarata (`obdParseDtcListCount`),
+  `19 02` rifiutato (NRC 12/31) → `19 01` per maschera. `pid_scan.ps1` usa una sola `19 02 AF` con numeri e stati
+  ([[project_scope_obd2]]). I DTC OBD
+  (Mode 03/07) coprono solo le emissioni: quelli di rete e carrozzeria che VCDS trova stanno solo in UDS.
 
 **Mode 03 su CAN:** la risposta ha il byte di conteggio dopo `0x43` (ISO 15765-4).
 
-**Confine:** sola lettura nella default session; nessun servizio di scrittura, sessione o sicurezza, niente CAN comfort.
+**Confine:** sola lettura; il firmware resta nella default session, `pid_scan.ps1` apre anche la sessione estesa `10 03`
+fuori dalle centraline di sicurezza; nessun servizio di scrittura, reset o sicurezza, niente CAN comfort.
 
 **How to apply:** a "perchè non posso leggere X?" verificare prima se OBDb ha una decodifica del DID selezionabile per il
 2022; se manca, resta un dato da VCDS/OBDeleven. Vedi [[project_scope_obd2]] e [[project_vehicle]].

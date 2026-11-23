@@ -67,7 +67,7 @@
 
 // OTA — Aggiornamento firmware via browser (http://192.168.4.1/update)
 #define OTA_SSID    "OBD2_UPDATE"   // SSID del SoftAP per OTA
-#define OTA_PASS    "alesimattia"     // WPA2 (min 8 chars)
+#define OTA_PASS    "alesimattia"     // WPA2 (min 8 chars), pubblica di proposito: SoftAP locale non raggiungibile da internet (README §5.3)
 #define OTA_PORT    80              // web server
 #define OTA_WINDOW_MS 180000        // Finestra OTA: 3 minuti dal boot
 

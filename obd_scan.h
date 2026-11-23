@@ -278,7 +278,7 @@ static constexpr uint8_t UDS_FLAG_SKIP_19 = 0x04;
 static constexpr uint8_t UDS_FLAG_BUDGET = 0x08;
 static constexpr uint8_t UDS_FLAG_EXTENDED = 0x10;
 static constexpr uint8_t UDS_FLAG_SKIP_F4 = 0x20;
-// 19 01 rifiutato con NRC 12: i DTC si contano dalla lista 19 02
+// La lista 19 02 unica non sta nel buffer: i DTC si contano con una lista 19 02 per maschera, dalla lunghezza dichiarata
 static constexpr uint8_t UDS_FLAG_DTC_LIST = 0x40;
 
 /** Centralina UDS trovata dalla discovery, con lo stato delle sue letture e il riepilogo per la pagina /scan. */
@@ -536,8 +536,8 @@ inline ScanReply obdScanRequest(uint32_t requestId, uint32_t responseId, uint8_t
 /**
  * Richiesta a una centralina UDS con le regole failsafe: una centralina muta, oltre il budget o con il servizio
  * escluso non riceve richieste (ritorna SILENT senza inviare); 3 silenzi di fila la marcano muta (regola 2);
- * NRC 11, 7F, 7E o 12 escludono il resto del servizio (regola 4). Un NRC, una risposta incompleta e una positiva
- * azzerano il conteggio dei silenzi.
+ * NRC 11, 7F, 7E o 12 escludono il resto del servizio (regola 4), tranne il 12 su una sub-funzione del 19, che fa
+ * ripiegare sull'altra. Un NRC, una risposta incompleta e una positiva azzerano il conteggio dei silenzi.
  */
 inline ScanReply obdScanUdsRequest(uint8_t index, const uint8_t *request, uint8_t requestLen)
 {
@@ -570,9 +570,9 @@ inline ScanReply obdScanUdsRequest(uint8_t index, const uint8_t *request, uint8_
 	}
 	if (reply.result != SCAN_RESULT_TRANSPORT)
 		ecu.silence = 0;
-	// 19 01 rifiutato come sub-funzione (NRC 12) non esclude il servizio: la lettura dei DTC ripiega su 19 02
-	const bool dtcCountRefused = request[0] == 0x19 && request[1] == 0x01 && reply.nrc == 0x12;
-	if (reply.result == SCAN_RESULT_NEGATIVE && serviceFlag && !dtcCountRefused &&
+	// Una sub-funzione del 19 rifiutata (NRC 12) non esclude il servizio: la lettura dei DTC ripiega sull'altra
+	const bool dtcSubFunctionRefused = request[0] == 0x19 && reply.nrc == 0x12;
+	if (reply.result == SCAN_RESULT_NEGATIVE && serviceFlag && !dtcSubFunctionRefused &&
 		(reply.nrc == 0x11 || reply.nrc == 0x7F || reply.nrc == 0x7E || reply.nrc == 0x12))
 	{
 		ecu.flags |= serviceFlag;
@@ -2066,7 +2066,8 @@ inline bool obdProbeUdsObdb(uint8_t index)
 
 /**
  * Fase 15: letture UDS per centralina, in ordine identificazione, PID standard F4xx, catene F600/F800, DID VAG OBDb,
- * conteggio DTC. Un passo per richiesta; il budget di 60 s parte dalla prima lettura della centralina.
+ * conteggio DTC con una sola 19 02 (19 01 o una 19 02 per maschera solo come ripiego). Un passo per richiesta; il
+ * budget di 60 s parte dalla prima lettura della centralina.
  */
 inline void obdProbeStepUdsRead()
 {
@@ -2122,33 +2123,45 @@ inline void obdProbeStepUdsRead()
 		more = obdProbeUdsObdb(obdProbe.ecu);
 		break;
 	case UDS_READ_DTC:
-		if (obdProbe.item < 3)
+		if (obdProbe.item == 0)
+		{
+			// Una sola 19 02 con maschera 0D: i tre conteggi vengono dai byte di stato della lista
+			const uint8_t request[3] = {0x19, 0x02, 0x0D};
+			ScanReply reply = obdScanUdsRequest(obdProbe.ecu, request, 3);
+			obdProbe.item = 4;
+			if (reply.result == SCAN_RESULT_POSITIVE &&
+				obdParseDtcStatusCounts(*reply.message, &ecu.dtcConfirmed, &ecu.dtcPending, &ecu.dtcFailed))
+				break;
+			// Lista troncata dal buffer: una 19 02 per maschera, contata dalla lunghezza dichiarata; 19 02 rifiutato: 19 01
+			if (reply.result == SCAN_RESULT_POSITIVE && reply.message->truncated)
+				ecu.flags |= UDS_FLAG_DTC_LIST;
+			if ((ecu.flags & UDS_FLAG_DTC_LIST) ||
+				(reply.result == SCAN_RESULT_NEGATIVE && (reply.nrc == 0x12 || reply.nrc == 0x31)))
+				obdProbe.item = 1;
+			more = obdProbe.item == 1;
+		}
+		else if (obdProbe.item <= 3)
 		{
 			static const uint8_t masks[3] = {0x08, 0x04, 0x01};
 			const bool list = (ecu.flags & UDS_FLAG_DTC_LIST) != 0;
-			const uint8_t request[3] = {0x19, (uint8_t)(list ? 0x02 : 0x01), masks[obdProbe.item]};
+			const uint8_t request[3] = {0x19, (uint8_t)(list ? 0x02 : 0x01), masks[obdProbe.item - 1]};
 			ScanReply reply = obdScanUdsRequest(obdProbe.ecu, request, 3);
-			// 19 01 rifiutato come sub-funzione: la stessa maschera si ripete con 19 02
-			if (!list && reply.result == SCAN_RESULT_NEGATIVE && reply.nrc == 0x12)
-			{
-				ecu.flags |= UDS_FLAG_DTC_LIST;
-				more = true;
-				break;
-			}
 			uint16_t count;
 			if (reply.result == SCAN_RESULT_POSITIVE &&
 				(list ? obdParseDtcListCount(*reply.message, &count)
 					  : obdParseDtcCount(reply.message->data, reply.message->receivedLen, &count)))
 			{
-				if (obdProbe.item == 0)
+				if (obdProbe.item == 1)
 					ecu.dtcConfirmed = count;
-				else if (obdProbe.item == 1)
+				else if (obdProbe.item == 2)
 					ecu.dtcPending = count;
 				else
 					ecu.dtcFailed = count;
 			}
-			obdProbe.item++;
-			more = true;
+			// Anche 19 01 rifiutato come sub-funzione: i DTC restano non letti, senza le altre due maschere
+			const bool refused = reply.result == SCAN_RESULT_NEGATIVE && reply.nrc == 0x12;
+			obdProbe.item = refused ? 4 : (uint16_t)(obdProbe.item + 1);
+			more = obdProbe.item <= 3;
 		}
 		break;
 	}

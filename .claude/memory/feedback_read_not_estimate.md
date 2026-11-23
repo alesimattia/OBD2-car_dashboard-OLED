@@ -18,7 +18,7 @@ densità del carburante calcolati.
   boost `0x70 − 0x33`, coppia `(0x62 − 0x8E) × 0x63`, carburante `0x5E` (L/h) e `0x9D` (g/s), marcia `0xA4`, taglio
   iniezione da `0x5E` = 0 a motore in rotazione, pressione ambiente solo `0x33`;
 - PID mancante → `N/D`, mai un ripiego stimato;
-- restano stimate solo grandezze che la vettura non espone: AFR (λ × 14.7), altitudine ISA, efficienza intercooler
+- restano stimate solo grandezze che la vettura non espone: AFR (λ × 14.4, stechiometrico della benzina E5), altitudine ISA, efficienza intercooler
   (isoentropica, solo con ΔT teorico ≥ 10 K); calcoli esatti da letture: potenza, L/100 km, BSFC, densità aria, rapporto di
   pressione, deriva pedali, scarto farfalla-pedale, derivate nel tempo;
 - quando l'utente chiede l'elenco dei parametri stimati, non includere quelli cancellati.
